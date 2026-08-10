@@ -1,17 +1,12 @@
-"""Second real SiteAdapter implementation, after Gupy -- see
-jarvis/sites/base.py for the hard rules every adapter here follows
-(manual login only, apply_changes refuses without confirmed=True,
-dry-run always comes first).
-
-Login URL verified via WebFetch against vagas.com.br's own public
-homepage (see jarvis/config.py's VAGAS_LOGIN_URL comment), not guessed.
-Everything past login -- the profile edit page's real URL, its field
-selectors, the actual save mechanism -- is intentionally NOT filled in
-yet: unlike Gupy's public portal pages, there's no way to find those
-without an authenticated session, so they get discovered and verified
-live, the same way Gupy's were (see gupy.py's module docstring for that
-precedent). Fields/selectors below are filled in as each is actually
-confirmed against the real, live site -- never guessed ahead of time.
+"""PAUSED -- see jarvis/config.py's VAGAS_LOGIN_URL comment. Confirmed
+live: Vagas.com sits behind Cloudflare and resets the connection outright
+for Playwright's automated browser, even headed with the webdriver flag
+hidden -- a stronger anti-automation signal than Gupy's. Per this
+project's own LinkedIn precedent (jarvis/sites/base.py), that's a reason
+to step back, not to escalate into stealth/evasion techniques. Left at
+login/check_session only, same as LinkedIn -- do not wire
+inspect_current_profile/apply_changes for this site without revisiting
+that decision explicitly.
 """
 
 from __future__ import annotations
@@ -22,7 +17,6 @@ from jarvis.resume.schema import Resume
 from jarvis.sites import session
 from jarvis.sites.base import (
     ChangePreview,
-    PlannedFieldChange,
     SessionStatus,
     SiteAdapter,
     SiteProfileSnapshot,
