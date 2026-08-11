@@ -23,8 +23,6 @@ live rather than guessed.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
 from jarvis.resume.schema import Resume
 from jarvis.sites import session
 from jarvis.sites.base import (
