@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Análise de candidaturas — JARVIS (local)</title>
+{favicon_link}
+<link rel="stylesheet" href="/portal.css">
+</head>
+<body>
+<div class="page">
+  <header class="cover">
+    <p class="eyebrow"><b>J&middot;A&middot;R&middot;V&middot;I&middot;S</b> &middot; local, roda no seu Mac</p>
+    <h1>Análise: enviadas vs. pendentes</h1>
+    <p class="subtitle">"Já inscritas" é um registro real e permanente (sobrevive a reinícios do JARVIS -- ver sites/application_log.py); "pendentes" são as vagas relevantes já carregadas nesta busca que ainda não têm um envio registrado.</p>
+    <div class="top-actions">
+      <a class="top-btn ghost" href="/">&larr; Voltar para vagas</a>
+    </div>
+    <div class="stat-strip">
+      <div class="stat"><div class="n">{loaded_count}</div><div class="l">vagas carregadas</div></div>
+      <div class="stat"><div class="n">{applied_count}</div><div class="l">✅ já inscritas</div></div>
+      <div class="stat"><div class="n">{pending_count}</div><div class="l">⏳ pendentes</div></div>
+      <div class="stat"><div class="n">{conversion_pct}%</div><div class="l">taxa de envio</div></div>
+    </div>
+  </header>
+
+  <section class="applied-section">
+    <h2 class="section-heading"><span class="tier-badge" style="background:var(--success);">✅ Já inscritas</span></h2>
+    <p class="section-sub">Candidaturas realmente enviadas, mais recentes primeiro &middot; {applied_count} vaga(s)</p>
+    {applied_section}
+  </section>
+
+  <div class="filter-bar" role="group" aria-label="Filtrar pendentes por categoria">
+    <span class="filter-label">Pendentes -- mostrar:</span>
+    <button type="button" class="filter-chip" data-tier="internacional" aria-pressed="true" onclick="toggleTier(this)">🌎 Remoto/Internacional</button>
+    <button type="button" class="filter-chip" data-tier="banco" aria-pressed="true" onclick="toggleTier(this)">🏦 Bancos</button>
+    <button type="button" class="filter-chip" data-tier="fintech" aria-pressed="true" onclick="toggleTier(this)">💳 Fintechs</button>
+    <button type="button" class="filter-chip" data-tier="bigtech" aria-pressed="true" onclick="toggleTier(this)">💻 Bigtechs</button>
+    <button type="button" class="filter-chip" data-tier="startup" aria-pressed="true" onclick="toggleTier(this)">🚀 Startups</button>
+    <button type="button" class="filter-chip" data-tier="outras" aria-pressed="true" onclick="toggleTier(this)">🏢 Outras</button>
+  </div>
+
+  {pending_sections}
+
+  <p class="empty-note" id="all-hidden-note" style="display: none;">Nenhuma categoria selecionada -- clique em um dos filtros acima.</p>
+</div>
+
+<div class="selection-bar" id="selection-bar" role="status" aria-live="polite">
+  <span><span id="selection-count">0</span> selecionada(s)</span>
+  <button class="bar-btn" type="button" onclick="abrirSelecionadas()">Abrir selecionadas</button>
+  <button class="bar-btn ghost" type="button" onclick="limparSelecao()">Limpar</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="/portal.js"></script>
+{polling_script}
+</body>
+</html>
