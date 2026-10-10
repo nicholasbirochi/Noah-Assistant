@@ -1,7 +1,7 @@
 """Wake-word detection, engine-agnostic. `pvrecorder` (Picovoice's own
 mic-capture library, no account/key required) stays the shared capture layer
-regardless of which detection engine (openWakeWord, default; Porcupine,
-optional) is active -- only the frame size differs per engine.
+regardless of which detection engine is active -- only the frame size
+differs per engine. By default, only clap activation is enabled.
 
 Two claps is a second, independent activation trigger that always runs
 alongside the primary engine (not a WAKE_WORD_ENGINE choice) -- whichever
@@ -23,6 +23,15 @@ Trigger = Literal["wake_word", "clap"]
 _ENGINE_FACTORIES: dict[str, Callable[[], WakeWordEngine]] = {}
 
 
+def _clap_only_factory() -> WakeWordEngine:
+    from config import CLAP_ACTIVATION_ENABLED
+    from voice.engines.clap_only_engine import ClapOnlyEngine
+
+    if not CLAP_ACTIVATION_ENABLED:
+        raise ValueError("Ativacao por palmas desativada; configure um detector Noah local.")
+    return ClapOnlyEngine()
+
+
 def _openwakeword_factory() -> WakeWordEngine:
     from voice.engines.openwakeword_engine import OpenWakeWordEngine
 
@@ -35,6 +44,7 @@ def _porcupine_factory() -> WakeWordEngine:
     return PorcupineEngine()
 
 
+_ENGINE_FACTORIES["clap"] = _clap_only_factory
 _ENGINE_FACTORIES["openwakeword"] = _openwakeword_factory
 _ENGINE_FACTORIES["porcupine"] = _porcupine_factory
 
@@ -54,7 +64,7 @@ def _select_device_index() -> int:
     always -1 ("the system's current default") -- see
     config.PREFERRED_MIC_NAME_SUBSTRING's comment for the real, confirmed
     failure this guards against (a Bluetooth accessory silently becoming
-    the default input, with JARVIS listening through it instead of the
+    the default input, with Noah listening through it instead of the
     laptop with zero errors anywhere). Falls back to -1 if no device name
     matches, so this still works on a different machine or if the
     built-in mic is ever genuinely unavailable."""
@@ -119,14 +129,14 @@ class WakeWordListener:
 
         include_clap=False skips the clap detector entirely, checking only
         the neural wake-word engine. Used by conversation.py's barge-in
-        watcher (while JARVIS is speaking): the clap detector is plain
+        watcher (while Noah is speaking): the clap detector is plain
         peak-amplitude detection (see clap_detector.py's module docstring),
         not real voice recognition -- any sufficiently loud, sharp noise
         (a dropped object, a door) would false-positive as two claps and
-        cut JARVIS off mid-sentence for no real reason. Initial activation
+        cut Noah off mid-sentence for no real reason. Initial activation
         from idle (wait(), below) still checks both -- clap-to-activate is
         a deliberate, real feature there, just not a safe barge-in signal
-        while JARVIS is already actively engaged and talking."""
+        while Noah is already actively engaged and talking."""
         if self._engine.process(frame):
             return "wake_word"
         if include_clap and self._clap_detector is not None and self._clap_detector.process(frame, self._frame_seconds):

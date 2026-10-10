@@ -1,7 +1,7 @@
 """Local-only HTTP server for the job-application portal -- serves a
 real, interactive page at `/` whose buttons genuinely run on this Mac
 (unlike the earlier Claude Artifact version, which is hosted on
-Anthropic's own servers with no path back to local Playwright/JARVIS at
+Anthropic's own servers with no path back to local Playwright/Noah at
 all -- see this module's origin: Nicholas asked to "mude para local...
 a gente conseguir fazer as inscrições", after already being told the
 Artifact structurally can't do this).
@@ -16,7 +16,7 @@ Routes:
 - GET  /            -- the page, rendered fresh from the in-memory
   tiered report (see refresh_data()). Empty state if nothing has been
   fetched yet in this process.
-- POST /api/check   -- {"url": "..."} -> jarvis.assistant.tools.
+- POST /api/check   -- {"url": "..."} -> assistant.tools.
   check_job_application(url) -- read-only, never submits anything.
 - POST /api/apply   -- {"url": "..."} -> assistant.tools.
   continue_job_application(url, finalize=True) -- a REAL, mutating,
@@ -33,7 +33,7 @@ Routes:
   state; no fake progress bar, no background job queue for this first
   version).
 
-Why AmazonJobsAdapter is included here but NOT in jarvis.job_search's
+Why AmazonJobsAdapter is included here but NOT in job_search's
 own _default_adapters(): that decision (kept conservative pending more
 real-world runs, see amazon_jobs.py's docstring) is about the
 voice/text-triggered find_matching_jobs() tool specifically, which can
@@ -158,9 +158,9 @@ def _portal_adapters(*, include_linkedin: bool = False) -> dict[str, object]:
 
 
 def refresh_data(resume=None, *, adapters: dict[str, object] | None = None) -> dict[str, list[JobListing]]:
-    """Runs a real, fresh search (jarvis.job_search.run_job_search) and
+    """Runs a real, fresh search (job_search.run_job_search) and
     tiers the combined local+remote relevant results via
-    jarvis.sites.job_matching.group_by_tier(). Stores the result for
+    sites.job_matching.group_by_tier(). Stores the result for
     subsequent page renders/route handlers. resume/adapters are
     injectable for tests; production calls load the real résumé, and
     default to _portal_adapters()'s base set (no LinkedIn) when adapters
@@ -261,7 +261,7 @@ def is_refresh_due(*, now: datetime | None = None) -> bool:
 def refresh_if_due(resume=None, *, adapters: dict[str, object] | None = None, now: datetime | None = None) -> bool:
     """Runs refresh_data() (the real, deep sweep) only if is_refresh_due()
     -- returns whether a refresh actually happened, so a caller polling
-    this often (e.g. hourly while JARVIS is running, see
+    this often (e.g. hourly while Noah is running, see
     menubar.py) doesn't re-search needlessly. Updates the "last
     refresh" timestamp regardless of whether every site succeeded -- one
     site being temporarily down shouldn't make this retry every poll for
@@ -321,7 +321,7 @@ def _render_row(listing: JobListing, applied_log: dict[str, dict]) -> str:
         # de banco e as Fintechs!" -- Nicholas applying by hand, outside
         # any automated flow) is labeled distinctly, not hidden inside
         # the same badge -- both are equally real submissions, but only
-        # the "jarvis" ones were actually driven and confirmed by code.
+        # the "noah" ones were actually driven and confirmed by code.
         badge_text = "✅ CANDIDATURA ENVIADA (manual)" if applied.get("source") == "manual" else "✅ CANDIDATURA ENVIADA"
         badges.append(f'<span class="applied-badge">{badge_text}</span>')
 
@@ -669,7 +669,7 @@ def start(port: int = 8767) -> int:
         if _server is not None:
             return _server.server_address[1]
         server = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
-        threading.Thread(target=server.serve_forever, daemon=True, name="jarvis-job-portal-http").start()
+        threading.Thread(target=server.serve_forever, daemon=True, name="noah-job-portal-http").start()
         _server = server
         return server.server_address[1]
 

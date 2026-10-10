@@ -1,5 +1,5 @@
 """Runs XTTS-v2 synthesis in its own OS process, isolated from the main
-JARVIS process. See xtts_engine.py's module docstring for why this can't
+Noah process. See xtts_engine.py's module docstring for why this can't
 run in-process with the wake-word listener: loading torchcodec's FFmpeg
 in the same process that already has faster-whisper's own bundled FFmpeg
 (via PyAV) loaded caused a real ObjC class collision that silently broke

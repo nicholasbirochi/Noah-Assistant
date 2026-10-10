@@ -130,7 +130,7 @@ def start(port: int = 8765) -> int:
         if _server is not None:
             return _server.server_address[1]
         server = ThreadingHTTPServer(("127.0.0.1", port), _Handler)
-        threading.Thread(target=server.serve_forever, daemon=True, name="jarvis-visualizer-http").start()
+        threading.Thread(target=server.serve_forever, daemon=True, name="noah-visualizer-http").start()
         _server = server
         return server.server_address[1]
 

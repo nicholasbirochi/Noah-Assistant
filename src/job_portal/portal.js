@@ -1,7 +1,22 @@
 (function () {
-  var FILTER_KEY = "jarvis_portal_filtro_v1";
-  var SELECT_KEY = "jarvis_portal_selecionadas_v1";
-  var MIGRATION_KEY = "jarvis_portal_migrou_internacional_v1";
+  var FILTER_KEY = "noah_portal_filtro_v1";
+  var SELECT_KEY = "noah_portal_selecionadas_v1";
+  var MIGRATION_KEY = "noah_portal_migrou_internacional_v1";
+
+  // Preserve prior portal namespaces, removing their keys only after copying.
+  try {
+    [FILTER_KEY, SELECT_KEY, MIGRATION_KEY].forEach(function (target) {
+      var suffix = target.slice("noah".length);
+      Object.keys(localStorage).forEach(function (source) {
+        if (source !== target && source.endsWith(suffix)) {
+          if (localStorage.getItem(target) === null) {
+            localStorage.setItem(target, localStorage.getItem(source));
+          }
+          localStorage.removeItem(source);
+        }
+      });
+    });
+  } catch (e) {}
 
   function loadSet(key, fallback) {
     try {

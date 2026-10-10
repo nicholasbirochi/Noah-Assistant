@@ -19,12 +19,12 @@ small, low-frequency log (one write per real submission), not
 something that needs a database or append-only format.
 
 "source" (2026-09-07, "me candidatei a todas as vagas de banco e as
-Fintechs!... menos, das vagas da remoteok" -- Nicholas told JARVIS,
+Fintechs!... menos, das vagas da remoteok" -- Nicholas told Noah,
 after the fact, that he'd applied to a batch of real listings by hand,
-outside any automated flow): distinguishes "jarvis" (the only kind that
+outside any automated flow): distinguishes "noah" (the only kind that
 existed before this date -- continue_job_application() actually drove
 the browser and clicked the real submit button) from "manual" (Nicholas
-applied himself; JARVIS is just recording what he reported, not what it
+applied himself; Noah is just recording what he reported, not what it
 verified). Both are equally real submissions -- the field exists so the
 portal/analysis screen can be honest about which kind of evidence
 backs each one, not to imply "manual" is less trustworthy."""
@@ -57,11 +57,11 @@ def load_applications_log() -> dict[str, dict]:
         return {}
 
 
-def record_application(url: str, site_name: str, *, source: str = "jarvis") -> None:
+def record_application(url: str, site_name: str, *, source: str = "noah") -> None:
     """Marks `url` as successfully, really submitted -- called either
     right after an ApplicationPreview comes back with submitted=True
     (see assistant/tools.py's continue_job_application(), source=
-    "jarvis", the default), or when Nicholas reports he applied to a
+    "noah", the default), or when Nicholas reports he applied to a
     listing himself outside any automated flow (source="manual" --
     see mark_manual_applications.py-style one-off scripts). Never
     speculative either way -- only called for a submission that really

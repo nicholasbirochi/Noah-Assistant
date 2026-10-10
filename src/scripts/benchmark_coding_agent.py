@@ -1,5 +1,5 @@
 """Systematic, repeated benchmark of assistant/coding_agent.py against the
-models under real consideration for JARVIS's own local coding agent
+models under real consideration for Noah's own local coding agent
 (qwen2.5-coder:14b, the current pick -- see coding_agent.py's own module
 docstring -- and qwen2.5:7b, the voice assistant's conversational model,
 included as a baseline to show why a separate CODING_MODEL exists at all).

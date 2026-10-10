@@ -7,7 +7,7 @@
 # with `PYTHONPATH=src`; tests find src/ on their own via src/conftest.py.
 # See readme.md's "Setup" section.
 
-# --- Base -- tudo que é necessário pra rodar o JARVIS no dia a dia ---
+# --- Base -- tudo que é necessário pra rodar o Noah no dia a dia ---
 ollama>=0.4.0
 docstring-parser>=0.16
 openwakeword>=0.6.0
@@ -52,7 +52,7 @@ pytest>=8.0.0
 # rodando já como esse binário exato (confirmado via `strings` no próprio
 # interpretador -- incondicional, compilado, não é algo que uma env var
 # desliga). Essa troca muda a identidade do processo de
-# com.nicholasbirochi.jarvis pra org.python.python genérico, que foi
+# com.nicholasbirochi.noah pra org.python.python genérico, que foi
 # exatamente o que quebrava o NSStatusItem (o ícone da barra de menu nunca
 # aparecia -- confirmado ao vivo via Console.app: "AppKit:StatusBar] scene
 # activation failed" em todo double-click real). O modo alias constrói um

@@ -18,8 +18,8 @@ shape the design here, not assumptions:
   precaution the model still loads exactly ONCE per process on a background
   thread rather than being reloaded per-conversation (like stt.py does):
   preload_in_background() is meant to be called once, as early as possible
-  (JARVIS startup, not first speak()), so even a repeat of that slow case
-  would overlap with the user just having JARVIS on rather than blocking
+  (Noah startup, not first speak()), so even a repeat of that slow case
+  would overlap with the user just having Noah on rather than blocking
   their first activation.
 - That same earlier (pre-real-clip) comparison measured CPU as faster than
   MPS for this specific model (3.4s vs 11.4s to generate the same short
@@ -30,14 +30,14 @@ shape the design here, not assumptions:
 
 Real, measured finding that shaped synthesize_stream() below: generation
 runs close to real-time on this hardware (not slow in absolute terms), but
-synthesize_to_file()'s blocking, whole-utterance-at-once API means JARVIS
+synthesize_to_file()'s blocking, whole-utterance-at-once API means Noah
 stays silent for the entire ~5s a short reply takes to generate before any
 audio plays at all -- a real, reported "demorando demais" complaint, not
 a hypothetical one. synthesize_stream() uses XTTS's own inference_stream()
 instead, yielding audio as it's generated so playback (see tts.py) can
 start within roughly a second instead of waiting for the whole thing.
 
-NEVER CALL preload_in_background() FROM THE MAIN JARVIS PROCESS: found
+NEVER CALL preload_in_background() FROM THE MAIN Noah PROCESS: found
 live that doing so made torchcodec dlopen the Homebrew-installed FFmpeg
 into the same process that already has faster-whisper's own bundled
 FFmpeg (via PyAV) loaded -- macOS logged a real ObjC class collision

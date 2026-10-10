@@ -1,24 +1,29 @@
-"""Default wake-word engine: openWakeWord's pretrained "hey_jarvis" model.
-No training, no account, no key of any kind -- just a one-time, unauthenticated
-download of the ONNX model weights on first use."""
+"""Optional spoken activation using an explicitly supplied local Noah model."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import numpy as np
 
 FRAME_LENGTH = 1280  # 80ms @ 16kHz, per openWakeWord's documented frame requirement
 SAMPLE_RATE = 16000
 DEFAULT_THRESHOLD = 0.5
-MODEL_NAME = "hey_jarvis"
 
 
 class OpenWakeWordEngine:
-    def __init__(self, threshold: float = DEFAULT_THRESHOLD) -> None:
-        from openwakeword import utils
+    def __init__(self, threshold: float = DEFAULT_THRESHOLD, model_path: Path | None = None) -> None:
+        from config import NOAH_WAKE_WORD_MODEL_PATH
+
+        path = model_path if model_path is not None else NOAH_WAKE_WORD_MODEL_PATH
+        if not path.is_file():
+            raise FileNotFoundError(
+                "Detector Noah local ausente. Configure NOAH_WAKE_WORD_MODEL_PATH "
+                "ou use WAKE_WORD_ENGINE=clap."
+            )
         from openwakeword.model import Model
 
-        utils.download_models([MODEL_NAME])
-        self._model = Model(wakeword_models=[MODEL_NAME])
+        self._model = Model(wakeword_models=[str(path)], inference_framework="onnx")
         self._threshold = threshold
 
     @property

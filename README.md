@@ -1,4 +1,10 @@
-# J • A • R • V • I • S
+# Noah
+
+Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md) e
+[o mapa do projeto](.ai/PROJECT_MAP.md).
+
+Noah e o unico nome do produto. A ativacao padrao usa duas palmas.
+Ativacao falada exige um detector Noah local, treinado e validado.
 
 Assistente de voz pessoal, local e adaptável -- criado pelo Nicholas, mas pensado desde
 o início pra qualquer pessoa rodar sua própria instância (nome, tratamento e currículo
@@ -12,8 +18,8 @@ Vagas.com, Indeed, Academia do Universitário e outros via adaptadores).
 100% local: o "cérebro" roda via [Ollama](https://ollama.com) na própria máquina —
 nenhum dado do currículo ou da conversa sai do Mac, sem API paga, sem chave de nenhum
 serviço em nuvem. O reconhecimento de voz (wake word + transcrição) também é
-inteiramente local e não exige conta de nenhum tipo. Ativa por "Hey Jarvis" ou por duas
-palmas -- o que vier primeiro.
+inteiramente local. Por padrao, duas palmas ativam a conversa, sem conta nem
+modelo de palavra de ativacao. Nenhum detector e baixado automaticamente.
 
 Estado atual: **Etapas 1-5 em andamento**. Diagnóstico, consolidação de dados + indexação
 incremental, voz totalmente local e app de menu bar estão completos. O primeiro adaptador
@@ -34,11 +40,11 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   interface, não por `ollama` diretamente — trocar para MLX no futuro não deve exigir
   tocar em nenhum desses chamadores. Manda `keep_alive` em toda chamada (`OLLAMA_KEEP_ALIVE`,
   padrão 30min) -- o padrão do próprio Ollama (5min) foi a causa real de respostas lentas
-  medida na prática: qualquer intervalo maior entre ativações do JARVIS forçava um recarregamento
+  medida na prática: qualquer intervalo maior entre ativações do Noah forçava um recarregamento
   frio do modelo (~30s) na resposta seguinte.
 - **`assistant/coding_agent.py`** — agente de coding local (primeiro passo pra
   reduzir dependência de Claude/Codex hospedados em tarefas de engenharia), pela mesma
-  abstração `LocalLLMProvider` acima, mas com modelo próprio (`JARVIS_MODEL_CODING` --
+  abstração `LocalLLMProvider` acima, mas com modelo próprio (`NOAH_MODEL_CODING` --
   ver Setup) e um conjunto de ferramentas bem mais restrito: **somente leitura**
   (`read_file`/`list_directory`/`search_text`/`git_log`/`git_diff`/`run_tests`), preso a
   um workspace específico com proteção real contra sair da pasta (`WorkspaceViolation`).
@@ -50,20 +56,21 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   fontes viram um registro em `conflicts`, nunca uma sobrescrita silenciosa. Toda mudança
   aplicada gera uma entrada em `change_log` (auditoria).
 - **`indexing/`** — escaneia apenas diretórios autorizados (`config.py` →
-  `AUTHORIZED_INDEX_ROOTS`), ignora o próprio repositório do JARVIS e ruído de
+  `AUTHORIZED_INDEX_ROOTS`), ignora o próprio repositório do Noah e ruído de
   dependências (`node_modules`, `.git`, `obj/`, etc.), calcula hash de cada arquivo para
   pular o que já foi processado, e gera uma **proposta** revisável
   (`src/data/proposals/proposal_*.json`) — nunca escreve direto em `src/data/resume.json`.
 - **`voice/`** — `wake_word.py` seleciona o motor via `WAKE_WORD_ENGINE`
-  (`openwakeword`, padrão, usa o modelo pré-treinado "hey jarvis"; ou `porcupine`,
-  adaptador opcional que exige `PICOVOICE_ACCESS_KEY`). `stt.py` (faster-whisper) carrega
+  (`clap`, padrao; `openwakeword` com `NOAH_WAKE_WORD_MODEL_PATH`; ou `porcupine`
+  com `NOAH_PORCUPINE_MODEL_PATH` e `PICOVOICE_ACCESS_KEY`). Motores de palavra
+  exigem um detector Noah local validado. `stt.py` (faster-whisper) carrega
   o modelo só quando necessário e libera a memória (`unload()`) ao fim de cada sessão de
   conversa.
 - **`sites/`** — `base.py` define a interface `SiteAdapter` (dry run sempre antes,
   `apply_changes` recusa sem `confirmed=True`, login sempre manual). `session.py` é a
   sessão Playwright persistente e reutilizável por qualquer site (login numa janela real
   e visível). `gupy.py` é o primeiro adaptador real -- ver "Adaptador da Gupy" abaixo.
-  **Onde os dados de sessão ficam:** `~/Library/Application Support/JARVIS/sites/`
+  **Onde os dados de sessão ficam:** `~/Library/Application Support/Noah/sites/`
   (`LOCAL_STATE_DIR` em `config.py`), de propósito **fora** da pasta do projeto --
   todo o projeto vive dentro de uma pasta sincronizada com o OneDrive, e cookies de login
   reais (e, se algum dia houver, screenshots de evidência) nunca devem sair desta máquina
@@ -74,7 +81,7 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   `src/data/resume.json` e `src/data/review/` estão no `.gitignore` e nunca são
   commitados, mesmo contendo só nome/telefone/e-mail/currículo. Cada pessoa gera o seu
   localmente (`scripts/import_resume.py`) e ele fica só na própria máquina. Ver
-  `.env.example` para trocar o caminho do `LOCAL_STATE_DIR` (`JARVIS_LOCAL_STATE_DIR`).
+  `.env.example` para trocar o caminho do `LOCAL_STATE_DIR` (`NOAH_LOCAL_STATE_DIR`).
 - **`menubar.py`** — app de menu bar (macOS) com botão liga/desliga; roda o loop
   de voz em background thread, controlado por `VoiceLoopController`. Inicia **desligado**
   (ícone visível, mas não ouvindo até você clicar) e sem ícone no Dock/Cmd-Tab (política de
@@ -82,7 +89,7 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   automaticamente no login via LaunchAgent -- ver "Iniciar automaticamente" abaixo. O botão
   "Abrir"/"Fechar" abre e fecha o HUD de `visualizer/` -- ver seção própria abaixo.
 - **`visualizer/`** — HUD visual (círculo azul animado, estilo painel futurista) que
-  reflete o estado real do JARVIS (desligado/em espera/ouvindo/falando) e o texto sendo
+  reflete o estado real do Noah (desligado/em espera/ouvindo/falando) e o texto sendo
   ouvido/falado. `state.py` é um pub/sub em memória que `conversation.py`/`tts.py`/
   `menubar.py` publicam a cada transição real; `server.py` é um servidor HTTP local (só
   `127.0.0.1`, stdlib puro, sem dependência nova) que expõe `page.html` e um stream de
@@ -117,7 +124,7 @@ ollama pull qwen2.5:7b   # ~4.7GB, baixa uma vez -- ~4x mais rápido que o 14b u
 # código, não por latência de voz). ~9GB, baixa uma vez -- é o que roda de
 # verdade numa máquina de 24GB de RAM.
 ollama pull qwen2.5-coder:14b
-# depois, no seu .env: JARVIS_MODEL_CODING=qwen2.5-coder:14b
+# depois, no seu .env: NOAH_MODEL_CODING=qwen2.5-coder:14b
 
 # Só se sua máquina tiver 64GB+ de RAM (ex.: um Mac mini/Studio) -- muito
 # maiores, não rodam bem em 24GB. qwen3-coder:30b (~19GB, maduro, especializado
@@ -155,29 +162,29 @@ dados locais), não uma instância compartilhada. Nada disso precisa mexer em c�
 `.env` de cada um:
 
 ```bash
-# Como o JARVIS se dirige a você (padrão: Nicholas / "Senhor Nicholas")
-JARVIS_USER_NAME=Fulano
-JARVIS_USER_HONORIFIC=Fulano          # ou "Senhor Fulano", "Doutor Fulano" etc.
+# Como o Noah se dirige a você (padrão: Nicholas / "Senhor Nicholas")
+NOAH_USER_NAME=Fulano
+NOAH_USER_HONORIFIC=Fulano          # ou "Senhor Fulano", "Doutor Fulano" etc.
 
 # As frases exatas faladas na ativação/despedida -- se não setar, são geradas a
 # partir dos dois acima com o texto padrão em português
-JARVIS_GREETING=Seja bem-vindo, Fulano... vamos começar o trabalho!
-JARVIS_CLAP_GREETING=Olá, Fulano, vamos começar o trabalho!
-JARVIS_GOODBYE=Até logo, Fulano.
+NOAH_GREETING=Seja bem-vindo, Fulano... vamos começar o trabalho!
+NOAH_CLAP_GREETING=Olá, Fulano, vamos começar o trabalho!
+NOAH_GOODBYE=Até logo, Fulano.
 
 # Onde ficam os SEUS currículos-fonte (.docx), pra "python src/scripts/import_resume.py"
 # -- caminhos absolutos separados por ":" (o separador de path do seu sistema)
-JARVIS_SOURCE_RESUME_DOCS=/Users/fulano/Documents/Curriculo Brasil ATS.docx:/Users/fulano/Documents/Curriculo International ATS.docx
+NOAH_SOURCE_RESUME_DOCS=/Users/fulano/Documents/Curriculo Brasil ATS.docx:/Users/fulano/Documents/Curriculo International ATS.docx
 
 # Só necessário se você também usar OneDrive pro indexador incremental
 # (python src/cli.py index) -- troca a raiz que AUTHORIZED_INDEX_ROOTS usa
-JARVIS_ONEDRIVE_ROOT=/Users/fulano/Library/CloudStorage/OneDrive-SuaOrg
+NOAH_ONEDRIVE_ROOT=/Users/fulano/Library/CloudStorage/OneDrive-SuaOrg
 ```
 
 Depois, rode `python src/scripts/import_resume.py` normalmente -- gera o **seu**
 `src/data/resume.json` local, que nunca é commitado (está no `.gitignore` de propósito,
 já que este repositório é público no GitHub -- ver "Arquitetura" acima). O arquivo
-`~/Library/Application Support/JARVIS/application_profile.env` (RG/CPF/pretensão
+`~/Library/Application Support/Noah/application_profile.env` (RG/CPF/pretensão
 salarial, se você usar os adaptadores de site) já é local por máquina, sem mudança
 nenhuma necessária.
 
@@ -212,21 +219,21 @@ Conversar em modo texto (sem microfone, útil para depurar):
 python src/cli.py --text-only
 ```
 
-Modo de voz completo (diga "Hey Jarvis" ou bata duas palmas para ativar):
+Modo de voz (bata duas palmas para ativar):
 
 ```bash
 python src/cli.py
 ```
 
-Ao ativar (palavra de ativação ou palma), o JARVIS fica em silêncio e só passa a ouvir --
+Ao ativar (palavra de ativação ou palma), o Noah fica em silêncio e só passa a ouvir --
 sem falar nada antes de você dizer o que quer. Era diferente antes (um briefing/saudação
 falado imediatamente), mas isso competia com o tempo de carregamento do worker de voz
-clonada (~15-20s) e às vezes saía com a voz genérica em vez da voz do JARVIS -- um bug real,
+clonada (~15-20s) e às vezes saía com a voz genérica em vez da voz do Noah -- um bug real,
 não só um incômodo de UX. O briefing de pendências (mudanças de currículo, conflitos em
 aberto, manchetes do dia sobre dados/IA -- `assistant/news.py`, RSS público do Olhar
 Digital, nenhum dado seu enviado a lugar nenhum) continua existindo em `--text-only`
 (`assistant/briefing.py`), só não é mais falado automaticamente no modo de voz.
-O JARVIS também conhece as habilidades e certificações reais do currículo (Python, R, SQL,
+O Noah também conhece as habilidades e certificações reais do currículo (Python, R, SQL,
 Power BI, estatística, etc.) e comenta sobre dados com entusiasmo quando o assunto surge --
 grounded no `src/data/resume.json`, não inventado (`assistant/llm_client.py`).
 
@@ -239,7 +246,7 @@ python src/cli.py calibrate-claps
 
 App de menu bar (mesma coisa, com um ícone e botão liga/desliga -- e, acima dele, um botão
 "Abrir"/"Fechar" pro HUD visual numa janela própria, sem navegador nenhum envolvido,
-independente de JARVIS estar ligado ou não):
+independente de Noah estar ligado ou não):
 
 ```bash
 python src/cli.py menubar
@@ -249,12 +256,12 @@ Pra ele iniciar sozinho a cada login (ícone sempre disponível, sem precisar ab
 registre como LaunchAgent -- ajuste os caminhos pro seu usuário/pasta do projeto:
 
 ```bash
-cp com.nicholasbirochi.jarvis.menubar.plist.example ~/Library/LaunchAgents/com.SEUUSUARIO.jarvis.menubar.plist
-launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.SEUUSUARIO.jarvis.menubar.plist
+cp com.nicholasbirochi.noah.menubar.plist.example ~/Library/LaunchAgents/com.SEUUSUARIO.noah.menubar.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.SEUUSUARIO.noah.menubar.plist
 ```
 
 `RunAtLoad` liga sozinho no login; sem `KeepAlive`, então "Sair" no menu realmente encerra
-até o próximo login (não fica sendo religado). Logs em `~/Library/Logs/JARVIS/menubar.log`.
+até o próximo login (não fica sendo religado). Logs em `~/Library/Logs/Noah/menubar.log`.
 
 **Ou como um app de verdade**, pra abrir pelo Launchpad/Spotlight/Finder em vez do terminal:
 
@@ -262,27 +269,27 @@ até o próximo login (não fica sendo religado). Logs em `~/Library/Logs/JARVIS
 # só a primeira vez -- descomente a seção "Empacotamento" em requirements.txt, então:
 .venv/bin/pip install -r requirements.txt
 python src/scripts/generate_app_icon.py       # gera src/assets/AppIcon.icns -- só precisa rodar uma vez
-python src/scripts/build_app.py               # cria /Applications/JARVIS.app
+python src/scripts/build_app.py               # cria /Applications/Noah.app
 ```
 
-`JARVIS.app` é construído com o modo "alias" do `py2app` (`src/packaging/setup.py`) -- não é
+`Noah.app` é construído com o modo "alias" do `py2app` (`src/packaging/setup.py`) -- não é
 um build congelado, continua rodando direto do `.venv`/código-fonte deste projeto (nada de
 dependência empacotada junto). Um wrapper de bash simples foi tentado primeiro e não
 funcionava de verdade: o `python@3.12` do Homebrew é um build "framework" do macOS, e o
 próprio interpretador reexecuta silenciosamente pra dentro de
 `.../Resources/Python.app/Contents/MacOS/Python` sempre que não é executado já como esse
-binário exato -- isso troca a identidade do processo de `com.nicholasbirochi.jarvis` pra
+binário exato -- isso troca a identidade do processo de `com.nicholasbirochi.noah` pra
 `org.python.python`, e foi exatamente isso que quebrava o ícone da barra de menu (o processo
 ficava vivo, sem erro nenhum no Python, e o ícone nunca aparecia -- só visível pelo
 Console.app: `AppKit:StatusBar] scene activation failed`). O modo alias do py2app usa um
 stub compilado próprio que embute o interpretador via API C em vez de reexecutar o binário
 do Python, então esse problema nunca acontece. **Não rode o app manual e o LaunchAgent
 automático ao mesmo tempo** -- duas instâncias tentando pegar o microfone ao mesmo tempo
-causa exatamente o tipo de falha silenciosa que já vimos antes (o JARVIS já tem uma trava
+causa exatamente o tipo de falha silenciosa que já vimos antes (o Noah já tem uma trava
 própria contra isso, mas é melhor nem depender dela).
 
 **Primeira vez que for abrir, um passo manual é obrigatório:** clique com o botão direito
-(ou Control-clique) em `JARVIS.app` → **Abrir** → confirme no aviso. Isso não é bug --
+(ou Control-clique) em `Noah.app` → **Abrir** → confirme no aviso. Isso não é bug --
 `build_app.py` já assina o app com uma assinatura ad-hoc (`codesign --sign -`, gratuita,
 sem conta de desenvolvedor), mas isso sozinho não satisfaz o Gatekeeper do macOS pra um
 duplo-clique direto normal em Apple Silicon; sem clicar em "Abrir" uma vez, o clique
@@ -293,14 +300,14 @@ manual) foi descontinuado pelo próprio macOS -- não tem como pular essa etapa.
 
 ## Pedir uma mudança de código por voz
 
-Pedir pro JARVIS ("mude a cor do HUD pra verde", "peça pro Claude Code revisar o
+Pedir pro Noah ("mude a cor do HUD pra verde", "peça pro Claude Code revisar o
 adaptador da Gupy") faz ele escrever um prompt completo e bem estruturado -- não a sua
 fala ao pé da letra -- e copiar pra área de transferência (`prepare_claude_prompt` em
-`assistant/tools.py`). Não existe uma forma de o JARVIS colocar texto direto numa
+`assistant/tools.py`). Não existe uma forma de o Noah colocar texto direto numa
 conversa já aberta com o Claude Code, então isso é proposital, não uma limitação: é só
 colar (`Cmd+V`) onde e quando você quiser -- nesta conversa, numa nova, sobre este
 projeto ou outro. Cada prompt também fica salvo em
-`~/Library/Application Support/JARVIS/claude_prompts.log`, como rede de segurança caso
+`~/Library/Application Support/Noah/claude_prompts.log`, como rede de segurança caso
 você não cole na hora.
 
 ## Voz clonada (XTTS-v2)
@@ -312,9 +319,9 @@ de volta pra voz padrão (`TTS_VOICE`, ex: Felipe) automaticamente, sem erro nen
 
 1. Seção "Voz clonada" descomentada em `requirements.txt` e `pip install -r
    requirements.txt` rodado (~4GB: torch + coqui-tts).
-2. Um clipe de referência salvo em `~/Library/Application Support/JARVIS/voice/jarvis_reference.wav`
+2. Um clipe de referência salvo em `~/Library/Application Support/Noah/voice/noah_reference.wav`
    (`TTS_XTTS_SPEAKER_WAV_PATH` em `config.py`) -- **de propósito fora da pasta do
-   projeto** (que é sincronizada com o OneDrive) e **nunca baixado por mim/pelo JARVIS**:
+   projeto** (que é sincronizada com o OneDrive) e **nunca baixado por mim/pelo Noah**:
    é dado biométrico de voz, você quem coloca esse arquivo lá.
 
 Também precisa do FFmpeg instalado no sistema (`brew install ffmpeg`) -- não é dependência

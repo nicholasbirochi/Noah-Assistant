@@ -119,7 +119,7 @@ class IndeedAdapter(SiteAdapter):
 
     def search_jobs(self, query: str, *, location: str = "São Paulo") -> list[JobListing]:
         """Read-only, no login required (see module docstring) -- callers
-        should run the result through jarvis.sites.job_matching before
+        should run the result through sites.job_matching before
         treating it as "matches". Only the first results page (~15 items)
         is fetched -- pagination is out of scope for this round."""
         import urllib.parse

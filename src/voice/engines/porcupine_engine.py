@@ -1,12 +1,13 @@
 """Optional adapter -- kept for anyone who wants Porcupine's custom
-wake-word training tools. Requires a free Picovoice AccessKey, unlike the
-default openWakeWord engine."""
+wake-word training tools. Requires a local Noah keyword model and AccessKey."""
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pvporcupine
 
-from config import PICOVOICE_ACCESS_KEY, WAKE_WORD
+from config import NOAH_PORCUPINE_MODEL_PATH, PICOVOICE_ACCESS_KEY
 
 
 class PorcupineEngine:
@@ -14,9 +15,12 @@ class PorcupineEngine:
         if not PICOVOICE_ACCESS_KEY:
             raise RuntimeError(
                 "PICOVOICE_ACCESS_KEY não configurada. Preencha o arquivo .env, "
-                "ou use WAKE_WORD_ENGINE=openwakeword (padrão, sem chave)."
+                "ou use WAKE_WORD_ENGINE=clap (padrao, sem chave)."
             )
-        self._porcupine = pvporcupine.create(access_key=PICOVOICE_ACCESS_KEY, keywords=[WAKE_WORD])
+        path = Path(NOAH_PORCUPINE_MODEL_PATH).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError("Configure NOAH_PORCUPINE_MODEL_PATH com um modelo Noah local.")
+        self._porcupine = pvporcupine.create(access_key=PICOVOICE_ACCESS_KEY, keyword_paths=[str(path)])
 
     @property
     def frame_length(self) -> int:

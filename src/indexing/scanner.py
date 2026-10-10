@@ -39,7 +39,7 @@ def _is_excluded_path(path: Path, excluded_paths: list[Path]) -> bool:
 
 def iter_candidate_files() -> list[Path]:
     # Live lookup (not a top-level import) so tests can monkeypatch
-    # jarvis.config.AUTHORIZED_INDEX_ROOTS/EXCLUDED_INDEX_PATHS directly.
+    # config.AUTHORIZED_INDEX_ROOTS/EXCLUDED_INDEX_PATHS directly.
     from config import AUTHORIZED_INDEX_ROOTS, EXCLUDED_INDEX_PATHS, INDEXABLE_EXTENSIONS
 
     files: list[Path] = []

@@ -1,7 +1,7 @@
 """Only the pure-Python idempotency logic is covered here -- actually
 creating an NSWindow/WKWebView is real Cocoa UI (verified manually, live,
 via a screenshot: see the commit this file was added in) and isn't
-unit-tested, matching menubar.py's own JarvisMenuBarApp precedent
+unit-tested, matching menubar.py's own NoahMenuBarApp precedent
 of leaving real AppKit object creation to manual/live verification."""
 
 from visualizer import native_window

@@ -145,12 +145,12 @@ class LinkedInAdapter(SiteAdapter):
 
     def search_jobs(self, query: str, *, max_results: int = 25) -> list[JobListing]:
         """Read-only -- callers should run the result through
-        jarvis.sites.job_matching before treating it as "matches". No
+        sites.job_matching before treating it as "matches". No
         pagination, deliberately low-volume -- see module docstring.
         `max_results` accepted (not paginated against) so this matches
         every other adapter's search_jobs(query, *, max_results=...)
         signature -- 2026-08-19, needed to wire this into
-        jarvis.job_portal.server's run_job_search() call convention,
+        noah.job_portal.server's run_job_search() call convention,
         which always passes max_results as a keyword arg."""
         import urllib.parse
 

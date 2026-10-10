@@ -22,7 +22,7 @@ from indexing import proposer
 
 def run(resume: Resume | None = None, limit: int | None = None) -> Path | None:
     # Live lookups (not top-level imports/bound defaults) so tests can
-    # monkeypatch jarvis.config.* directly.
+    # monkeypatch config.* directly.
     from config import INDEX_MAX_FILES_PER_RUN, INDEX_STATE_PATH, PROPOSALS_DIR
 
     limit = limit if limit is not None else INDEX_MAX_FILES_PER_RUN

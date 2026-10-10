@@ -1,6 +1,6 @@
 """One-off script: rasterizes two SF Symbols (Apple's own icon system --
 the same one every other native menu-bar icon uses) into template PNGs for
-JarvisMenuBarApp. Generated once and committed as static assets in
+NoahMenuBarApp. Generated once and committed as static assets in
 assets/ -- no need to re-render at every app launch.
 
 Renders by drawing the symbol's vector artwork directly into a bitmap

@@ -61,7 +61,7 @@ def test_ensure_worker_started_spawns_subprocess(monkeypatch):
     assert len(created) == 1
     assert "voice.xtts_worker" in created[0].args
     # Real regression: sys.executable doesn't reliably mean "a python that
-    # can import voice.xtts_worker" -- under the packaged JARVIS.app
+    # can import voice.xtts_worker" -- under the packaged Noah.app
     # (py2app alias mode) it resolves to the raw Homebrew framework
     # interpreter, with no awareness of this project's venv, and the
     # worker died every time with ModuleNotFoundError. Must always be the

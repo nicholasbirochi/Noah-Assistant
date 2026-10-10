@@ -1,4 +1,4 @@
-"""Real entry-point script for the packaged JARVIS.app (see setup.py +
+"""Real entry-point script for the packaged Noah.app (see setup.py +
 scripts/build_app.py). py2app's alias-mode stub runs this file directly as
 its own compiled loader's embedded Python -- kept as a tiny separate file
 (rather than pointing py2app at menubar.py itself) so this can add src/ to

@@ -1,14 +1,14 @@
 """Sensitive application-answer fields (RG and its issuing details, CPF,
 parents' names, birthplace, level-based salary expectation, estado
-civil) that Nicholas can choose to provide locally so JARVIS can fill
+civil) that Nicholas can choose to provide locally so Noah can fill
 them into a real job-application form when a company's own screening
 question asks for one of them.
 
 Deliberately different from base.py's "never fabricate/guess" rule:
-fabrication means JARVIS inventing an answer with no real source. This
+fabrication means Noah inventing an answer with no real source. This
 is real, Nicholas-provided data flowing through a channel he controls
 (a local file he edits himself), used for the specific, narrow purpose
-of completing an application he already started -- not JARVIS guessing
+of completing an application he already started -- not Noah guessing
 or scraping this from anywhere.
 
 2026-08-13: explicitly confirmed with Nicholas, after being told this
@@ -84,129 +84,129 @@ from pathlib import Path
 # directly -- see gupy.py's level-aware resolution), so the two modules
 # line up without a second translation table.
 _FIELD_ENV_KEYS: dict[str, str] = {
-    "rg": "JARVIS_APPLICATION_RG",
-    "rg_orgao_estado": "JARVIS_APPLICATION_RG_ORGAO_ESTADO",
-    "cpf": "JARVIS_APPLICATION_CPF",
-    "nome_mae": "JARVIS_APPLICATION_NOME_MAE",
-    "nome_pai": "JARVIS_APPLICATION_NOME_PAI",
-    "naturalidade": "JARVIS_APPLICATION_NATURALIDADE",
-    "raca_cor": "JARVIS_APPLICATION_RACA_COR",
-    "pcd": "JARVIS_APPLICATION_PCD",
-    "salary_estagio": "JARVIS_APPLICATION_SALARY_ESTAGIO",
-    "salary_junior": "JARVIS_APPLICATION_SALARY_JUNIOR",
-    "salary_pleno": "JARVIS_APPLICATION_SALARY_PLENO",
+    "rg": "NOAH_APPLICATION_RG",
+    "rg_orgao_estado": "NOAH_APPLICATION_RG_ORGAO_ESTADO",
+    "cpf": "NOAH_APPLICATION_CPF",
+    "nome_mae": "NOAH_APPLICATION_NOME_MAE",
+    "nome_pai": "NOAH_APPLICATION_NOME_PAI",
+    "naturalidade": "NOAH_APPLICATION_NATURALIDADE",
+    "raca_cor": "NOAH_APPLICATION_RACA_COR",
+    "pcd": "NOAH_APPLICATION_PCD",
+    "salary_estagio": "NOAH_APPLICATION_SALARY_ESTAGIO",
+    "salary_junior": "NOAH_APPLICATION_SALARY_JUNIOR",
+    "salary_pleno": "NOAH_APPLICATION_SALARY_PLENO",
     # 2026-09-07: distinct from the three above -- a question about
     # CURRENT/PAST salary ("último salário") is a different fact than
     # desired salary, see base.py's _FIELD_TERMS comment for the real
     # classification bug this fixes.
-    "salary_current": "JARVIS_APPLICATION_SALARY_CURRENT",
-    "marital_status": "JARVIS_APPLICATION_MARITAL_STATUS",
+    "salary_current": "NOAH_APPLICATION_SALARY_CURRENT",
+    "marital_status": "NOAH_APPLICATION_MARITAL_STATUS",
     # 2026-08-21: the recurring, generic company questions -- see
     # base.py's _FIELD_TERMS comment. "linkedin" and "ja_trabalhou_aqui"
     # deliberately have NO entry here -- they're resolved elsewhere
     # (the résumé's own public link, and a fixed "Não" respectively),
     # not from this confidential-data file.
-    "cnh": "JARVIS_APPLICATION_CNH",
+    "cnh": "NOAH_APPLICATION_CNH",
     # 2026-09-07, found live (TELEMONT): a radio-only "categoria" follow-
     # up needs just the bare letter (e.g. "B"), unlike "cnh" above (a
     # free-text field holding the full "Sim, categoria B" sentence) --
     # see base.py's _FIELD_TERMS comment.
-    "cnh_categoria": "JARVIS_APPLICATION_CNH_CATEGORIA",
-    "disponibilidade_viagem": "JARVIS_APPLICATION_DISPONIBILIDADE_VIAGEM",
-    "disponibilidade_fds": "JARVIS_APPLICATION_DISPONIBILIDADE_FDS",
+    "cnh_categoria": "NOAH_APPLICATION_CNH_CATEGORIA",
+    "disponibilidade_viagem": "NOAH_APPLICATION_DISPONIBILIDADE_VIAGEM",
+    "disponibilidade_fds": "NOAH_APPLICATION_DISPONIBILIDADE_FDS",
     # 2026-08-27, round 3 -- found live (Núclea/Stefanini): hybrid/
     # in-person work arrangement, distinct from disponibilidade_viagem
     # (travel) and disponibilidade_fds (weekends).
-    "disponibilidade_hibrido": "JARVIS_APPLICATION_DISPONIBILIDADE_HIBRIDO",
-    "escolaridade": "JARVIS_APPLICATION_ESCOLARIDADE",
+    "disponibilidade_hibrido": "NOAH_APPLICATION_DISPONIBILIDADE_HIBRIDO",
+    "escolaridade": "NOAH_APPLICATION_ESCOLARIDADE",
     # 2026-08-21, round 2 -- found live during the one-at-a-time apply
     # batch. "disponibilidade_inicio_imediato" deliberately has NO entry
     # here -- resolved from the résumé's own job_preferences.availability
     # instead (same reasoning as "linkedin").
-    "cargo_atual": "JARVIS_APPLICATION_CARGO_ATUAL",
-    "parentes_na_empresa": "JARVIS_APPLICATION_PARENTES_NA_EMPRESA",
-    "semestre_formatura": "JARVIS_APPLICATION_SEMESTRE_FORMATURA",
+    "cargo_atual": "NOAH_APPLICATION_CARGO_ATUAL",
+    "parentes_na_empresa": "NOAH_APPLICATION_PARENTES_NA_EMPRESA",
+    "semestre_formatura": "NOAH_APPLICATION_SEMESTRE_FORMATURA",
     # 2026-09-07, found live across 4 TELEMONT postings in the same
     # batch-apply run -- a recurring physical-uniform question pair.
     # "tamanho_uniforme" holds a bare size letter (PP/P/M/G/GG) -- a
     # real, live DOM check found this is a radio group, not free text
     # (corrected from an earlier, wrong "shoe size" guess).
-    "altura": "JARVIS_APPLICATION_ALTURA",
-    "tamanho_uniforme": "JARVIS_APPLICATION_TAMANHO_UNIFORME",
+    "altura": "NOAH_APPLICATION_ALTURA",
+    "tamanho_uniforme": "NOAH_APPLICATION_TAMANHO_UNIFORME",
     # 2026-09-14: self-rated tool proficiency -- genuinely new facts, not
     # derivable from the résumé's skills list (which names tools but not
     # a self-assessed level), unlike "telefone"/"curso_nome"/
     # "ingles_nivel"/"portfolio_link"/"graduacao_completa" (see base.py's
     # apply_resume_backed_profile_fields(), which pulls those straight
     # from data/resume.json instead -- no .env entry needed for them).
-    "excel_nivel": "JARVIS_APPLICATION_EXCEL_NIVEL",
-    "sql_nivel": "JARVIS_APPLICATION_SQL_NIVEL",
-    "powerbi_nivel": "JARVIS_APPLICATION_POWERBI_NIVEL",
+    "excel_nivel": "NOAH_APPLICATION_EXCEL_NIVEL",
+    "sql_nivel": "NOAH_APPLICATION_SQL_NIVEL",
+    "powerbi_nivel": "NOAH_APPLICATION_POWERBI_NIVEL",
     # 2026-09-14: real, honest answers (including real negatives) drafted
     # by a separate assistant Nicholas consulted (web access to his
     # public LinkedIn, cross-checked against his résumé) for a batch of
     # real, live-blocked InfoJobs screening questions -- see base.py's
     # _FIELD_TERMS comment for the full list and reasoning. Narrow,
     # single-purpose fields on purpose, not a generic answer bank.
-    "disponibilidade_estagio_09_16": "JARVIS_APPLICATION_DISPONIBILIDADE_ESTAGIO_09_16",
-    "estatistica_matematica_financeira": "JARVIS_APPLICATION_ESTATISTICA_MATEMATICA_FINANCEIRA",
-    "call_center_experiencia": "JARVIS_APPLICATION_CALL_CENTER_EXPERIENCIA",
-    "power_query_dax": "JARVIS_APPLICATION_POWER_QUERY_DAX",
-    "power_automate_nivel": "JARVIS_APPLICATION_POWER_AUTOMATE_NIVEL",
-    "google_sheets_nivel": "JARVIS_APPLICATION_GOOGLE_SHEETS_NIVEL",
-    "ia_experiencia": "JARVIS_APPLICATION_IA_EXPERIENCIA",
-    "susep_conhecimento": "JARVIS_APPLICATION_SUSEP_CONHECIMENTO",
-    "txt_csv_conhecimento": "JARVIS_APPLICATION_TXT_CSV_CONHECIMENTO",
-    "kpis_comerciais_experiencia": "JARVIS_APPLICATION_KPIS_COMERCIAIS_EXPERIENCIA",
-    "indicadores_experiencia": "JARVIS_APPLICATION_INDICADORES_EXPERIENCIA",
-    "projeto_automacao_digitalizacao": "JARVIS_APPLICATION_PROJETO_AUTOMACAO_DIGITALIZACAO",
-    "experiencia_setores_diversos": "JARVIS_APPLICATION_EXPERIENCIA_SETORES_DIVERSOS",
+    "disponibilidade_estagio_09_16": "NOAH_APPLICATION_DISPONIBILIDADE_ESTAGIO_09_16",
+    "estatistica_matematica_financeira": "NOAH_APPLICATION_ESTATISTICA_MATEMATICA_FINANCEIRA",
+    "call_center_experiencia": "NOAH_APPLICATION_CALL_CENTER_EXPERIENCIA",
+    "power_query_dax": "NOAH_APPLICATION_POWER_QUERY_DAX",
+    "power_automate_nivel": "NOAH_APPLICATION_POWER_AUTOMATE_NIVEL",
+    "google_sheets_nivel": "NOAH_APPLICATION_GOOGLE_SHEETS_NIVEL",
+    "ia_experiencia": "NOAH_APPLICATION_IA_EXPERIENCIA",
+    "susep_conhecimento": "NOAH_APPLICATION_SUSEP_CONHECIMENTO",
+    "txt_csv_conhecimento": "NOAH_APPLICATION_TXT_CSV_CONHECIMENTO",
+    "kpis_comerciais_experiencia": "NOAH_APPLICATION_KPIS_COMERCIAIS_EXPERIENCIA",
+    "indicadores_experiencia": "NOAH_APPLICATION_INDICADORES_EXPERIENCIA",
+    "projeto_automacao_digitalizacao": "NOAH_APPLICATION_PROJETO_AUTOMACAO_DIGITALIZACAO",
+    "experiencia_setores_diversos": "NOAH_APPLICATION_EXPERIENCIA_SETORES_DIVERSOS",
     # General, reusable across any company (see base.py's comment).
-    "pep_status": "JARVIS_APPLICATION_PEP_STATUS",
+    "pep_status": "NOAH_APPLICATION_PEP_STATUS",
     # Ânima Educação-specific -- see base.py's comment for why these two
     # aren't generalized the way pep_status/parentes_na_empresa are.
-    "anima_vinculo_comercial": "JARVIS_APPLICATION_ANIMA_VINCULO_COMERCIAL",
-    "anima_clt_historico": "JARVIS_APPLICATION_ANIMA_CLT_HISTORICO",
-    "disponibilidade_temporario": "JARVIS_APPLICATION_DISPONIBILIDADE_TEMPORARIO",
-    "ferramentas_analise_dominadas": "JARVIS_APPLICATION_FERRAMENTAS_ANALISE_DOMINADAS",
-    "ferramentas_visualizacao_dominadas": "JARVIS_APPLICATION_FERRAMENTAS_VISUALIZACAO_DOMINADAS",
-    "como_constroi_dashboards": "JARVIS_APPLICATION_COMO_CONSTROI_DASHBOARDS",
-    "resultado_real_dados": "JARVIS_APPLICATION_RESULTADO_REAL_DADOS",
-    "diferencial_analista": "JARVIS_APPLICATION_DIFERENCIAL_ANALISTA",
-    "atividades_vaga_experiencia": "JARVIS_APPLICATION_ATIVIDADES_VAGA_EXPERIENCIA",
-    "etl_ferramentas_experiencia": "JARVIS_APPLICATION_ETL_FERRAMENTAS_EXPERIENCIA",
-    "python_dbt_conhecimento": "JARVIS_APPLICATION_PYTHON_DBT_CONHECIMENTO",
-    "contas_pagar_receber": "JARVIS_APPLICATION_CONTAS_PAGAR_RECEBER",
-    "dre_relatorios_financeiros": "JARVIS_APPLICATION_DRE_RELATORIOS_FINANCEIROS",
-    "tecnologia_area_financeira": "JARVIS_APPLICATION_TECNOLOGIA_AREA_FINANCEIRA",
-    "analise_dados_financeiros": "JARVIS_APPLICATION_ANALISE_DADOS_FINANCEIROS",
-    "mmm_experiencia": "JARVIS_APPLICATION_MMM_EXPERIENCIA",
-    "inteligencia_mercado_experiencia": "JARVIS_APPLICATION_INTELIGENCIA_MERCADO_EXPERIENCIA",
-    "market_share_indicadores": "JARVIS_APPLICATION_MARKET_SHARE_INDICADORES",
-    "relatorios_executivos_experiencia": "JARVIS_APPLICATION_RELATORIOS_EXECUTIVOS_EXPERIENCIA",
-    "crm_experiencia": "JARVIS_APPLICATION_CRM_EXPERIENCIA",
-    "looker_apps_script": "JARVIS_APPLICATION_LOOKER_APPS_SCRIPT",
-    "python_dados_nivel": "JARVIS_APPLICATION_PYTHON_DADOS_NIVEL",
-    "melhoria_continua_exemplo": "JARVIS_APPLICATION_MELHORIA_CONTINUA_EXEMPLO",
-    "graduacao_area_tecnica": "JARVIS_APPLICATION_GRADUACAO_AREA_TECNICA",
-    "mestrado_concluido": "JARVIS_APPLICATION_MESTRADO_CONCLUIDO",
-    "conte_sua_experiencia": "JARVIS_APPLICATION_CONTE_SUA_EXPERIENCIA",
+    "anima_vinculo_comercial": "NOAH_APPLICATION_ANIMA_VINCULO_COMERCIAL",
+    "anima_clt_historico": "NOAH_APPLICATION_ANIMA_CLT_HISTORICO",
+    "disponibilidade_temporario": "NOAH_APPLICATION_DISPONIBILIDADE_TEMPORARIO",
+    "ferramentas_analise_dominadas": "NOAH_APPLICATION_FERRAMENTAS_ANALISE_DOMINADAS",
+    "ferramentas_visualizacao_dominadas": "NOAH_APPLICATION_FERRAMENTAS_VISUALIZACAO_DOMINADAS",
+    "como_constroi_dashboards": "NOAH_APPLICATION_COMO_CONSTROI_DASHBOARDS",
+    "resultado_real_dados": "NOAH_APPLICATION_RESULTADO_REAL_DADOS",
+    "diferencial_analista": "NOAH_APPLICATION_DIFERENCIAL_ANALISTA",
+    "atividades_vaga_experiencia": "NOAH_APPLICATION_ATIVIDADES_VAGA_EXPERIENCIA",
+    "etl_ferramentas_experiencia": "NOAH_APPLICATION_ETL_FERRAMENTAS_EXPERIENCIA",
+    "python_dbt_conhecimento": "NOAH_APPLICATION_PYTHON_DBT_CONHECIMENTO",
+    "contas_pagar_receber": "NOAH_APPLICATION_CONTAS_PAGAR_RECEBER",
+    "dre_relatorios_financeiros": "NOAH_APPLICATION_DRE_RELATORIOS_FINANCEIROS",
+    "tecnologia_area_financeira": "NOAH_APPLICATION_TECNOLOGIA_AREA_FINANCEIRA",
+    "analise_dados_financeiros": "NOAH_APPLICATION_ANALISE_DADOS_FINANCEIROS",
+    "mmm_experiencia": "NOAH_APPLICATION_MMM_EXPERIENCIA",
+    "inteligencia_mercado_experiencia": "NOAH_APPLICATION_INTELIGENCIA_MERCADO_EXPERIENCIA",
+    "market_share_indicadores": "NOAH_APPLICATION_MARKET_SHARE_INDICADORES",
+    "relatorios_executivos_experiencia": "NOAH_APPLICATION_RELATORIOS_EXECUTIVOS_EXPERIENCIA",
+    "crm_experiencia": "NOAH_APPLICATION_CRM_EXPERIENCIA",
+    "looker_apps_script": "NOAH_APPLICATION_LOOKER_APPS_SCRIPT",
+    "python_dados_nivel": "NOAH_APPLICATION_PYTHON_DADOS_NIVEL",
+    "melhoria_continua_exemplo": "NOAH_APPLICATION_MELHORIA_CONTINUA_EXEMPLO",
+    "graduacao_area_tecnica": "NOAH_APPLICATION_GRADUACAO_AREA_TECNICA",
+    "mestrado_concluido": "NOAH_APPLICATION_MESTRADO_CONCLUIDO",
+    "conte_sua_experiencia": "NOAH_APPLICATION_CONTE_SUA_EXPERIENCIA",
     # 2026-09-23: second batch -- see base.py's _FIELD_TERMS comment for
     # the same discipline/reasoning as the 2026-09-14 batch above.
-    "databricks_nivel": "JARVIS_APPLICATION_DATABRICKS_NIVEL",
-    "rag_experiencia": "JARVIS_APPLICATION_RAG_EXPERIENCIA",
-    "python_tempo_profissional": "JARVIS_APPLICATION_PYTHON_TEMPO_PROFISSIONAL",
-    "java_dotnet_experiencia": "JARVIS_APPLICATION_JAVA_DOTNET_EXPERIENCIA",
-    "frontend_tecnologia": "JARVIS_APPLICATION_FRONTEND_TECNOLOGIA",
-    "api_rest_experiencia": "JARVIS_APPLICATION_API_REST_EXPERIENCIA",
-    "devops_experiencia": "JARVIS_APPLICATION_DEVOPS_EXPERIENCIA",
-    "consentimento_dados_ia": "JARVIS_APPLICATION_CONSENTIMENTO_DADOS_IA",
-    "pricing_revenue_experiencia": "JARVIS_APPLICATION_PRICING_REVENUE_EXPERIENCIA",
-    "disponibilidade_regiao_especifica": "JARVIS_APPLICATION_DISPONIBILIDADE_REGIAO_ESPECIFICA",
-    "vw_ja_foi_funcionario": "JARVIS_APPLICATION_VW_JA_FOI_FUNCIONARIO",
-    "fisia_nike_ja_trabalhou": "JARVIS_APPLICATION_FISIA_NIKE_JA_TRABALHOU",
-    "caixa_vida_parentes_concorrente": "JARVIS_APPLICATION_CAIXA_VIDA_PARENTES_CONCORRENTE",
-    "caixa_vida_societaria": "JARVIS_APPLICATION_CAIXA_VIDA_SOCIETARIA",
+    "databricks_nivel": "NOAH_APPLICATION_DATABRICKS_NIVEL",
+    "rag_experiencia": "NOAH_APPLICATION_RAG_EXPERIENCIA",
+    "python_tempo_profissional": "NOAH_APPLICATION_PYTHON_TEMPO_PROFISSIONAL",
+    "java_dotnet_experiencia": "NOAH_APPLICATION_JAVA_DOTNET_EXPERIENCIA",
+    "frontend_tecnologia": "NOAH_APPLICATION_FRONTEND_TECNOLOGIA",
+    "api_rest_experiencia": "NOAH_APPLICATION_API_REST_EXPERIENCIA",
+    "devops_experiencia": "NOAH_APPLICATION_DEVOPS_EXPERIENCIA",
+    "consentimento_dados_ia": "NOAH_APPLICATION_CONSENTIMENTO_DADOS_IA",
+    "pricing_revenue_experiencia": "NOAH_APPLICATION_PRICING_REVENUE_EXPERIENCIA",
+    "disponibilidade_regiao_especifica": "NOAH_APPLICATION_DISPONIBILIDADE_REGIAO_ESPECIFICA",
+    "vw_ja_foi_funcionario": "NOAH_APPLICATION_VW_JA_FOI_FUNCIONARIO",
+    "fisia_nike_ja_trabalhou": "NOAH_APPLICATION_FISIA_NIKE_JA_TRABALHOU",
+    "caixa_vida_parentes_concorrente": "NOAH_APPLICATION_CAIXA_VIDA_PARENTES_CONCORRENTE",
+    "caixa_vida_societaria": "NOAH_APPLICATION_CAIXA_VIDA_SOCIETARIA",
 }
 
 
@@ -245,7 +245,7 @@ def ensure_profile_template() -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     template = "\n".join(
         [
-            "# Preenchido por você, lido só localmente pelo JARVIS -- nunca sincronizado,",
+            "# Preenchido por você, lido só localmente pelo Noah -- nunca sincronizado,",
             "# nunca commitado, nunca logado. Usado só para preencher perguntas de",
             "# candidatura que pedem esses dados especificamente.",
             *(f"{env_key}=" for env_key in _FIELD_ENV_KEYS.values()),

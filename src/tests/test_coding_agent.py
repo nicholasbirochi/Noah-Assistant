@@ -42,7 +42,7 @@ def test_run_coding_task_refuses_when_no_model_configured(monkeypatch, tmp_path)
 
     result = run_coding_task("audite o projeto", str(tmp_path))
 
-    assert "JARVIS_MODEL_CODING" in result
+    assert "NOAH_MODEL_CODING" in result
 
 
 def test_run_coding_task_uses_explicit_model_over_config(monkeypatch, tmp_path):

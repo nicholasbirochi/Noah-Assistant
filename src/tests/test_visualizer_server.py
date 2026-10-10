@@ -43,7 +43,8 @@ def test_serves_the_hud_page():
         body = resp.read().decode("utf-8")
 
     assert "<html" in body.lower()
-    assert "J • A • R • V • I • S" in body
+    assert "<title>Noah</title>" in body
+    assert '<div id="brand">Noah</div>' in body
 
 
 def test_unknown_path_is_404():

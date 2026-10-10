@@ -125,7 +125,7 @@ class JobListing:
 # on-page warning that answers "não poderão ser editadas depois". This is
 # exactly the same class of data this project has refused to capture/store
 # since its very first design decision (CPF/birth date) -- so the same
-# rule now extends to job-application screening questions: JARVIS must
+# rule now extends to job-application screening questions: Noah must
 # NEVER fabricate or guess an answer to a company's own custom question,
 # full stop, no exceptions, regardless of how "obvious" an answer might
 # seem. question_requires_stop() below is a real, confirmed-live signal
@@ -140,7 +140,7 @@ class JobListing:
 # (referral / "do you work here") are auto-answered, because their
 # meaning is fixed platform-wide and both are unambiguously "Não" for any
 # external candidate applying cold -- never a per-company guess.
-# Maps each field JARVIS can fill from a Nicholas-provided local profile
+# Maps each field Noah can fill from a Nicholas-provided local profile
 # (see sites/application_profile.py) to the terms that identify a
 # screening question as asking for it. "data de nascimento" (birth date)
 # is deliberately NOT one of these -- even after Nicholas confirmed
@@ -493,7 +493,7 @@ _FIELD_TERMS: dict[str, list[str]] = {
     # NEGATIVES ("0 anos de experiência com Marketing Mix Modeling", "não
     # tenho DBT listado") -- for a batch of real, live-blocked InfoJobs
     # listings' own screening questions. Every value below is real
-    # content he reviewed and relayed, not fabricated by JARVIS -- same
+    # content he reviewed and relayed, not fabricated by Noah -- same
     # basis as every other .env-backed field here. Deliberately narrow,
     # single-purpose fields (not a generic "answer bank") so a field
     # only ever fires for the specific real phrasing it was found under.
@@ -761,7 +761,7 @@ def apply_resume_backed_profile_fields(profile: dict[str, str | None], resume: R
 def classify_question_field(question_text: str) -> str | None:
     """Returns which known, fillable field (see _FIELD_TERMS above) a
     screening question is asking about, or None if it's not one of the
-    ones JARVIS knows how to look up locally. A birth-date question also
+    ones Noah knows how to look up locally. A birth-date question also
     returns None here (it's recognized by question_requires_stop()/
     is_hard_pii_question() below, but never gets a fillable field)."""
     haystack = question_text.lower()
@@ -806,7 +806,7 @@ def _strip_accents(text: str) -> str:
 
 def find_referral_contact(company: str | None, contacts: dict[str, dict[str, str]]) -> dict[str, str] | None:
     """Matches a job listing's company name against Nicholas's real,
-    named referral contacts (jarvis.sites.application_profile's
+    named referral contacts (sites.application_profile's
     load_referral_contacts(), keyed by a short company identifier --
     e.g. "itau"/"santander"/"xp") -- whole-word match, same discipline
     as company_tier()'s _matches_known_name (a bare substring match on a
@@ -860,7 +860,7 @@ class ApplicationQuestion:
     flow -- logged whether it was safely auto-answered (Gupy's own
     standard referral questions) or caused a stop (any company-specific
     question, unconditionally -- see module note above). is_hard_pii
-    distinguishes "JARVIS must never even receive this" (RG/CPF/birth
+    distinguishes "Noah must never even receive this" (RG/CPF/birth
     date) from other sensitive-but-relayable questions (salary,
     culture-fit) for clearer reporting -- both currently cause the same
     stop, but the reason shown to Nicholas differs."""

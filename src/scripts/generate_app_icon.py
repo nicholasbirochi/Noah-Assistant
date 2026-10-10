@@ -1,4 +1,4 @@
-"""One-off script: renders JARVIS.app's icon -- a dark rounded-square
+"""One-off script: renders Noah.app's icon -- a dark rounded-square
 background with the visualizer HUD's own particle-sphere look
 (visualizer/page.html's constellation of connected dots), frozen
 at one fixed, pleasing rotation since an icon can't animate -- at every
@@ -34,7 +34,7 @@ from AppKit import (  # noqa: E402
 
 NSApplication.sharedApplication()
 
-ICONSET_DIR = Path(__file__).resolve().parent.parent / "build" / "JARVIS.iconset"
+ICONSET_DIR = Path(__file__).resolve().parent.parent / "build" / "Noah.iconset"
 ICNS_OUTPUT = Path(__file__).resolve().parent.parent / "assets" / "AppIcon.icns"
 
 # (filename, pixel size) -- exactly what `iconutil -c icns` expects to find

@@ -1,4 +1,4 @@
-"""Simple personal reminders JARVIS can take by voice/text and read back
+"""Simple personal reminders Noah can take by voice/text and read back
 later -- not résumé data (resume/), not a code decision (see
 roadmap.py for that). Stored as a flat JSON list under DATA_DIR,
 gitignored (mutable personal notes, not code) but fine living inside the

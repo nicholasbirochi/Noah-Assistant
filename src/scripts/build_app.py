@@ -1,4 +1,4 @@
-"""Builds JARVIS.app via py2app's "alias" mode -- a real, properly-owned
+"""Builds Noah.app via py2app's "alias" mode -- a real, properly-owned
 app bundle, but NOT a frozen/bundled standalone build: alias mode only
 creates a small compiled stub + symlinks, and still runs straight from
 this project's own source tree/venv. Full py2app/PyInstaller freezing is
@@ -15,7 +15,7 @@ re-execs itself into .../Resources/Python.app/Contents/MacOS/Python
 whenever it isn't already running as that exact binary (confirmed via
 `strings` on the interpreter itself -- unconditional, compiled in, not
 something an env var can disable). That swap changes the running
-process's bundle identity from com.nicholasbirochi.jarvis to the generic
+process's bundle identity from com.nicholasbirochi.noah to the generic
 org.python.python, which was silently breaking NSStatusItem: the menu bar
 icon never appeared, with the process alive and no Python-level exception
 anywhere -- only visible via Console.app ("AppKit:StatusBar] scene
@@ -36,7 +36,7 @@ signing doesn't fully satisfy Gatekeeper on its own either (no Apple
 Developer ID, no notarization -- `spctl --add` to force an override no
 longer exists on current macOS, Apple removed it) -- the one remaining
 manual step is real and unavoidable for a locally-built, unsigned app:
-right-click (or Control-click) JARVIS.app -> "Abrir" -> confirm in the
+right-click (or Control-click) Noah.app -> "Abrir" -> confirm in the
 dialog, once. After that first confirmed launch, plain double-clicks
 work normally from then on.
 """
@@ -50,7 +50,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 PACKAGING_DIR = PROJECT_ROOT / "src" / "packaging"
-APP_NAME = "JARVIS.app"
+APP_NAME = "Noah.app"
 VENV_PYTHON = PROJECT_ROOT / ".venv" / "bin" / "python"
 
 
@@ -100,9 +100,9 @@ def main() -> None:
     except PermissionError:
         target_dir = Path.home() / "Applications"
         app_path = build(target_dir)
-    print(f"JARVIS.app criado em: {app_path}")
+    print(f"Noah.app criado em: {app_path}")
     print(
-        'Primeira vez: clique com o botão direito (ou Control-clique) no JARVIS.app -> '
+        'Primeira vez: clique com o botão direito (ou Control-clique) no Noah.app -> '
         '"Abrir" -> confirme no aviso -- é a única vez que precisa disso. '
         "Depois disso, dois cliques normais funcionam."
     )

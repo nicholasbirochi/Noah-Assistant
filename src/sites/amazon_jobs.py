@@ -15,12 +15,12 @@ Real, live-confirmed findings:
   confirmed-live run (2026-08-13) searching "Python"/"SQL"/"Business
   Intelligence" with loc_query="Brazil" still returned plenty of India/
   China/US/Japan/UK results mixed in. Not fixed here -- callers must run
-  results through jarvis.sites.job_matching's location filters (which
+  results through sites.job_matching's location filters (which
   check the listing's own scraped location text, not amazon.jobs' search
   filter) before treating anything as Brazil-relevant, same as every
   other adapter in this project already does.
 - No login required -- public search, same as Catho/Gupy/InfoJobs
-  search_jobs(). Still routed through jarvis.sites.session.open_context()
+  search_jobs(). Still routed through sites.session.open_context()
   for lifecycle consistency/testability, matching Catho's own reasoning
   (see catho.py) even though there's no saved session to load.
 - Pagination: `&offset=N`, confirmed live -- N=10 returns a genuinely

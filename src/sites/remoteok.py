@@ -35,7 +35,7 @@ case a future response ever omits the legal blob.
 Every listing here is, by the entire premise of this site, a remote
 position -- but RemoteOK's own `location` field is inconsistent (often
 the company's home country/city, not literally the word "remote"),
-which would make jarvis.sites.job_matching.is_remote()'s own keyword
+which would make sites.job_matching.is_remote()'s own keyword
 matching miss most of them. Fixed by prefixing the stored location with
 "Remote" (honest, not fabricated -- that's what listing on this site
 means) rather than changing the shared is_remote() logic for one
@@ -128,7 +128,7 @@ def _card_to_job_listing(card: dict) -> JobListing | None:
     # Real gap found live: most listings' TITLE alone rarely repeats a
     # broader search term ("SQL", "Analytics") even when RemoteOK's own
     # tag filter matched it -- without the description as a snippet,
-    # jarvis.sites.job_matching.is_relevant_match() had almost nothing
+    # sites.job_matching.is_relevant_match() had almost nothing
     # to check against and silently dropped nearly everything.
     description = card.get("description") or ""
     snippet = _strip_html(description)[:600].strip() or None

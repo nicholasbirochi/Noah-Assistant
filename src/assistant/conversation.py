@@ -2,7 +2,7 @@
 (listen/transcribe/respond loop) -> stop phrase -> back to IDLE.
 
 Deliberately silent right after the wake word/clap fires -- no spoken
-greeting, no proactive briefing anymore. Real complaint this fixes: JARVIS
+greeting, no proactive briefing anymore. Real complaint this fixes: Noah
 used to speak a greeting immediately on activation, before the user had
 said anything at all -- both premature ("não comece falando logo de
 cara") and the actual cause of a real, confirmed voice bug: that greeting
@@ -19,16 +19,16 @@ tts.speak() itself, see voice/tts.py) is published to
 visualizer/state.py -- purely a live visual aid (the menu bar's
 "Visualizar Interação" button), never read back by anything here.
 "Thinking" covers the real gap between the user finishing an utterance
-and JARVIS starting to speak the reply (STT already ran by then; what's
+and Noah starting to speak the reply (STT already ran by then; what's
 left is the LLM call) -- without it, the HUD kept showing "Ouvindo..."
 long after the user had stopped talking, indistinguishable from actually
 still listening.
 
 Every reply/greeting/briefing is spoken through `_speak_with_barge_in`,
 which watches the mic concurrently while talking: saying the wake word
-mid-sentence interrupts JARVIS immediately, same as the menu bar's
+mid-sentence interrupts Noah immediately, same as the menu bar's
 off-toggle already did for `stop_event`. Deliberately NOT a clap, even
-though a clap can activate JARVIS from idle -- clap detection is plain
+though a clap can activate Noah from idle -- clap detection is plain
 peak-amplitude noise detection, not real voice recognition, so it's not
 a safe signal to interrupt an in-progress reply on (see
 _speak_with_barge_in's own docstring for the real complaint this fixes).
@@ -63,21 +63,21 @@ def _speak_with_barge_in(speak, text: str, listener, stop_event: threading.Event
     include_clap=False)) -- real complaint this fixes: clap detection is
     plain peak-amplitude noise detection (see clap_detector.py), not
     actual voice recognition, so any sufficiently loud, sharp sound (a
-    dropped object, a door) could cut JARVIS off mid-sentence with nothing
+    dropped object, a door) could cut Noah off mid-sentence with nothing
     said at all. Clap-to-activate from idle is unaffected -- see wait()
     and check_trigger()'s own docstring.
 
     Known limitation, not attempted here: no acoustic echo cancellation,
-    so JARVIS's own voice playing through the speakers could in principle
+    so Noah's own voice playing through the speakers could in principle
     trigger a false interrupt if it happens to say something close enough
     to the wake phrase. The wake-word engine is tuned against real speech,
-    not JARVIS's own TTS output, so this is expected to be rare in
+    not Noah's own TTS output, so this is expected to be rare in
     practice -- worth revisiting with a real headset/AEC setup if it
     turns out not to be.
 
     Returns "wake_word" if that's what interrupted speech, or None if
     speech completed normally or was stopped via `stop_event` (e.g.
-    "Desligar JARVIS")."""
+    "Desligar Noah")."""
     watch_event = threading.Event()
     detected: list[str | None] = [None]
 
@@ -107,7 +107,7 @@ def _speak_with_barge_in(speak, text: str, listener, stop_event: threading.Event
         # on the very same recorder while the watcher was STILL reading
         # from it -- two threads pulling frames off one stream at once,
         # which corrupted wake-word detection for the rest of the process
-        # (JARVIS would activate once, then never hear the wake word
+        # (Noah would activate once, then never hear the wake word
         # again). An unbounded join guarantees the watcher has genuinely
         # stopped calling read_frame() before this function returns --
         # worst case adds one frame's duration (tens of ms) of wait, never
@@ -122,7 +122,7 @@ def run_text_loop() -> None:
     print(GREETING)
     briefing = build_briefing()
     if briefing:
-        print(f"JARVIS: {briefing}")
+        print(f"Noah: {briefing}")
     messages: list[dict] = []
     while True:
         try:
@@ -132,11 +132,11 @@ def run_text_loop() -> None:
         if not text:
             continue
         if _is_stop_phrase(text):
-            print(f"JARVIS: {GOODBYE}")
+            print(f"Noah: {GOODBYE}")
             break
         messages.append({"role": "user", "content": text})
         reply = send_turn(messages)
-        print(f"JARVIS: {reply}")
+        print(f"Noah: {reply}")
 
 
 def _run_active_session(
@@ -150,11 +150,11 @@ def _run_active_session(
     multi-turn conversation (no per-turn reload cost) and frees the moment
     it ends, no idle-timeout thread needed.
 
-    `stop_event` is forwarded to every `speak()` call so "Desligar JARVIS"
+    `stop_event` is forwarded to every `speak()` call so "Desligar Noah"
     (the menu bar's off-toggle) interrupts speech that's already in
     progress instead of waiting for the current sentence to finish. Every
     reply is also spoken via `_speak_with_barge_in` so saying the wake
-    word or clapping again while JARVIS is still talking interrupts it the
+    word or clapping again while Noah is still talking interrupts it the
     same way -- see that function's docstring."""
     from visualizer import state as visualizer_state
     from voice import stt
@@ -164,7 +164,7 @@ def _run_active_session(
     try:
         while True:
             if stop_event is not None and stop_event.is_set():
-                # "Desligar JARVIS" mid-conversation -- a real gap: this
+                # "Desligar Noah" mid-conversation -- a real gap: this
                 # loop only ever ended via a stop phrase or the user
                 # walking away, so the menu bar icon/HUD would flip to
                 # "off" the instant it was clicked while the session (and
@@ -172,7 +172,7 @@ def _run_active_session(
                 # those fired. Checked once per turn, not mid-recording --
                 # record_utterance() itself still isn't interruptible, so
                 # this can't cut off a recording already in progress, but
-                # it does mean JARVIS stops for real within one turn
+                # it does mean Noah stops for real within one turn
                 # instead of needing an explicit goodbye.
                 return
             visualizer_state.publish("listening")
@@ -218,7 +218,7 @@ def run_voice_loop(
     `OSError: Failed to read from device` after another process briefly
     grabbed the mic) used to kill this whole function silently -- the
     thread just died, the menu bar kept showing "on" forever after, and
-    JARVIS simply stopped responding with no visible error short of
+    Noah simply stopped responding with no visible error short of
     digging through the log file. Any exception from one wake-word session
     now closes and rebuilds the listener and keeps going instead; only a
     genuinely broken microphone (the rebuild itself failing) actually ends

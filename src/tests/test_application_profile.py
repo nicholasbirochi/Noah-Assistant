@@ -1,5 +1,7 @@
 import json
 
+import pytest
+
 import config
 from sites.application_profile import (
     ensure_profile_template,
@@ -14,6 +16,17 @@ def test_profile_path_lives_under_local_state_dir(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
 
     assert profile_path() == tmp_path / "application_profile.env"
+
+
+@pytest.mark.parametrize("current,expected", [(None, None), ("new", "new"), ("", None)])
+def test_profile_reads_noah_values(monkeypatch, tmp_path, current, expected):
+    monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
+    lines = []
+    if current is not None:
+        lines.append(f"NOAH_APPLICATION_EXCEL_NIVEL={current}")
+    profile_path().write_text("\n".join(lines), encoding="utf-8")
+
+    assert load_application_profile()["excel_nivel"] == expected
 
 
 def test_load_application_profile_returns_all_none_when_file_missing(monkeypatch, tmp_path):
@@ -113,36 +126,36 @@ def test_load_application_profile_reads_real_values(monkeypatch, tmp_path):
             [
                 "# comentário deve ser ignorado",
                 "",
-                "JARVIS_APPLICATION_RG=12.345.678-9",
-                "JARVIS_APPLICATION_RG_ORGAO_ESTADO=SSP-SP",
-                "JARVIS_APPLICATION_CPF=123.456.789-00",
-                "JARVIS_APPLICATION_NOME_MAE=Maria da Silva",
-                "JARVIS_APPLICATION_NOME_PAI=João da Silva",
-                "JARVIS_APPLICATION_NATURALIDADE=São Paulo - SP",
-                "JARVIS_APPLICATION_RACA_COR=Branco",
-                "JARVIS_APPLICATION_PCD=Não",
-                "JARVIS_APPLICATION_SALARY_ESTAGIO=R$ 3.000,00",
-                "JARVIS_APPLICATION_SALARY_JUNIOR=R$ 4.500,00",
-                "JARVIS_APPLICATION_SALARY_PLENO=R$ 6.500,00",
-                "JARVIS_APPLICATION_SALARY_CURRENT=R$ 2.500,00",
-                "JARVIS_APPLICATION_MARITAL_STATUS=Solteiro",
-                "JARVIS_APPLICATION_CNH=Sim, categoria B",
-                "JARVIS_APPLICATION_CNH_CATEGORIA=B",
-                "JARVIS_APPLICATION_DISPONIBILIDADE_VIAGEM=Sim",
-                "JARVIS_APPLICATION_DISPONIBILIDADE_FDS=Não",
-                "JARVIS_APPLICATION_DISPONIBILIDADE_HIBRIDO=Sim",
-                "JARVIS_APPLICATION_ESCOLARIDADE=Ensino superior incompleto (cursando)",
-                "JARVIS_APPLICATION_CARGO_ATUAL=Não estou empregado no momento",
-                "JARVIS_APPLICATION_PARENTES_NA_EMPRESA=Não",
-                "JARVIS_APPLICATION_SEMESTRE_FORMATURA=2º semestre de 2027",
-                "JARVIS_APPLICATION_ALTURA=1,75 m",
-                "JARVIS_APPLICATION_TAMANHO_UNIFORME=G",
-                "JARVIS_APPLICATION_EXCEL_NIVEL=Avançado",
-                "JARVIS_APPLICATION_SQL_NIVEL=Intermediário-avançado",
-                "JARVIS_APPLICATION_POWERBI_NIVEL=Intermediário-avançado",
-                "JARVIS_APPLICATION_MMM_EXPERIENCIA=0 anos. Não possuo experiência específica com Marketing Mix Modeling.",
-                "JARVIS_APPLICATION_MESTRADO_CONCLUIDO=Não",
-                "JARVIS_APPLICATION_CRM_EXPERIENCIA=Não há experiência com CRM ou Salesforce.",
+                "NOAH_APPLICATION_RG=12.345.678-9",
+                "NOAH_APPLICATION_RG_ORGAO_ESTADO=SSP-SP",
+                "NOAH_APPLICATION_CPF=123.456.789-00",
+                "NOAH_APPLICATION_NOME_MAE=Maria da Silva",
+                "NOAH_APPLICATION_NOME_PAI=João da Silva",
+                "NOAH_APPLICATION_NATURALIDADE=São Paulo - SP",
+                "NOAH_APPLICATION_RACA_COR=Branco",
+                "NOAH_APPLICATION_PCD=Não",
+                "NOAH_APPLICATION_SALARY_ESTAGIO=R$ 3.000,00",
+                "NOAH_APPLICATION_SALARY_JUNIOR=R$ 4.500,00",
+                "NOAH_APPLICATION_SALARY_PLENO=R$ 6.500,00",
+                "NOAH_APPLICATION_SALARY_CURRENT=R$ 2.500,00",
+                "NOAH_APPLICATION_MARITAL_STATUS=Solteiro",
+                "NOAH_APPLICATION_CNH=Sim, categoria B",
+                "NOAH_APPLICATION_CNH_CATEGORIA=B",
+                "NOAH_APPLICATION_DISPONIBILIDADE_VIAGEM=Sim",
+                "NOAH_APPLICATION_DISPONIBILIDADE_FDS=Não",
+                "NOAH_APPLICATION_DISPONIBILIDADE_HIBRIDO=Sim",
+                "NOAH_APPLICATION_ESCOLARIDADE=Ensino superior incompleto (cursando)",
+                "NOAH_APPLICATION_CARGO_ATUAL=Não estou empregado no momento",
+                "NOAH_APPLICATION_PARENTES_NA_EMPRESA=Não",
+                "NOAH_APPLICATION_SEMESTRE_FORMATURA=2º semestre de 2027",
+                "NOAH_APPLICATION_ALTURA=1,75 m",
+                "NOAH_APPLICATION_TAMANHO_UNIFORME=G",
+                "NOAH_APPLICATION_EXCEL_NIVEL=Avançado",
+                "NOAH_APPLICATION_SQL_NIVEL=Intermediário-avançado",
+                "NOAH_APPLICATION_POWERBI_NIVEL=Intermediário-avançado",
+                "NOAH_APPLICATION_MMM_EXPERIENCIA=0 anos. Não possuo experiência específica com Marketing Mix Modeling.",
+                "NOAH_APPLICATION_MESTRADO_CONCLUIDO=Não",
+                "NOAH_APPLICATION_CRM_EXPERIENCIA=Não há experiência com CRM ou Salesforce.",
             ]
         ),
         encoding="utf-8",
@@ -237,7 +250,7 @@ def test_load_application_profile_reads_real_values(monkeypatch, tmp_path):
 
 def test_load_application_profile_treats_blank_value_as_none(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
-    (tmp_path / "application_profile.env").write_text("JARVIS_APPLICATION_RG=\n", encoding="utf-8")
+    (tmp_path / "application_profile.env").write_text("NOAH_APPLICATION_RG=\n", encoding="utf-8")
 
     profile = load_application_profile()
 
@@ -260,21 +273,21 @@ def test_ensure_profile_template_creates_a_real_editable_file(monkeypatch, tmp_p
 
     assert path.exists()
     content = path.read_text(encoding="utf-8")
-    assert "JARVIS_APPLICATION_RG=" in content
-    assert "JARVIS_APPLICATION_RG_ORGAO_ESTADO=" in content
-    assert "JARVIS_APPLICATION_CPF=" in content
-    assert "JARVIS_APPLICATION_NOME_MAE=" in content
-    assert "JARVIS_APPLICATION_NOME_PAI=" in content
-    assert "JARVIS_APPLICATION_NATURALIDADE=" in content
-    assert "JARVIS_APPLICATION_SALARY_ESTAGIO=" in content
-    assert "JARVIS_APPLICATION_SALARY_JUNIOR=" in content
-    assert "JARVIS_APPLICATION_SALARY_PLENO=" in content
-    assert "JARVIS_APPLICATION_MARITAL_STATUS=" in content
+    assert "NOAH_APPLICATION_RG=" in content
+    assert "NOAH_APPLICATION_RG_ORGAO_ESTADO=" in content
+    assert "NOAH_APPLICATION_CPF=" in content
+    assert "NOAH_APPLICATION_NOME_MAE=" in content
+    assert "NOAH_APPLICATION_NOME_PAI=" in content
+    assert "NOAH_APPLICATION_NATURALIDADE=" in content
+    assert "NOAH_APPLICATION_SALARY_ESTAGIO=" in content
+    assert "NOAH_APPLICATION_SALARY_JUNIOR=" in content
+    assert "NOAH_APPLICATION_SALARY_PLENO=" in content
+    assert "NOAH_APPLICATION_MARITAL_STATUS=" in content
 
 
 def test_ensure_profile_template_never_overwrites_existing_values(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
-    (tmp_path / "application_profile.env").write_text("JARVIS_APPLICATION_RG=12.345.678-9\n", encoding="utf-8")
+    (tmp_path / "application_profile.env").write_text("NOAH_APPLICATION_RG=12.345.678-9\n", encoding="utf-8")
 
     ensure_profile_template()
 

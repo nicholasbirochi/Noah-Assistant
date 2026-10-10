@@ -1040,7 +1040,7 @@ def test_fill_company_answer_fails_closed_when_no_radio_option_matches_either():
 def test_fill_company_answer_treats_an_already_answered_radio_question_as_answered():
     # Real, confirmed-live case (Stefanini, Núclea): the radio/checkbox
     # group is already disabled with a saved option checked -- Gupy's
-    # own account-level candidate profile, not something JARVIS filled.
+    # own account-level candidate profile, not something Noah filled.
     # Must succeed without ever attempting to click anything.
     page = FakeApplicationPage(
         step_texts=["algo"],
@@ -1197,7 +1197,7 @@ def test_continue_application_with_profile_does_not_block_on_an_unclassified_que
     # unclassified like Stefanini's own referral-institution radio --
     # both hit the exact same "unanswerable?" check) was ALREADY
     # disabled with a saved answer on Gupy's own side -- must not block
-    # the whole step just because JARVIS has nothing local to give it.
+    # the whole step just because Noah has nothing local to give it.
     _patch_profile(monkeypatch, salary_junior="R$ 4.500,00")
     page = FakeApplicationPage(
         step_texts=[
@@ -1875,7 +1875,7 @@ def test_continue_application_with_profile_fills_nome_completo_from_the_resume(m
 def test_continue_application_with_profile_answers_sim_and_fills_a_known_referral_contact(monkeypatch):
     # Real, live-confirmed 2026-08-19 (see gupy.py's module docstring): when
     # the job's own company matches a known referral contact
-    # (jarvis.sites.application_profile.load_referral_contacts()), the
+    # (sites.application_profile.load_referral_contacts()), the
     # FIRST Sim/Não pair is answered "Sim" and the two real, stable-ID
     # contact fields are filled -- the actual name/email must land in the
     # page fill (the real automation write) but never leak onto the

@@ -176,11 +176,11 @@ def test_search_jobs_builds_the_real_query_url_and_converts_valid_cards(monkeypa
 
 
 def test_search_jobs_accepts_max_results_for_run_job_search_compatibility(monkeypatch):
-    # jarvis.job_search.run_job_search() always calls
+    # job_search.run_job_search() always calls
     # adapter.search_jobs(term, max_results=...) -- this adapter has no
     # real pagination, but must at least accept and honor the cap rather
     # than raising a TypeError when wired into that call convention
-    # (2026-08-19, wired into jarvis.job_portal.server._portal_adapters()).
+    # (2026-08-19, wired into noah.job_portal.server._portal_adapters()).
     cards = [
         {"jobId": str(1000000000 + i), "text": f"Vaga {i}\n\nEmpresa\n\nSão Paulo, SP"} for i in range(5)
     ]

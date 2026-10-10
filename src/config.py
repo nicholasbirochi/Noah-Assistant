@@ -22,7 +22,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 # in that category goes under LOCAL_STATE_DIR instead, outside PROJECT_ROOT
 # and outside any cloud-sync tree, never DATA_DIR.
 LOCAL_STATE_DIR = Path(
-    os.environ.get("JARVIS_LOCAL_STATE_DIR", str(Path.home() / "Library" / "Application Support" / "JARVIS"))
+    os.environ.get("NOAH_LOCAL_STATE_DIR", str(Path.home() / "Library" / "Application Support" / "Noah"))
 )
 
 # Quiet by design: this runs as a background listener, not a dev tool, so
@@ -49,15 +49,15 @@ REVIEW_DIR = DATA_DIR / "review"
 # `ollama pull` the model once via CLI before first use; see README.md.
 # LLM_PROVIDER selects the LocalLLMProvider implementation (assistant/providers.py);
 # only "ollama" exists today, kept configurable so a future MLXProvider slots in cleanly.
-LLM_PROVIDER = os.environ.get("JARVIS_LLM_PROVIDER", "ollama")
+LLM_PROVIDER = os.environ.get("NOAH_LLM_PROVIDER", "ollama")
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 # qwen2.5:7b, not 14b -- measured live: once warm, the 7b model answered the
 # same simple prompt in 1.1s vs 14b's 4.7s (roughly 4x), and still correctly
 # drove a real tool call (résumé field update) in a separate live test.
 # Ollama's default keep-alive is only 5 minutes, so without OLLAMA_KEEP_ALIVE
-# below, "warm" rarely holds between JARVIS activations spaced by normal
+# below, "warm" rarely holds between Noah activations spaced by normal
 # gaps -- the two fixes matter together, not either alone.
-LOCAL_MODEL = os.environ.get("JARVIS_MODEL", "qwen2.5:7b")
+LOCAL_MODEL = os.environ.get("NOAH_MODEL", "qwen2.5:7b")
 # Separate model for assistant/coding_agent.py -- deliberately NOT the same
 # as LOCAL_MODEL above. That one is tuned for voice-turn latency (a small,
 # fast model); a coding task cares about capability, not sub-second
@@ -66,11 +66,11 @@ LOCAL_MODEL = os.environ.get("JARVIS_MODEL", "qwen2.5:7b")
 # assistant/coding_agent.py's module docstring for the current pick) and
 # set this explicitly, rather than silently falling back to a model never
 # meant for this job.
-CODING_MODEL = os.environ.get("JARVIS_MODEL_CODING")
+CODING_MODEL = os.environ.get("NOAH_MODEL_CODING")
 # How long Ollama keeps the model resident in memory after the last request
 # -- passed on every chat call (providers.py), not a server-side setting, so
 # it works regardless of how the Ollama service itself was started. 30
-# minutes comfortably covers normal gaps between JARVIS activations during a
+# minutes comfortably covers normal gaps between Noah activations during a
 # work session without holding the model in RAM indefinitely if left idle
 # for a long stretch.
 OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "30m")
@@ -81,9 +81,9 @@ OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "30m")
 # assistant addresses its owner by name (greetings, the conversation system
 # prompt in assistant/llm_client.py) -- a second person (e.g. an irmão who's
 # also a developer) sets their own in their own .env and gets their own
-# JARVIS without touching any code. Defaults are Nicholas's own, unchanged.
-USER_NAME = os.environ.get("JARVIS_USER_NAME", "Nicholas")
-USER_HONORIFIC = os.environ.get("JARVIS_USER_HONORIFIC", f"Senhor {USER_NAME}")
+# Noah without touching any code. Defaults are Nicholas's own, unchanged.
+USER_NAME = os.environ.get("NOAH_USER_NAME", "Nicholas")
+USER_HONORIFIC = os.environ.get("NOAH_USER_HONORIFIC", f"Senhor {USER_NAME}")
 
 # Spoken the instant a trigger fires, before the model is ever invoked -- an
 # LLM asked to "say this greeting" could paraphrase or drop the punctuation,
@@ -91,9 +91,9 @@ USER_HONORIFIC = os.environ.get("JARVIS_USER_HONORIFIC", f"Senhor {USER_NAME}")
 # trigger has its own exact phrase. Overridable directly (not just derived
 # from USER_NAME/USER_HONORIFIC above) since the exact wording is a matter
 # of personal taste, not just a name substitution.
-GREETING = os.environ.get("JARVIS_GREETING", "Seja bem-vindo, Senhor Nicholas... vamos começar o trabalho!")
-CLAP_GREETING = os.environ.get("JARVIS_CLAP_GREETING", "Olá, Nicolas, vamos começar o trabalho!")
-GOODBYE = os.environ.get("JARVIS_GOODBYE", "Até logo, Senhor Nicholas.")
+GREETING = os.environ.get("NOAH_GREETING", "Seja bem-vindo, Senhor Nicholas... vamos começar o trabalho!")
+CLAP_GREETING = os.environ.get("NOAH_CLAP_GREETING", "Olá, Nicolas, vamos começar o trabalho!")
+GOODBYE = os.environ.get("NOAH_GOODBYE", "Até logo, Senhor Nicholas.")
 
 # "Felipe (Aprimorada)" -- com.apple.voice.enhanced.pt-BR.Felipe -- is a
 # proper Enhanced-quality male pt_BR voice (downloaded via System Settings >
@@ -135,19 +135,21 @@ TTS_XTTS_LANGUAGE = "pt"
 # Deliberately NOT under DATA_DIR -- same reasoning as LOCAL_STATE_DIR
 # above: this file is voice-identity data (arguably more sensitive than a
 # session cookie), and this project sits inside a synced OneDrive folder.
-# The reference clip itself is never fetched by JARVIS/Claude -- the user
+# The reference clip itself is never fetched by Noah/Claude -- the user
 # supplies it directly at this exact path.
-TTS_XTTS_SPEAKER_WAV_PATH = LOCAL_STATE_DIR / "voice" / "jarvis_reference.wav"
+TTS_XTTS_SPEAKER_WAV_PATH = LOCAL_STATE_DIR / "voice" / "noah_reference.wav"
 # Fixed port (not dynamic like the visualizer's) -- the client needs to
 # find the worker without any discovery mechanism, and only one worker
 # ever runs per machine.
 XTTS_WORKER_PORT = int(os.environ.get("XTTS_WORKER_PORT", "8766"))
-WAKE_WORD = "jarvis"
-STOP_PHRASES = ("tchau jarvis", "tchau, jarvis", "obrigado jarvis", "encerrar")
+STOP_PHRASES = ("tchau noah", "tchau, noah", "obrigado noah", "encerrar")
 
-# "openwakeword" (default, no account/key -- ships a pretrained "hey jarvis"
-# model) or "porcupine" (optional adapter, needs PICOVOICE_ACCESS_KEY).
-WAKE_WORD_ENGINE = os.environ.get("WAKE_WORD_ENGINE", "openwakeword")
+# No trained Noah detector is bundled: claps work without downloading models.
+WAKE_WORD_ENGINE = os.environ.get("WAKE_WORD_ENGINE", "clap")
+NOAH_WAKE_WORD_MODEL_PATH = Path(os.environ.get(
+    "NOAH_WAKE_WORD_MODEL_PATH", str(LOCAL_STATE_DIR / "voice" / "noah.onnx")
+)).expanduser()
+NOAH_PORCUPINE_MODEL_PATH = os.environ.get("NOAH_PORCUPINE_MODEL_PATH", "")
 
 # A real, confirmed failure mode: PvRecorder's device_index=-1 means "the
 # system's current default input device", which isn't a stable choice --
@@ -181,7 +183,7 @@ WHISPER_LANGUAGE = "pt"
 
 # Nicholas's own exact filenames, kept as the default so his own setup needs
 # no .env changes. A second person (own OneDrive/Drive account, own résumé
-# filenames) sets JARVIS_SOURCE_RESUME_DOCS (paths joined by os.pathsep --
+# filenames) sets NOAH_SOURCE_RESUME_DOCS (paths joined by os.pathsep --
 # ":" on macOS/Linux) in their own .env instead of editing this file.
 _DEFAULT_SOURCE_RESUME_DOCS = [
     # 2026-09-07: real drift found live, in two stages. First: Nicholas
@@ -200,17 +202,17 @@ _DEFAULT_SOURCE_RESUME_DOCS = [
     "/Users/nicholasbirochi/Library/CloudStorage/OneDrive-FundaçãoSalvadorArena/Extras/Perfil/Currículos/Currículo - DataBase - Brasil ATS.docx",
     "/Users/nicholasbirochi/Library/CloudStorage/OneDrive-FundaçãoSalvadorArena/Extras/Perfil/Currículos/Currículo - DataBase - International ATS.docx",
 ]
-_source_resume_docs_env = os.environ.get("JARVIS_SOURCE_RESUME_DOCS")
+_source_resume_docs_env = os.environ.get("NOAH_SOURCE_RESUME_DOCS")
 SOURCE_RESUME_DOCS = _source_resume_docs_env.split(os.pathsep) if _source_resume_docs_env else _DEFAULT_SOURCE_RESUME_DOCS
 
 # Incremental document indexer (indexing/) -- only these roots are ever
 # scanned; the project's own repo is explicitly excluded so code/README never
 # get mistaken for résumé projects. _ONEDRIVE_ROOT is overridable on its own
-# (JARVIS_ONEDRIVE_ROOT) since a second person's username/cloud folder name
+# (NOAH_ONEDRIVE_ROOT) since a second person's username/cloud folder name
 # differs but the same three-subfolder shape underneath it is a reasonable
 # default to keep.
 _ONEDRIVE_ROOT = os.environ.get(
-    "JARVIS_ONEDRIVE_ROOT", "/Users/nicholasbirochi/Library/CloudStorage/OneDrive-FundaçãoSalvadorArena"
+    "NOAH_ONEDRIVE_ROOT", "/Users/nicholasbirochi/Library/CloudStorage/OneDrive-FundaçãoSalvadorArena"
 )
 AUTHORIZED_INDEX_ROOTS = [
     Path(f"{_ONEDRIVE_ROOT}/Extras/Perfil/Currículos"),
@@ -218,7 +220,7 @@ AUTHORIZED_INDEX_ROOTS = [
     Path(f"{_ONEDRIVE_ROOT}/Estudos/Projetos"),
 ]
 EXCLUDED_INDEX_PATHS = [
-    Path(f"{_ONEDRIVE_ROOT}/Estudos/Projetos/54 - J.A.R.V.I.S"),
+    PROJECT_ROOT,
 ]
 INDEXABLE_EXTENSIONS = {".docx", ".pdf", ".txt", ".md"}
 # Vendored/build noise inside project folders -- not the user's own writing,

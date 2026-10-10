@@ -84,7 +84,7 @@ def test_speak_with_barge_in_interrupts_speech_and_returns_wake_word():
 def test_speak_with_barge_in_ignores_a_clap_and_does_not_interrupt():
     # Real complaint this fixes: clap detection is plain peak-amplitude
     # noise detection, not real voice recognition -- a random loud sound
-    # must not cut JARVIS off mid-sentence. A short but real block (not an
+    # must not cut Noah off mid-sentence. A short but real block (not an
     # instant no-op) gives the watcher thread a guaranteed chance to run
     # at least once before speech ends, without the multi-second wait a
     # longer timeout would need.
@@ -119,7 +119,7 @@ def test_speak_with_barge_in_stops_watching_once_speech_ends_on_its_own():
 
 
 def test_speak_with_barge_in_propagates_the_outer_stop_event():
-    # "Desligar JARVIS" firing mid-speech must still cut speech short via
+    # "Desligar Noah" firing mid-speech must still cut speech short via
     # the same mechanism -- the watcher notices the outer stop_event too,
     # not just its own wake-word/clap checks.
     listener = _ScriptedTriggerListener(triggers=[])  # no real barge-in trigger
@@ -142,7 +142,7 @@ def test_run_active_session_speaks_goodbye_and_unloads_on_stop_phrase(monkeypatc
     _install_scripted_provider(monkeypatch, [])
 
     spoken = []
-    transcripts = iter(["tchau jarvis"])
+    transcripts = iter(["tchau noah"])
 
     conversation._run_active_session(
         listener=FakeListener(),
@@ -167,7 +167,7 @@ def test_run_active_session_calls_llm_and_speaks_reply(monkeypatch):
     )
 
     spoken = []
-    transcripts = iter(["oi jarvis", "tchau jarvis"])
+    transcripts = iter(["oi noah", "tchau noah"])
 
     conversation._run_active_session(
         listener=FakeListener(),
@@ -196,7 +196,7 @@ def test_run_active_session_publishes_thinking_between_transcription_and_llm_cal
         return ""
 
     monkeypatch.setattr(conversation, "send_turn", fake_send_turn)
-    transcripts = iter(["oi jarvis", "tchau jarvis"])
+    transcripts = iter(["oi noah", "tchau noah"])
 
     conversation._run_active_session(
         listener=FakeListener(),
@@ -209,7 +209,7 @@ def test_run_active_session_publishes_thinking_between_transcription_and_llm_cal
 
 
 def test_run_active_session_forwards_stop_event_to_every_speak_call(monkeypatch):
-    # "Desligar JARVIS" mid-sentence needs to interrupt speech in progress
+    # "Desligar Noah" mid-sentence needs to interrupt speech in progress
     # (see tts.speak) -- that only works if a stop_event reaches every
     # speak() call, not just get dropped somewhere along the way. The
     # reply goes through _speak_with_barge_in now, so it receives that
@@ -221,7 +221,7 @@ def test_run_active_session_forwards_stop_event_to_every_speak_call(monkeypatch)
     _install_scripted_provider(monkeypatch, [ProviderResponse(content="Olá.")])
 
     received_stop_events = []
-    transcripts = iter(["oi jarvis", "tchau jarvis"])
+    transcripts = iter(["oi noah", "tchau noah"])
     sentinel_stop_event = threading.Event()
 
     conversation._run_active_session(
@@ -239,7 +239,7 @@ def test_run_active_session_forwards_stop_event_to_every_speak_call(monkeypatch)
 
 def test_run_active_session_stops_between_turns_once_stop_event_fires(monkeypatch):
     # Real gap this guards against: this loop only ever ended via a stop
-    # phrase or the user walking away -- "Desligar JARVIS" mid-conversation
+    # phrase or the user walking away -- "Desligar Noah" mid-conversation
     # flipped the menu bar icon to "off" immediately while the session (and
     # the mic) kept actually running underneath. Only one scripted
     # transcript below on purpose: if the loop wrongly started a second
@@ -249,7 +249,7 @@ def test_run_active_session_stops_between_turns_once_stop_event_fires(monkeypatc
     _install_scripted_provider(monkeypatch, [ProviderResponse(content="Uma resposta.")])
 
     outer_stop_event = threading.Event()
-    transcripts = iter(["oi jarvis"])
+    transcripts = iter(["oi noah"])
 
     def speak_then_request_stop(text, stop_event=None):
         outer_stop_event.set()  # simulate "Desligar" being clicked while this reply plays
@@ -276,7 +276,7 @@ def test_run_active_session_reply_can_be_barged_in_on_via_the_listener(monkeypat
     _install_scripted_provider(monkeypatch, [ProviderResponse(content="Uma resposta longa.")])
 
     listener = _ScriptedTriggerListener(triggers=["wake_word"])
-    transcripts = iter(["oi jarvis", "tchau jarvis"])
+    transcripts = iter(["oi noah", "tchau noah"])
 
     def blocking_speak(text, stop_event=None):
         if stop_event is not None:
@@ -326,7 +326,7 @@ class _FakeListener:
 
 
 def test_run_voice_loop_goes_straight_to_active_session_without_speaking_first(monkeypatch):
-    # Real complaint fixed: JARVIS used to speak a greeting immediately on
+    # Real complaint fixed: Noah used to speak a greeting immediately on
     # activation, before the user had said anything -- and that greeting
     # raced xtts_worker's ~15-20s load time, which is the actual reason
     # the voice sometimes came out as the fallback instead of the cloned
@@ -451,7 +451,7 @@ def test_run_voice_loop_gives_up_if_the_microphone_cannot_be_recreated(monkeypat
 
     monkeypatch.setattr(llm_client, "_provider", RaisingProvider())
 
-    transcripts = iter(["oi jarvis"])
+    transcripts = iter(["oi noah"])
     try:
         conversation._run_active_session(
             listener=FakeListener(),
