@@ -83,7 +83,7 @@ candidate). Real, confirmed findings:
   Itaú listing tested, this asked for the candidate's **RG** and
   **current salary**, with an on-page warning that answers "não poderão
   ser editadas depois". See base.py's question_requires_stop() and the
-  hard rule above SiteAdapter: JARVIS never fabricates an answer here,
+  hard rule above SiteAdapter: Noah never fabricates an answer here,
   and never auto-answers ANY company-specific question even if it looks
   simple -- only Gupy's own two standard referral questions are
   auto-answered (both always "Não" -- factually true for any external
@@ -506,7 +506,7 @@ class GupyAdapter(SiteAdapter):
 
     def search_jobs(self, query: str, *, max_results: int = 60) -> list[JobListing]:
         """Read-only, no login required (see module docstring) -- callers
-        should run the result through jarvis.sites.job_matching before
+        should run the result through sites.job_matching before
         treating it as "matches" (~12 items per page).
 
         Pagination: real, confirmed live -- page 1 is the bare
@@ -630,17 +630,17 @@ class GupyAdapter(SiteAdapter):
                 if pii_questions:
                     reason = (
                         "Essa vaga pede documento oficial (RG/CPF) ou data de nascimento numa "
-                        "pergunta própria da empresa -- o JARVIS nunca recebe nem repassa esse "
+                        "pergunta própria da empresa -- o Noah nunca recebe nem repassa esse "
                         "dado, mesmo que você queira ditar a resposta."
                     )
                 elif other_blocking:
                     reason = (
                         "Essa vaga tem pergunta(s) própria(s) sobre dado sensível (salário, "
-                        "estado civil) -- o JARVIS ainda não responde isso sozinho."
+                        "estado civil) -- o Noah ainda não responde isso sozinho."
                     )
                 else:
                     reason = (
-                        "Essa vaga tem pergunta(s) própria(s) da empresa -- o JARVIS não "
+                        "Essa vaga tem pergunta(s) própria(s) da empresa -- o Noah não "
                         "responde nenhuma pergunta específica de empresa sozinho, mesmo que "
                         "pareça simples."
                     )
@@ -656,7 +656,7 @@ class GupyAdapter(SiteAdapter):
             reason = (
                 "Nenhuma pergunta própria da empresa apareceu nessa vaga, mas o clique final "
                 "de envio nunca foi verificado ao vivo em nenhuma candidatura real ainda -- "
-                "por segurança o JARVIS para aqui em vez de inventar qual botão clicar."
+                "por segurança o Noah para aqui em vez de inventar qual botão clicar."
             )
             return ApplicationPreview(
                 site_name=self.site_name,
@@ -678,7 +678,7 @@ class GupyAdapter(SiteAdapter):
         action in this project (apply_changes()). Walks the same safe
         steps, then at the company-questions step, fills in ONLY
         questions matched by base.py's classify_question_field() against
-        jarvis.sites.application_profile's locally-provided values
+        sites.application_profile's locally-provided values
         (2026-08-13, explicitly confirmed with Nicholas -- see that
         module's docstring for the full reasoning and safeguards). If
         even ONE company question is unclassified, classified but has no
@@ -758,7 +758,7 @@ class GupyAdapter(SiteAdapter):
             if company_questions is None:
                 reason = (
                     "Nenhuma pergunta própria da empresa apareceu nessa vaga, mas o clique "
-                    "final de envio nunca foi verificado ao vivo -- por segurança o JARVIS "
+                    "final de envio nunca foi verificado ao vivo -- por segurança o Noah "
                     "para aqui em vez de inventar qual botão clicar."
                 )
                 return ApplicationPreview(
@@ -797,7 +797,7 @@ class GupyAdapter(SiteAdapter):
             plan = [p for p in plan if not _skip(p)]
 
             # 2026-09-07, "faça a candidatura automatica funcionar para
-            # todas essas vagas pendentes": a question JARVIS can't
+            # todas essas vagas pendentes": a question Noah can't
             # classify at all (or classifies but the local profile has
             # no value for) might still need NOTHING from us -- Gupy's
             # own account-level candidate profile frequently pre-answers
@@ -805,7 +805,7 @@ class GupyAdapter(SiteAdapter):
             # companies. Checked here, once per question, BEFORE the
             # unanswerable gate below, so an already-answered-on-Gupy's-
             # side question never blocks the whole step just because
-            # JARVIS doesn't recognize its text (a real, confirmed-live
+            # Noah doesn't recognize its text (a real, confirmed-live
             # case: Stefanini's referral-institution radio question is
             # unclassified -- see base.py's "pcd" false-positive fix --
             # but was already disabled with a saved answer).
@@ -840,7 +840,7 @@ class GupyAdapter(SiteAdapter):
                 reason = (
                     "Não dá pra completar essa etapa -- pelo menos uma pergunta da empresa não "
                     "tem valor no seu arquivo local (application_profile.env) ou é um tipo o "
-                    "JARVIS não sabe preencher (ex.: data de nascimento). Nada foi preenchido -- "
+                    "Noah não sabe preencher (ex.: data de nascimento). Nada foi preenchido -- "
                     "tudo ou nada, pra não deixar o formulário pela metade."
                 )
                 return ApplicationPreview(
@@ -1245,7 +1245,7 @@ class GupyAdapter(SiteAdapter):
         Used both to gate _fill_company_answer() (nothing to click if
         it's already set) and, separately, by
         continue_application_with_profile() to recognize a question
-        that's already answered on Gupy's side even when JARVIS can't
+        that's already answered on Gupy's side even when Noah can't
         classify it at all (Stefanini's referral-institution radio is a
         real example -- a bare "pcd" match on its text was a confirmed
         false positive removed 2026-08-21, so it's unclassified, but the
@@ -1457,7 +1457,7 @@ class GupyAdapter(SiteAdapter):
             if q.answered:
                 status = f"respondida automaticamente ({q.answer})"
             elif q.is_hard_pii:
-                status = "NÃO respondida -- documento oficial, o JARVIS nunca pede isso"
+                status = "NÃO respondida -- documento oficial, o Noah nunca pede isso"
             else:
                 status = "NÃO respondida -- precisa de você"
             lines.append(f"- {status}: {q.text[:200]}")

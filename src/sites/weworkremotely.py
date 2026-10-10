@@ -36,7 +36,7 @@ Real, confirmed-live findings:
 
 Every listing here is remote by the entire premise of this site --
 same fix as remoteok.py: `region` is prefixed with "Remote" so
-jarvis.sites.job_matching.is_remote()'s keyword matching actually
+sites.job_matching.is_remote()'s keyword matching actually
 catches these (WWR's own region text, e.g. "Anywhere in the World",
 doesn't literally say "remote").
 

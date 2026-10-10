@@ -11,7 +11,7 @@ class FakeWhisperModel:
         self.model_size = model_size
 
     def transcribe(self, audio, language):
-        return [type("Segment", (), {"text": " oi jarvis "})()], None
+        return [type("Segment", (), {"text": " oi noah "})()], None
 
 
 def test_get_model_is_a_cached_singleton(monkeypatch):
@@ -45,4 +45,4 @@ def test_transcribe_uses_model_and_joins_segments(monkeypatch):
 
     result = stt.transcribe(b"\x00\x00" * 100)
 
-    assert result == "oi jarvis"
+    assert result == "oi noah"

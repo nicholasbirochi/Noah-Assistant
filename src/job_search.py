@@ -1,5 +1,5 @@
 """Orchestrates a real job search across the site adapters solid enough
-for an unattended, JARVIS-triggered run (InfoJobs, Catho, Gupy).
+for an unattended, Noah-triggered run (InfoJobs, Catho, Gupy).
 
 Indeed is excluded here because of its active IP block (see
 sites/indeed.py's module docstring -- repeated automated searches
@@ -12,13 +12,13 @@ of unsupervised, repeated use that got Indeed blocked in the first
 place.
 
 Bounded on purpose (_MAX_TERMS, _MAX_RESULTS_PER_TERM): this runs
-synchronously inside a JARVIS tool call (voice or text), so it can't take
+synchronously inside a Noah tool call (voice or text), so it can't take
 the many minutes a truly exhaustive sweep (every derived term, every
 site, deep pagination) would need. For a deeper sweep, call the
 adapters' own search_jobs() directly with higher max_results, same as
 this project's own development sessions have done.
 
-Results split into "local" (jarvis.sites.job_matching.filter_by_location
+Results split into "local" (sites.job_matching.filter_by_location
 -- São Bernardo do Campo/Centro de SP/ABC region, per the user's own
 explicit request) and "remote" (filter_remote -- home office, national
 or international) -- these are NOT mutually exclusive in principle, but
@@ -29,14 +29,14 @@ between the two lists is done.
 is_daily_search_due()/run_daily_search_if_due() (added 2026-08-12): a
 once-a-day automatic refresh, at the user's explicit request. Tracked via
 a single timestamp file (data/job_matches/last_run.json), not a real OS
-scheduler (cron/launchd) -- this only fires while JARVIS's menu-bar app
+scheduler (cron/launchd) -- this only fires while Noah's menu-bar app
 is actually running and checks in periodically (see menubar.py),
 same real-world limit any local, non-daemonized scheduled task has: if
 the Mac is asleep or the app isn't open at all for a whole day, that
 day's refresh is simply skipped, not queued up. Real, worth knowing
 before relying on it: Catho's adapter hardcodes headless=False (see
 catho.py), so a due refresh pops up a real, visible browser window --
-this can happen at any point while JARVIS is running, not just at a
+this can happen at any point while Noah is running, not just at a
 convenient moment.
 """
 
@@ -265,7 +265,7 @@ def run_daily_search_if_due(
 ) -> JobSearchReport | None:
     """Runs and saves a real search only if is_daily_search_due() -- None
     otherwise, so a caller polling this often (e.g. every hour while
-    JARVIS is running, see menubar.py) doesn't re-search needlessly.
+    Noah is running, see menubar.py) doesn't re-search needlessly.
     Updates the "last run" timestamp regardless of whether any site
     actually succeeded -- a site being temporarily down shouldn't make
     this retry every poll for the rest of the day."""

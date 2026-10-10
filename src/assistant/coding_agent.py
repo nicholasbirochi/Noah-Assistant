@@ -15,11 +15,11 @@ deliberate way every other real action in this project was earned, not
 assumed safe by default.
 
 Current model recommendation (2026-09-20, see
-JARVIS_Apple_Private_AI_Cluster_MASTER_v3.zip's own
+NOAH_Apple_Private_AI_Cluster_MASTER_v3.zip's own
 07_MODEL_RUNTIME_STRATEGY.md for the full reasoning, confirmed live):
 `qwen2.5-coder:14b` on the current 24 GB machine (~9 GB, fits
 comfortably). None of the below is hardcoded here -- set
-JARVIS_MODEL_CODING in .env. run_coding_task() refuses to run with no
+NOAH_MODEL_CODING in .env. run_coding_task() refuses to run with no
 model configured rather than silently falling back to config.LOCAL_MODEL
 (the voice assistant's own model, deliberately small/fast for
 conversational latency -- see that constant's own comment -- not sized
@@ -263,7 +263,7 @@ def _recover_tool_call_from_content(content: str, known_tool_names: set[str]) ->
 
 def run_coding_task(task: str, workspace_dir: str, *, model: str | None = None) -> str:
     """Executa uma tarefa de coding, somente leitura, usando o modelo dado
-    (ou, se omitido, o configurado em JARVIS_MODEL_CODING). Retorna a
+    (ou, se omitido, o configurado em NOAH_MODEL_CODING). Retorna a
     resposta final do modelo (texto) -- nunca aplica nenhuma mudança em
     disco.
 
@@ -278,7 +278,7 @@ def run_coding_task(task: str, workspace_dir: str, *, model: str | None = None) 
 
     if not model:
         return (
-            "JARVIS_MODEL_CODING não está configurado -- defina no .env antes "
+            "NOAH_MODEL_CODING não está configurado -- defina no .env antes "
             "de usar o agente de coding (ver assistant/coding_agent.py)."
         )
 

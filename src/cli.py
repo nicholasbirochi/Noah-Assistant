@@ -19,7 +19,7 @@ permanently out of scope there, so there's no linkedin-preview/-apply);
 `python src/cli.py code "tarefa" [--workspace pasta]` asks the local,
 read-only coding agent (assistant/coding_agent.py) to investigate the
 given workspace (default: current directory) -- requires
-JARVIS_MODEL_CODING set in .env first."""
+NOAH_MODEL_CODING set in .env first."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ def _run_indeed(apply_changes: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(prog="jarvis")
+    parser = argparse.ArgumentParser(prog="noah")
     parser.add_argument(
         "--text-only",
         action="store_true",

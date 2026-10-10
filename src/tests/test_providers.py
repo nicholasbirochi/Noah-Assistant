@@ -89,7 +89,7 @@ def test_ollama_provider_structured_chat_parses_json():
 
 def test_ollama_provider_passes_keep_alive_on_chat():
     # Ollama's own default keep-alive (5 minutes) was found to be the real
-    # cost behind slow replies in practice -- any gap between JARVIS
+    # cost behind slow replies in practice -- any gap between Noah
     # activations longer than that forces a full cold model reload. This
     # must be sent on every request, not assumed to be a server setting.
     fake_client = FakeClient(FakeMessage(content="olá", tool_calls=[]))

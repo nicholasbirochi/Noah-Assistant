@@ -415,7 +415,7 @@ class InfoJobsAdapter(SiteAdapter):
     ) -> list[JobListing]:
         """Read-only: runs InfoJobs' own job search and returns whatever it
         gives back, unfiltered -- callers should run the result through
-        jarvis.sites.job_matching.filter_relevant() before treating it as
+        sites.job_matching.filter_relevant() before treating it as
         "matches", since InfoJobs' own search is loose (see module
         docstring). Never touches apply_changes()'s login-writing machinery
         -- entirely separate, read-only flow. max_results is a target, not
@@ -634,7 +634,7 @@ class InfoJobsAdapter(SiteAdapter):
                 reason = (
                     "Cliquei em candidatar-me, mas essa vaga tem uma etapa extra de perguntas próprias "
                     "(a InfoJobs chama de \"Killer Questions\") -- pelo menos uma não tem valor no seu "
-                    "arquivo local ou é um tipo o JARVIS não sabe preencher. Nada foi enviado -- tudo ou "
+                    "arquivo local ou é um tipo o Noah não sabe preencher. Nada foi enviado -- tudo ou "
                     "nada, pra não deixar a candidatura pela metade."
                 )
                 return ApplicationPreview(
@@ -793,7 +793,7 @@ class InfoJobsAdapter(SiteAdapter):
             if q.answered:
                 status = f"respondida automaticamente ({q.answer})"
             elif q.is_hard_pii:
-                status = "NÃO respondida -- documento oficial, o JARVIS nunca pede isso"
+                status = "NÃO respondida -- documento oficial, o Noah nunca pede isso"
             else:
                 status = "NÃO respondida -- precisa de você"
             lines.append(f"- {status}: {q.text[:200]}")

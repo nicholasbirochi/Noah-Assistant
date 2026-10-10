@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>J • A • R • V • I • S</title>
+<title>Noah</title>
 <style>
   :root {
     --bg: #030711;
@@ -124,7 +124,7 @@
     text-shadow: 0 0 10px rgba(127,227,255,0.35);
   }
 
-  /* Charts/analyses (jarvis/finance.py, jarvis/job_search.py) live in
+  /* Charts/analyses (finance.py, job_search.py) live in
      their own side panel, not the center stage -- deliberately separate
      from the sphere/transcript so they never compete for the same
      vertical space. Only ever shown once the window is genuinely
@@ -195,7 +195,7 @@
 </style>
 </head>
 <body data-state="off">
-  <div id="brand">J·A·R·V·I·S</div>
+  <div id="brand">Noah</div>
   <div id="clock">--:--:--</div>
   <div id="core">
     <div id="stage">
@@ -288,7 +288,7 @@ for (let i = 0; i < NUM_PARTICLES; i++) {
 // how strongly nearby particles link up with constellation lines (0 =
 // none). idle/off stay as loose, unconnected dots -- listening/thinking/
 // speaking all connect, at increasing intensity, so the sphere visibly
-// "lights up" more the more actively JARVIS is engaged. thinking gets
+// "lights up" more the more actively Noah is engaged. thinking gets
 // its own distinct feel on top of its violet color: faster rotation and
 // more chaos than listening, like something's actively churning inside,
 // since nothing external is happening yet (no mic input, no voice out).
@@ -415,16 +415,16 @@ function setState(newState, text) {
     transcriptWrap.classList.remove("visible");
   }
   // A chart stays up through the rest of the turn it was shown for (e.g.
-  // while JARVIS speaks the analysis out loud) -- but once the session
+  // while Noah speaks the analysis out loud) -- but once the session
   // actually ends, it shouldn't linger into whatever comes next.
   if (newState === "idle" || newState === "off") {
     renderChart(null, null);
   }
 }
 
-// Real-time charts/analyses (jarvis/finance.py, jarvis/job_search.py) --
+// Real-time charts/analyses (finance.py, job_search.py) --
 // a second, independent event type on the same SSE stream (see
-// jarvis/visualizer/state.py's DataEvent). Rendered as plain Canvas 2D
+// visualizer/state.py's DataEvent). Rendered as plain Canvas 2D
 // charts, same "no new dependency" approach as the sphere above. Lives
 // in its own side panel (#chart-panel), and only ever shown once the
 // window is genuinely maximized/enlarged -- the default small window has

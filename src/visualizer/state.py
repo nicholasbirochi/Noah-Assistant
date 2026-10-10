@@ -48,7 +48,7 @@ Event = Union[StateEvent, DataEvent]
 _lock = threading.Lock()
 _subscribers: list["queue.Queue[Event]"] = []
 # "off" (not "idle") by default -- before the menu bar's toggle has ever
-# been clicked, or once it's turned off, JARVIS genuinely isn't listening
+# been clicked, or once it's turned off, Noah genuinely isn't listening
 # for anything. "idle" specifically means the voice loop IS running and
 # waiting for the wake word -- run_voice_loop only ever publishes "idle",
 # never "off"; only the menu bar (menubar.py) publishes "off",

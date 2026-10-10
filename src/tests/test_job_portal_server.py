@@ -279,7 +279,7 @@ def test_already_applied_listing_shows_badge_and_no_apply_button(monkeypatch, tm
 def test_manually_applied_listing_shows_a_distinct_manual_badge(monkeypatch, tmp_path):
     # 2026-09-07, "me candidatei a todas as vagas de banco e as
     # Fintechs!" -- Nicholas applying by hand is just as real, but the
-    # badge says so distinctly since only source="jarvis" was actually
+    # badge says so distinctly since only source="noah" was actually
     # driven and confirmed by code.
     from sites import application_log
 
@@ -295,7 +295,7 @@ def test_manually_applied_listing_shows_a_distinct_manual_badge(monkeypatch, tmp
     assert "CANDIDATURA ENVIADA (manual)" in body
 
 
-def test_jarvis_applied_listing_does_not_show_the_manual_suffix(monkeypatch, tmp_path):
+def test_noah_applied_listing_does_not_show_the_manual_suffix(monkeypatch, tmp_path):
     from sites import application_log
 
     monkeypatch.setattr(config, "DATA_DIR", tmp_path)

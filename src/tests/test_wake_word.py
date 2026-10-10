@@ -83,7 +83,7 @@ def test_get_wake_word_engine_unknown_raises(monkeypatch):
 # ---- _select_device_index -- see config.PREFERRED_MIC_NAME_SUBSTRING's
 # comment for the real, confirmed bug this guards against: a Bluetooth
 # accessory (an Apple Watch) silently became the system default input
-# device, and JARVIS listened through it instead of the laptop's mic. ----
+# device, and Noah listened through it instead of the laptop's mic. ----
 
 
 def test_select_device_index_prefers_device_matching_configured_substring(monkeypatch):
@@ -303,7 +303,7 @@ def test_check_trigger_include_clap_false_suppresses_a_real_clap(monkeypatch):
     # Real complaint this fixes: clap detection is plain peak-amplitude
     # noise detection, not real voice recognition -- conversation.py's
     # barge-in watcher passes include_clap=False specifically so a random
-    # loud sound can't interrupt JARVIS mid-sentence.
+    # loud sound can't interrupt Noah mid-sentence.
     monkeypatch.setattr(wake_word, "PvRecorder", FakeRecorder)
     engine = FakeEngine(detect_on_call=None)
     clap_detector = FakeClapDetector(detect_on_call=0)

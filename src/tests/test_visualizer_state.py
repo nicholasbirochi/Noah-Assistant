@@ -13,7 +13,7 @@ def _reset(monkeypatch):
 def test_current_defaults_to_off():
     # "off", not "idle" -- idle specifically means the voice loop is
     # running and waiting for the wake word; before anything ever
-    # publishes, JARVIS hasn't been turned on at all.
+    # publishes, Noah hasn't been turned on at all.
     assert state.current() == state.StateEvent(state="off")
 
 

@@ -1,5 +1,5 @@
 """Proactive briefing spoken right after the greeting, when there's
-something pending JARVIS already knows about -- so you don't have to
+something pending Noah already knows about -- so you don't have to
 remember to run `review-proposals` or notice a conflict yourself.
 
 Deliberately built entirely from code-derived facts (counting files/records
@@ -12,7 +12,7 @@ matching the "fala só o necessário" principle.
 Gupy session status is deliberately NOT checked here -- check_session()
 opens a real (headless) browser and navigates a live page, which costs
 real seconds; doing that on every single activation would make greeting
-JARVIS noticeably slower for a check that's rarely actionable in the
+Noah noticeably slower for a check that's rarely actionable in the
 moment. Left for a later, explicitly-throttled version if it's wanted.
 
 Also folds in an occasional daily news headline (assistant/news.py)

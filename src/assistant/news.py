@@ -16,7 +16,7 @@ tag-based on the publisher's side and do occasionally drift (a
 showed up once while checking this), so "sempre sobre dados e IA" is
 enforced here in code, not just trusted to the source.
 
-This is one of the few places in JARVIS that reaches the internet for
+This is one of the few places in Noah that reaches the internet for
 something other than the local Ollama server or a site adapter the user
 explicitly triggered -- deliberately narrow in scope (public headlines
 only, nothing about the user ever sent anywhere) and fails completely

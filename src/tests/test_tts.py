@@ -207,7 +207,7 @@ class FakeStdin:
 
 
 class FakeXttsClient:
-    """Stand-in for jarvis.voice.xtts_client -- named _engine here for
+    """Stand-in for voice.xtts_client -- named _engine here for
     historical reasons, but patches the client module, since that's what
     _speak_via_xtts talks to."""
 

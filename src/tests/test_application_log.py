@@ -34,13 +34,13 @@ def test_record_application_creates_the_data_dir_if_missing(monkeypatch, tmp_pat
     assert application_log.applications_log_path().exists()
 
 
-def test_record_application_defaults_source_to_jarvis(monkeypatch, tmp_path):
+def test_record_application_defaults_source_to_noah(monkeypatch, tmp_path):
     monkeypatch.setattr(config, "DATA_DIR", tmp_path)
 
     application_log.record_application("https://empresa.gupy.io/job/abc", "gupy")
 
     log = application_log.load_applications_log()
-    assert log["https://empresa.gupy.io/job/abc"]["source"] == "jarvis"
+    assert log["https://empresa.gupy.io/job/abc"]["source"] == "noah"
 
 
 def test_record_application_accepts_a_manual_source(monkeypatch, tmp_path):

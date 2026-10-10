@@ -1,4 +1,4 @@
-"""macOS menu bar app: a single click starts/stops JARVIS's voice-listening
+"""macOS menu bar app: a single click starts/stops Noah's voice-listening
 loop, running in a background thread so the menu itself stays responsive.
 
 Launched manually (`python src/cli.py menubar`) -- never auto-starts at
@@ -21,7 +21,7 @@ button instead of this menu -- see _sync_with_reality().
 
 main() refuses to start a second instance (a PID lock file under
 LOCAL_STATE_DIR) -- found live that two real instances (the LaunchAgent's
-+ a manually-opened JARVIS.app) ended up running at once, both fighting
++ a manually-opened Noah.app) ended up running at once, both fighting
 over the microphone, which is exactly the kind of confusing, silent
 failure this project has chased down more than once already.
 """
@@ -61,7 +61,7 @@ def _pid_is_alive(pid: int) -> bool:
 
 
 def _acquire_singleton_lock() -> bool:
-    """Returns True if this process should proceed (no other JARVIS
+    """Returns True if this process should proceed (no other Noah
     instance currently holds the lock), False if one already does --
     caller must exit immediately in that case, not start a second
     wake-word listener/mic stream. A lock left behind by a hard-killed
@@ -69,7 +69,7 @@ def _acquire_singleton_lock() -> bool:
     not just present, so a stale file never blocks a fresh start."""
     from config import LOCAL_STATE_DIR
 
-    lock_path = LOCAL_STATE_DIR / "jarvis.pid"
+    lock_path = LOCAL_STATE_DIR / "noah.pid"
     lock_path.parent.mkdir(parents=True, exist_ok=True)
 
     if lock_path.exists():
@@ -94,7 +94,7 @@ def _notify_already_running() -> None:
             [
                 "osascript",
                 "-e",
-                'display notification "Já tem uma instância rodando." with title "JARVIS"',
+                'display notification "Já tem uma instância rodando." with title "Noah"',
             ],
             check=False,
             timeout=5,
@@ -105,7 +105,7 @@ def _notify_already_running() -> None:
 
 class VoiceLoopController:
     """Owns the background thread running the voice loop. Kept separate
-    from JarvisMenuBarApp so the on/off logic is unit-testable without
+    from NoahMenuBarApp so the on/off logic is unit-testable without
     touching rumps/AppKit at all -- same reasoning as conversation.py's
     _run_active_session extraction."""
 
@@ -140,16 +140,16 @@ class VoiceLoopController:
 
     def notify_system_wake(self) -> None:
         """Called from a real NSWorkspace wake notification (see
-        JarvisMenuBarApp below). No-ops while off -- there's no listener
+        NoahMenuBarApp below). No-ops while off -- there's no listener
         to refresh, and it'll get a fresh one anyway next time start() is
         called."""
         if self._wake_event is not None:
             self._wake_event.set()
 
 
-class JarvisMenuBarApp(rumps.App):
+class NoahMenuBarApp(rumps.App):
     def __init__(self) -> None:
-        super().__init__("JARVIS", icon=ICON_OFF, template=True, quit_button="Sair")
+        super().__init__("Noah", icon=ICON_OFF, template=True, quit_button="Sair")
         # rumps never sets an activation policy, so by default this process
         # (literally "Python", since there's no .app bundle) shows a Dock
         # icon and grabs Cmd-Tab like a regular foreground app. Accessory
@@ -178,7 +178,7 @@ class JarvisMenuBarApp(rumps.App):
         # run_voice_loop now survives most failures on its own (see its
         # docstring), but if it ever does die unrecovered, this is what
         # stops the icon/title from claiming "on" forever afterward --
-        # otherwise there'd be no visible sign JARVIS stopped responding.
+        # otherwise there'd be no visible sign Noah stopped responding.
         rumps.Timer(self._sync_with_reality, 5).start()
         # Real, confirmed failure mode, not speculative: a session ran for
         # hours, the machine went through an actual macOS Clamshell Sleep,
@@ -281,7 +281,7 @@ class JarvisMenuBarApp(rumps.App):
         state.publish("off")
 
     def toggle_visualizer(self, _sender: rumps.MenuItem) -> None:
-        # Works whether or not JARVIS is currently listening -- the HUD
+        # Works whether or not Noah is currently listening -- the HUD
         # just shows "Desligado" until a real state is published.
         from visualizer import native_window
 
@@ -295,10 +295,10 @@ class JarvisMenuBarApp(rumps.App):
 
 def main() -> None:
     if not _acquire_singleton_lock():
-        print("[jarvis] outra instância já está rodando -- encerrando esta.", file=sys.stderr)
+        print("[noah] outra instância já está rodando -- encerrando esta.", file=sys.stderr)
         _notify_already_running()
         return
-    JarvisMenuBarApp().run()
+    NoahMenuBarApp().run()
 
 
 if __name__ == "__main__":

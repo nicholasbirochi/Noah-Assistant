@@ -43,7 +43,7 @@ def ensure_worker_started() -> None:
 
     # Deliberately NOT sys.executable -- confirmed live that it doesn't
     # reliably mean "a python that can import voice.xtts_worker". Under the
-    # packaged JARVIS.app (py2app alias mode), sys.executable resolves to
+    # packaged Noah.app (py2app alias mode), sys.executable resolves to
     # the raw Homebrew framework interpreter (py2app's stub dlopens it
     # directly), which has no idea this project's venv/site-packages .pth
     # file even exist -- the worker subprocess spawned that way failed

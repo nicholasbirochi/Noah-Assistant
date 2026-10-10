@@ -11,7 +11,7 @@ from the worker (voice/xtts_client.py's synthesize_stream()) rather
 than waiting for a whole utterance to finish generating first and only
 then playing a file. Measured live: XTTS synthesis for a short reply takes
 around 5s on this hardware -- streaming means audio starts within about a
-second of that instead of JARVIS sitting silent for the whole thing."""
+second of that instead of Noah sitting silent for the whole thing."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ from config import TTS_ENGINE, TTS_VOICE
 FALLBACK_VOICE = "com.apple.voice.compact.pt-BR.Luciana"
 
 # How often to check stop_event while `say` is running -- fine-grained
-# enough that clicking "Desligar JARVIS" mid-sentence feels instant rather
+# enough that clicking "Desligar Noah" mid-sentence feels instant rather
 # than waiting out however long the current sentence takes.
 _POLL_SECONDS = 0.05
 
@@ -151,7 +151,7 @@ def _speak_via_xtts(text: str, stop_event: threading.Event | None) -> bool:
 def speak(text: str, stop_event: threading.Event | None = None) -> None:
     """Speaks `text` aloud. If `stop_event` is given (the menu bar's
     off-toggle sets it) and fires while this is talking, playback is killed
-    immediately -- "Desligar JARVIS" cuts him off right away instead of
+    immediately -- "Desligar Noah" cuts him off right away instead of
     finishing the current sentence first.
 
     The visualizer transcript shows `text` with markdown stripped (a

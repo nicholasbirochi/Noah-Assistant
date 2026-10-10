@@ -10,7 +10,7 @@ Real, live-confirmed findings:
   (guessed, matching other sites' conventions) do NOT filter results --
   confirmed live, identical 96 links regardless. This adapter therefore
   fetches the full list once and relies entirely on this project's own
-  local relevance filtering (jarvis.sites.job_matching) -- same as every
+  local relevance filtering (sites.job_matching) -- same as every
   other adapter here already does as a second pass, just without a
   first-pass site-side filter to also lean on.
 - No login required -- public page.

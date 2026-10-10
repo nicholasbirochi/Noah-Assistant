@@ -1,4 +1,4 @@
-"""py2app config for JARVIS.app. Don't run `python setup.py py2app`
+"""py2app config for Noah.app. Don't run `python setup.py py2app`
 directly -- use `python scripts/build_app.py`, which drives this with the
 right target directory and handles ad-hoc codesigning afterward.
 
@@ -34,16 +34,16 @@ from setuptools import setup
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
-APP = [str(PROJECT_ROOT / "src" / "scripts" / "jarvis_app_main.py")]
+APP = [str(PROJECT_ROOT / "src" / "scripts" / "noah_app_main.py")]
 
 OPTIONS = {
     "py2app": {
         "alias": True,
         "iconfile": str(PROJECT_ROOT / "src" / "assets" / "AppIcon.icns"),
         "plist": {
-            "CFBundleName": "JARVIS",
-            "CFBundleDisplayName": "JARVIS",
-            "CFBundleIdentifier": "com.nicholasbirochi.jarvis",
+            "CFBundleName": "Noah",
+            "CFBundleDisplayName": "Noah",
+            "CFBundleIdentifier": "com.nicholasbirochi.noah",
             "CFBundleVersion": "1.0",
             "CFBundleShortVersionString": "1.0",
             # No Dock icon/Cmd-Tab -- belt-and-suspenders alongside the
@@ -61,14 +61,14 @@ OPTIONS = {
             # access; a fresh standalone .app binary gets no such
             # inheritance and needs its own explicit request).
             "NSMicrophoneUsageDescription": (
-                "O JARVIS usa o microfone para ouvir a palavra de ativação e seus pedidos."
+                "O Noah usa o microfone para ouvir a palavra de ativação e seus pedidos."
             ),
         },
     }
 }
 
 setup(
-    name="JARVIS",
+    name="Noah",
     app=APP,
     options=OPTIONS,
 )

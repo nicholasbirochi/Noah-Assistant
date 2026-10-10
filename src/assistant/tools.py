@@ -7,7 +7,7 @@ state -- this is a low-throughput personal CLI, so the extra file IO is
 irrelevant and it guarantees tools never see stale state.
 
 prepare_claude_prompt() is how "tell Claude Code to do X" by voice
-actually reaches Claude Code -- there's no API for JARVIS to inject text
+actually reaches Claude Code -- there's no API for Noah to inject text
 into a running Claude Code conversation, so it copies a prompt to the
 clipboard (and logs it locally as a durability net) for the user to
 paste themselves, wherever/whenever they choose. That choice is
@@ -16,10 +16,10 @@ even about is Nicholas's call, not something to guess.
 
 ask_local_coding_agent() is the read-only counterpart, added once
 assistant/coding_agent.py existed: a real investigation of THIS
-project's own code (JARVIS's PROJECT_ROOT, fixed -- unlike
+project's own code (Noah's PROJECT_ROOT, fixed -- unlike
 prepare_claude_prompt, it never guesses at "which project" because it
 only ever looks at this one), answered by a separate local model
-(JARVIS_MODEL_CODING) actually reading files/searching/running tests,
+(NOAH_MODEL_CODING) actually reading files/searching/running tests,
 not the small, fast model this conversation itself runs on.
 
 add_roadmap_item()/add_reminder()/list_reminders() are the two other
@@ -56,7 +56,7 @@ sites/application_profile.py -- 2026-08-13, Nicholas explicitly
 confirmed (after being told this reverses this project's original
 "never capture RG/CPF, even incidentally" rule) that he wants a local,
 never-synced file (LOCAL_STATE_DIR/application_profile.env) where he
-provides his own RG/CPF/salary expectation/estado civil, so JARVIS can
+provides his own RG/CPF/salary expectation/estado civil, so Noah can
 fill company-specific screening questions that ask for exactly those
 fields. All-or-nothing per step (refuses to partially fill a form), and
 the real values never appear in a returned ApplicationQuestion, evidence
@@ -117,7 +117,7 @@ def update_resume_field(path: str, value: str) -> str:
 
 
 def list_supported_sites() -> str:
-    """Lista os sites de vagas que o JARVIS já sabe (ou vai saber) atualizar."""
+    """Lista os sites de vagas que o Noah já sabe (ou vai saber) atualizar."""
     return ", ".join(SUPPORTED_SITES)
 
 
@@ -139,7 +139,7 @@ def push_resume_to_site(site: str) -> str:
 def prepare_claude_prompt(prompt: str) -> str:
     """Copia um prompt para a área de transferência, pronto para colar numa conversa com o Claude Code.
 
-    Use quando o Nicholas pedir para mudar algo no código do JARVIS, em outro
+    Use quando o Nicholas pedir para mudar algo no código do Noah, em outro
     projeto, ou quiser passar um pedido para o Claude Code implementar. Escreva
     você mesmo o prompt completo e bem estruturado, com todo o contexto
     necessário -- não apenas repita a fala dele ao pé da letra, capriche como se
@@ -161,8 +161,8 @@ def prepare_claude_prompt(prompt: str) -> str:
 
 def ask_local_coding_agent(task: str) -> str:
     """Faz uma pergunta ou pede uma investigação, SOMENTE LEITURA, sobre o
-    código do próprio JARVIS ao agente de coding local (assistant/coding_agent.py,
-    modelo separado configurado em JARVIS_MODEL_CODING).
+    código do próprio Noah ao agente de coding local (assistant/coding_agent.py,
+    modelo separado configurado em NOAH_MODEL_CODING).
 
     Use para perguntas que exigem olhar o código de verdade (o que um
     arquivo faz, onde algo é definido, se os testes passam, o que mudou)
@@ -190,7 +190,7 @@ def add_roadmap_item(description: str) -> str:
     """Adiciona um item à seção "## Roadmap" do README.md deste projeto.
 
     Use quando o Nicholas pedir para anotar uma ideia futura, uma
-    melhoria pendente ou algo para revisitar depois no próprio JARVIS --
+    melhoria pendente ou algo para revisitar depois no próprio Noah --
     diferente de prepare_claude_prompt, que é para pedir uma mudança já,
     isso só registra a ideia para depois.
 
@@ -404,7 +404,7 @@ def setup_application_profile() -> str:
     preenche RG, órgão/estado de emissão do RG, CPF, nome da mãe, nome
     do pai, naturalidade, pretensão salarial (estágio/júnior/pleno,
     separadas) e estado civil -- nunca sincronizado, nunca versionado,
-    lido só localmente pelo JARVIS.
+    lido só localmente pelo Noah.
 
     Use quando ele pedir para configurar/criar o arquivo de dados para
     candidaturas automáticas.
@@ -460,7 +460,7 @@ def open_job_portal() -> str:
             except Exception:
                 pass  # best-effort -- the page's own empty state already tells Nicholas nothing loaded yet
 
-        threading.Thread(target=_refresh_in_background, daemon=True, name="jarvis-job-portal-first-search").start()
+        threading.Thread(target=_refresh_in_background, daemon=True, name="noah-job-portal-first-search").start()
         return (
             f"Abri {page_url} no seu navegador -- já dá pra acessar, mas a primeira busca "
             "ainda está rodando em segundo plano (pode levar uns minutos). A página se "

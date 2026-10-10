@@ -165,7 +165,7 @@ def test_ask_local_coding_agent_delegates_with_project_root_as_workspace(monkeyp
 
     assert result == "resposta real do agente"
     assert captured["task"] == "o que o config.py faz?"
-    # Fixed to the JARVIS repo's own src/ -- unlike prepare_claude_prompt,
+    # Fixed to the Noah repo's own src/ -- unlike prepare_claude_prompt,
     # never guesses at "which project" the user means. src/, not
     # PROJECT_ROOT itself, matching this project's own convention that
     # every real path (assistant/, sites/, config.py...) is relative to

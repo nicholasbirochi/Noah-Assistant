@@ -41,7 +41,7 @@ class OllamaProvider:
         # started. Ollama's own default (5 minutes) was found to be the
         # dominant cost behind slow replies in practice: a cold model load
         # measured ~30s vs ~1s warm for the same prompt, and any real gap
-        # between JARVIS activations (a coffee break, a meeting) is enough
+        # between Noah activations (a coffee break, a meeting) is enough
         # to fall out of that 5-minute window on every single session.
         self._keep_alive = keep_alive
 

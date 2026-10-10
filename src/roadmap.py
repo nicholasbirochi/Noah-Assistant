@@ -1,4 +1,4 @@
-"""Lets JARVIS add an idea to this project's own README.md "## Roadmap"
+"""Lets Noah add an idea to this project's own README.md "## Roadmap"
 section by voice/text, instead of that only being something a human (or
 Claude Code) edits directly. Deliberately narrow: appends a plain bullet
 to an existing section in a real, git-tracked file -- never rewrites

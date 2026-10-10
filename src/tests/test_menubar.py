@@ -4,7 +4,7 @@ import threading
 import time
 
 import config
-from menubar import JarvisMenuBarApp, VoiceLoopController, _acquire_singleton_lock, _pid_is_alive
+from menubar import NoahMenuBarApp, VoiceLoopController, _acquire_singleton_lock, _pid_is_alive
 
 
 def _cooperative_target(stop_event: threading.Event, wake_event: threading.Event | None = None) -> None:
@@ -102,7 +102,7 @@ def test_restart_after_stop_runs_again():
 
 
 # ---- singleton lock -- guards against the real bug this session found:
-# two real instances (LaunchAgent + a manually-opened JARVIS.app) running
+# two real instances (LaunchAgent + a manually-opened Noah.app) running
 # at once, both fighting over the microphone ----
 
 
@@ -119,7 +119,7 @@ def test_acquire_singleton_lock_succeeds_when_no_lock_file_exists(tmp_path, monk
     monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
 
     assert _acquire_singleton_lock() is True
-    assert (tmp_path / "jarvis.pid").read_text().strip() == str(os.getpid())
+    assert (tmp_path / "noah.pid").read_text().strip() == str(os.getpid())
 
 
 def test_acquire_singleton_lock_fails_when_another_live_process_holds_it(tmp_path, monkeypatch):
@@ -127,7 +127,7 @@ def test_acquire_singleton_lock_fails_when_another_live_process_holds_it(tmp_pat
     # A real, definitely-alive process that isn't us.
     proc = subprocess.Popen(["sleep", "30"])
     try:
-        (tmp_path / "jarvis.pid").write_text(str(proc.pid), encoding="utf-8")
+        (tmp_path / "noah.pid").write_text(str(proc.pid), encoding="utf-8")
 
         assert _acquire_singleton_lock() is False
     finally:
@@ -137,15 +137,15 @@ def test_acquire_singleton_lock_fails_when_another_live_process_holds_it(tmp_pat
 
 def test_acquire_singleton_lock_succeeds_when_lock_is_stale(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
-    (tmp_path / "jarvis.pid").write_text(str(2**30), encoding="utf-8")  # dead PID
+    (tmp_path / "noah.pid").write_text(str(2**30), encoding="utf-8")  # dead PID
 
     assert _acquire_singleton_lock() is True
-    assert (tmp_path / "jarvis.pid").read_text().strip() == str(os.getpid())
+    assert (tmp_path / "noah.pid").read_text().strip() == str(os.getpid())
 
 
 def test_acquire_singleton_lock_succeeds_when_file_is_corrupt(tmp_path, monkeypatch):
     monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
-    (tmp_path / "jarvis.pid").write_text("not-a-pid", encoding="utf-8")
+    (tmp_path / "noah.pid").write_text("not-a-pid", encoding="utf-8")
 
     assert _acquire_singleton_lock() is True
 
@@ -159,7 +159,7 @@ def test_run_daily_job_search_worker_calls_run_daily_search_if_due_with_the_load
     monkeypatch.setattr("resume.store.load", lambda: fake_resume)
     monkeypatch.setattr("job_search.run_daily_search_if_due", lambda resume: calls.append(resume))
 
-    JarvisMenuBarApp._run_daily_job_search_worker()
+    NoahMenuBarApp._run_daily_job_search_worker()
 
     assert calls == [fake_resume]
 
@@ -174,7 +174,7 @@ def test_run_daily_job_search_worker_swallows_exceptions(monkeypatch):
 
     monkeypatch.setattr("job_search.run_daily_search_if_due", _boom)
 
-    JarvisMenuBarApp._run_daily_job_search_worker()  # must not raise
+    NoahMenuBarApp._run_daily_job_search_worker()  # must not raise
 
 
 def test_refresh_job_portal_worker_calls_refresh_if_due_with_the_loaded_resume(monkeypatch):
@@ -185,7 +185,7 @@ def test_refresh_job_portal_worker_calls_refresh_if_due_with_the_loaded_resume(m
     monkeypatch.setattr("resume.store.load", lambda: fake_resume)
     monkeypatch.setattr("job_portal.server.refresh_if_due", lambda resume: calls.append(resume))
 
-    JarvisMenuBarApp._refresh_job_portal_worker()
+    NoahMenuBarApp._refresh_job_portal_worker()
 
     assert calls == [fake_resume]
 
@@ -198,4 +198,4 @@ def test_refresh_job_portal_worker_swallows_exceptions(monkeypatch):
 
     monkeypatch.setattr("job_portal.server.refresh_if_due", _boom)
 
-    JarvisMenuBarApp._refresh_job_portal_worker()  # must not raise
+    NoahMenuBarApp._refresh_job_portal_worker()  # must not raise
