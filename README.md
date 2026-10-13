@@ -1,5 +1,9 @@
 # Noah
 
+![Interface do Noah com esfera de partículas e estado Falando](docs/images/noah-interface.png)
+
+*Prévia da interface real do HUD, renderizada com estado “Falando” e uma frase de demonstração.*
+
 Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md) e
 [o mapa do projeto](.ai/PROJECT_MAP.md).
 
