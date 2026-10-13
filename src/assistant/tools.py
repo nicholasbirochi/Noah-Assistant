@@ -24,7 +24,7 @@ not the small, fast model this conversation itself runs on.
 
 add_roadmap_item()/add_reminder()/list_reminders() are the two other
 non-résumé tools -- respectively roadmap.py (appends to this
-project's own README.md "## Roadmap" section) and reminders.py
+project's own readme.md "## Roadmap" section) and reminders.py
 (a flat local JSON note list). Both act directly, no clipboard hop --
 unlike a real code change, appending one line to a list needs no human
 review step to be safe.
@@ -178,7 +178,7 @@ def ask_local_coding_agent(task: str) -> str:
     from config import PROJECT_ROOT
 
     # PROJECT_ROOT is the repo root, but this project's own convention
-    # (see README.md's "Arquitetura") treats every real path as relative
+    # (see readme.md's "Arquitetura") treats every real path as relative
     # to src/ -- "assistant/", "sites/config.py", etc. Real bug found
     # live: pointing the workspace at PROJECT_ROOT made the agent report
     # "assistant/ não existe" for a question about assistant/*.py, since
@@ -187,7 +187,7 @@ def ask_local_coding_agent(task: str) -> str:
 
 
 def add_roadmap_item(description: str) -> str:
-    """Adiciona um item à seção "## Roadmap" do README.md deste projeto.
+    """Adiciona um item à seção "## Roadmap" do readme.md deste projeto.
 
     Use quando o Nicholas pedir para anotar uma ideia futura, uma
     melhoria pendente ou algo para revisitar depois no próprio Noah --
