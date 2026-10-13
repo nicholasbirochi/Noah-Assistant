@@ -10,14 +10,7 @@ Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md) e
 Noah e o unico nome do produto. A ativacao padrao usa duas palmas.
 Ativacao falada exige um detector Noah local, treinado e validado.
 
-Assistente de voz pessoal, local e adaptável -- criado pelo Nicholas, mas pensado desde
-o início pra qualquer pessoa rodar sua própria instância (nome, tratamento e currículo
-são configuráveis; ver "Rodando para outra pessoa" no Setup abaixo). Ativado por wake
-word sem depender de nenhuma conta/chave externa, conversa em português por voz, e
-mantém um perfil profissional único e estruturado (`src/data/resume.json`, dado local de
-cada pessoa, nunca versionado -- ver abaixo) com procedência (evidência/fonte) por fato,
-que futuramente será publicado em sites de vagas (LinkedIn, Gupy, Catho, InfoJobs,
-Vagas.com, Indeed, Academia do Universitário e outros via adaptadores).
+Assistente de voz local para conversar em português e organizar um perfil profissional com a origem de cada informação. A ativação padrão usa duas palmas; a ativação por voz depende de um detector local treinado e validado. Nome, tratamento e dados pessoais são configuráveis, para que cada pessoa mantenha sua própria instância.
 
 100% local: o "cérebro" roda via [Ollama](https://ollama.com) na própria máquina —
 nenhum dado do currículo ou da conversa sai do Mac, sem API paga, sem chave de nenhum
@@ -463,3 +456,7 @@ antes da coleta, independente de onde `pytest` foi chamado.
 - MLXProvider como opção de menor latência.
 - Itens extras no menu bar (abrir logs/perfil, revisar propostas pendentes direto do
   menu -- hoje só tem liga/desliga).
+
+## Licença
+
+Código e documentação autorais sob [MIT](license).

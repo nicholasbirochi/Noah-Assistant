@@ -1,4 +1,4 @@
-"""Lets Noah add an idea to this project's own README.md "## Roadmap"
+"""Lets Noah add an idea to this project's own readme.md "## Roadmap"
 section by voice/text, instead of that only being something a human (or
 Claude Code) edits directly. Deliberately narrow: appends a plain bullet
 to an existing section in a real, git-tracked file -- never rewrites
@@ -17,14 +17,14 @@ class RoadmapSectionMissing(Exception):
 
 
 def add_item(description: str, *, readme_path=None) -> None:
-    """Appends `description` as a new bullet at the end of README.md's
+    """Appends `description` as a new bullet at the end of readme.md's
     Roadmap section (right before the next "## " heading, or end of file
     if Roadmap is the last section). Raises RoadmapSectionMissing if the
     heading isn't found, rather than guessing where to put it."""
     if readme_path is None:
         from config import PROJECT_ROOT
 
-        readme_path = PROJECT_ROOT / "README.md"
+        readme_path = PROJECT_ROOT / "readme.md"
 
     text = readme_path.read_text(encoding="utf-8")
     lines = text.split("\n")

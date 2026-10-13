@@ -46,7 +46,7 @@ BACKUPS_DIR = DATA_DIR / "backups"
 REVIEW_DIR = DATA_DIR / "review"
 
 # Local LLM served by Ollama (https://ollama.com) -- no cloud API, no API key.
-# `ollama pull` the model once via CLI before first use; see README.md.
+# `ollama pull` the model once via CLI before first use; see readme.md.
 # LLM_PROVIDER selects the LocalLLMProvider implementation (assistant/providers.py);
 # only "ollama" exists today, kept configurable so a future MLXProvider slots in cleanly.
 LLM_PROVIDER = os.environ.get("NOAH_LLM_PROVIDER", "ollama")

@@ -169,7 +169,7 @@ def test_ask_local_coding_agent_delegates_with_project_root_as_workspace(monkeyp
     # never guesses at "which project" the user means. src/, not
     # PROJECT_ROOT itself, matching this project's own convention that
     # every real path (assistant/, sites/, config.py...) is relative to
-    # src/ -- see README.md's "Arquitetura" section.
+    # src/ -- see readme.md's "Arquitetura" section.
     assert captured["workspace_dir"] == str(config.PROJECT_ROOT / "src")
 
 
@@ -179,7 +179,7 @@ def test_ask_local_coding_agent_delegates_with_project_root_as_workspace(monkeyp
 def test_add_roadmap_item_appends_to_readme(monkeypatch, tmp_path):
     import config
 
-    readme = tmp_path / "README.md"
+    readme = tmp_path / "readme.md"
     readme.write_text("# Projeto\n\n## Roadmap\n\n- Item existente.\n", encoding="utf-8")
     monkeypatch.setattr(config, "PROJECT_ROOT", tmp_path)
 

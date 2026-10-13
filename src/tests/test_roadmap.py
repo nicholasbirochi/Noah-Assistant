@@ -30,7 +30,7 @@ MIT.
 
 
 def test_add_item_appends_after_last_bullet(tmp_path):
-    readme = tmp_path / "README.md"
+    readme = tmp_path / "readme.md"
     readme.write_text(SAMPLE_README, encoding="utf-8")
 
     add_item("Ideia nova", readme_path=readme)
@@ -47,7 +47,7 @@ def test_add_item_appends_after_last_bullet(tmp_path):
 
 
 def test_add_item_inserts_before_a_later_section_not_at_end_of_file(tmp_path):
-    readme = tmp_path / "README.md"
+    readme = tmp_path / "readme.md"
     readme.write_text(SAMPLE_README_WITH_TRAILING_SECTION, encoding="utf-8")
 
     add_item("Segunda ideia", readme_path=readme)
@@ -57,7 +57,7 @@ def test_add_item_inserts_before_a_later_section_not_at_end_of_file(tmp_path):
 
 
 def test_add_item_raises_when_roadmap_heading_missing(tmp_path):
-    readme = tmp_path / "README.md"
+    readme = tmp_path / "readme.md"
     readme.write_text("# Projeto sem roadmap\n", encoding="utf-8")
 
     with pytest.raises(RoadmapSectionMissing):
@@ -65,7 +65,7 @@ def test_add_item_raises_when_roadmap_heading_missing(tmp_path):
 
 
 def test_add_item_preserves_a_trailing_newline(tmp_path):
-    readme = tmp_path / "README.md"
+    readme = tmp_path / "readme.md"
     readme.write_text(SAMPLE_README, encoding="utf-8")
 
     add_item("Mais uma", readme_path=readme)
