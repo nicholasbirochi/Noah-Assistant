@@ -301,3 +301,27 @@ SITES_HEADLESS = os.environ.get("SITES_HEADLESS", "true").lower() != "false"
 # though the write itself never touches them). Same LOCAL_STATE_DIR tree as
 # the session cookies, for the same reason.
 SITES_EVIDENCE_DIR = SITES_STATE_DIR / "evidence"
+
+# Second brain ("Cérebro") -- the user's existing Obsidian vault together with
+# its own self-contained, stdlib-only CLI (.cerebro/cerebro.py). Noah NEVER
+# reimplements that tool or keeps a parallel knowledge base: assistant/cerebro.py
+# shells out to this exact script for every read (buscar/contexto) and every
+# write (gravar), so the vault's own validation, allowed-root rules, secret
+# scanning and SHA-256 conflict protection stay the single source of truth.
+# CEREBRO_DIR is the vault root; the script lives at <vault>/.cerebro/cerebro.py
+# by default, but is overridable on its own (NOAH_CEREBRO_SCRIPT) precisely so
+# the tests can run the REAL script against a throwaway temp vault (cerebro.py
+# honours a CEREBRO_DIR env var that decouples the vault from where the script
+# sits). Defaults are Nicholas's own -- same multi-user reasoning as
+# SOURCE_RESUME_DOCS/_ONEDRIVE_ROOT above: a second person points
+# NOAH_CEREBRO_DIR at their own vault without touching code. The path has both
+# spaces and an accent on purpose (the real vault is "Documents/Cérebro"), and
+# every call passes it as a list argument (never through a shell), so spaces
+# and accents are handled without quoting. Writes are never performed by the
+# model on its own -- see assistant/cerebro.py and `cli.py cerebro-registrar`.
+CEREBRO_DIR = Path(
+    os.environ.get("NOAH_CEREBRO_DIR", "/Users/nicholasbirochi/Documents/Cérebro")
+).expanduser()
+CEREBRO_SCRIPT = Path(
+    os.environ.get("NOAH_CEREBRO_SCRIPT", str(CEREBRO_DIR / ".cerebro" / "cerebro.py"))
+).expanduser()

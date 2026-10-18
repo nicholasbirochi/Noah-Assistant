@@ -6,6 +6,7 @@ can be dropped in via get_provider() without touching any caller."""
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -24,6 +25,42 @@ class ToolCallRequest:
 class ProviderResponse:
     content: str
     tool_calls: list[ToolCallRequest] = field(default_factory=list)
+
+
+def recover_tool_call_from_content(content: str, known_tool_names: set[str]) -> ToolCallRequest | None:
+    """Real, live-observed gap (2026-09-20, qwen2.5-coder via Ollama): the model
+    correctly understood a tool-use task and picked the right tool, but this
+    tag's chat template never populated Ollama's own structured
+    `message.tool_calls` field -- it wrote the call out as plain JSON text in
+    the ordinary content instead (confirmed live, reproducibly). Silently
+    treating that JSON blob as the model's final answer is a real, confirmed
+    failure mode, not a hypothetical one.
+
+    Deliberately conservative: only recovers a call when the parsed object is
+    unambiguously {"name", "arguments"}-shaped AND the name is in the set of
+    names the CALLER declared eligible -- never guesses at a call for an unknown
+    or hallucinated tool name. The eligible set is the caller's safety lever:
+    the read-only coding agent (coding_agent.py) passes its whole tool surface,
+    but the voice/text conversation (llm_client.py) passes ONLY its read-only
+    tools, so a loose JSON blob the model merely wrote as prose can never fire a
+    data-mutating action (update_resume_field, continue_job_application, ...).
+
+    Lives here, not in coding_agent.py, so both tool loops share one
+    implementation (it returns a ToolCallRequest, defined just above)."""
+    stripped = content.strip()
+    fenced = re.match(r"^```(?:json)?\s*(.*?)\s*```$", stripped, re.DOTALL)
+    if fenced:
+        stripped = fenced.group(1).strip()
+    try:
+        parsed = json.loads(stripped)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    name, arguments = parsed.get("name"), parsed.get("arguments")
+    if name not in known_tool_names or not isinstance(arguments, dict):
+        return None
+    return ToolCallRequest(name=name, arguments=arguments)
 
 
 class LocalLLMProvider(Protocol):
