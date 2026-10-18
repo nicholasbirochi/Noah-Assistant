@@ -19,7 +19,11 @@ permanently out of scope there, so there's no linkedin-preview/-apply);
 `python src/cli.py code "tarefa" [--workspace pasta]` asks the local,
 read-only coding agent (assistant/coding_agent.py) to investigate the
 given workspace (default: current directory) -- requires
-NOAH_MODEL_CODING set in .env first."""
+NOAH_MODEL_CODING set in .env first;
+`python src/cli.py cerebro-registrar --destino <nota.md> --draft <arquivo>
+[--substituir]` reviews a staged note and, after an explicit confirmation,
+writes it to the second brain through its own tool (assistant/cerebro.py) --
+this is the real human authorization a Cérebro write requires."""
 
 from __future__ import annotations
 
@@ -161,6 +165,15 @@ def main() -> None:
     code_parser.add_argument(
         "--workspace", default=".", help="Pasta a auditar, relativa ou absoluta (padrão: diretório atual)."
     )
+    cerebro_parser = subparsers.add_parser(
+        "cerebro-registrar",
+        help="Revisa um rascunho de nota e, após confirmação explícita, grava no Cérebro (assistant/cerebro.py).",
+    )
+    cerebro_parser.add_argument("--destino", required=True, help="Caminho relativo da nota .md dentro do Cérebro.")
+    cerebro_parser.add_argument("--draft", required=True, help="Arquivo local com o conteúdo da nota a gravar.")
+    cerebro_parser.add_argument(
+        "--substituir", action="store_true", help="Substitui uma nota existente (protegido por SHA-256)."
+    )
     args = parser.parse_args()
 
     if args.command == "index":
@@ -252,6 +265,32 @@ def main() -> None:
         from assistant.coding_agent import run_coding_task
 
         print(run_coding_task(args.task, args.workspace))
+        return
+
+    if args.command == "cerebro-registrar":
+        # The real human authorization for a Cérebro write -- the model can
+        # only ever stage a draft (tools.prepare_cerebro_note); the write
+        # itself happens here, after a person reviews the content and types
+        # "s". Same confirm shape as _run_site's apply step above.
+        from pathlib import Path
+
+        from assistant import cerebro
+
+        try:
+            conteudo = Path(args.draft).read_text(encoding="utf-8")
+        except OSError as exc:
+            print(f"Não consegui ler o rascunho: {exc}")
+            return
+        print(f"Destino no Cérebro: {args.destino}")
+        print("--- conteúdo da nota ---")
+        print(conteudo)
+        print("--- fim do conteúdo ---")
+        verbo = "substituir" if args.substituir else "gravar"
+        answer = input(f"Confirmar e {verbo} no Cérebro de verdade? [s/N] ").strip().lower()
+        if not answer.startswith("s"):
+            print("Cancelado -- nada foi gravado.")
+            return
+        print(cerebro.registrar(args.destino, conteudo, autorizado=True, substituir=args.substituir))
         return
 
     from assistant.conversation import run_text_loop, run_voice_loop
