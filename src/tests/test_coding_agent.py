@@ -1,5 +1,6 @@
 import copy
 import subprocess
+import sys
 
 import pytest
 
@@ -213,7 +214,7 @@ def test_make_tools_run_tests_invokes_pytest_scoped_to_workspace(tmp_path, monke
 
     result = run_tests()
 
-    assert captured["args"][:3] == ["python3", "-m", "pytest"]
+    assert captured["args"][:3] == [sys.executable, "-m", "pytest"]
     assert captured["cwd"] == tmp_path
     assert "1 passed" in result
 
@@ -223,6 +224,19 @@ def test_make_tools_run_tests_blocks_path_traversal_in_target(tmp_path):
 
     with pytest.raises(WorkspaceViolation):
         run_tests(target="../../../etc")
+
+
+def test_make_tools_run_tests_hints_when_target_missing(tmp_path, monkeypatch):
+    # Alvo presumido que não existe: não roda pytest num caminho inexistente --
+    # devolve uma dica para descobrir a estrutura (sem desistir).
+    monkeypatch.setattr(coding_agent.subprocess, "run",
+                        lambda *a, **k: pytest.fail("não deve rodar pytest num caminho inexistente"))
+    run_tests = _tools_by_name(tmp_path)["run_tests"]
+
+    result = run_tests(target="tests")
+
+    assert "não encontrado" in result.lower()
+    assert "sem 'target'" in result.lower() or "list_directory" in result
 
 
 def test_make_tools_search_text_finds_a_real_match(tmp_path):
@@ -301,6 +315,136 @@ def test_make_tools_git_diff_blocks_path_traversal(tmp_path):
         git_diff(path="../../etc")
 
 
+def test_make_tools_propose_edit_valid_proposal_generates_applicable_diff(tmp_path):
+    # Proposta válida: trecho único, lido do arquivo real. O programa gera o diff
+    # mecanicamente e ele aplica de verdade com `git apply` (validação de ponta a
+    # ponta: a numeração/contexto do hunk têm de bater byte a byte com o arquivo).
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Teste"], cwd=tmp_path, check=True)
+    (tmp_path / "m.py").write_text("def soma(a, b):\n    return a - b\n", encoding="utf-8")
+    subprocess.run(["git", "add", "m.py"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "inicial"], cwd=tmp_path, check=True)
+    propose_edit = _tools_by_name(tmp_path)["propose_edit"]
+
+    diff = propose_edit("m.py", "    return a - b\n", "    return a + b\n")
+
+    assert diff.startswith("--- a/m.py")
+    assert "+++ b/m.py" in diff
+    assert "-    return a - b" in diff
+    assert "+    return a + b" in diff
+    # O programa nunca escreveu nada: o arquivo em disco segue o original.
+    assert (tmp_path / "m.py").read_text(encoding="utf-8") == "def soma(a, b):\n    return a - b\n"
+    # E o diff gerado realmente aplica.
+    apply = subprocess.run(
+        ["git", "apply", "--check"], cwd=tmp_path, input=diff, capture_output=True, text=True
+    )
+    assert apply.returncode == 0, apply.stderr
+
+
+def test_make_tools_propose_edit_rejects_snippet_not_in_file(tmp_path):
+    # Trecho inexistente (provavelmente citado de memória, não lido do arquivo):
+    # rejeita e manda reler, nunca gera um diff inventado.
+    (tmp_path / "m.py").write_text("x = 1\n", encoding="utf-8")
+    propose_edit = _tools_by_name(tmp_path)["propose_edit"]
+
+    result = propose_edit("m.py", "x = 99\n", "x = 2\n")
+
+    assert "não encontrado" in result.lower()
+    assert "---" not in result  # não é um diff
+
+
+def test_make_tools_propose_edit_rejects_ambiguous_snippet(tmp_path):
+    # Trecho ambíguo: aparece mais de uma vez. Sem contexto único, um diff
+    # mecânico mudaria o lugar errado -- então rejeita e pede mais contexto.
+    (tmp_path / "m.py").write_text("v = 0\nv = 0\n", encoding="utf-8")
+    propose_edit = _tools_by_name(tmp_path)["propose_edit"]
+
+    result = propose_edit("m.py", "v = 0\n", "v = 1\n")
+
+    assert "ambíguo" in result.lower()
+    assert "2 vezes" in result
+
+
+def test_make_tools_propose_edit_rejects_missing_file(tmp_path):
+    propose_edit = _tools_by_name(tmp_path)["propose_edit"]
+
+    result = propose_edit("nao_existe.py", "a\n", "b\n")
+
+    assert "não encontrado" in result.lower()
+
+
+def test_make_tools_propose_edit_blocks_path_traversal(tmp_path):
+    # Caminho inválido (fora do workspace): mesma deny-by-default das outras
+    # ferramentas -- levanta WorkspaceViolation, nunca lê/propõe fora da raiz.
+    propose_edit = _tools_by_name(tmp_path)["propose_edit"]
+
+    with pytest.raises(WorkspaceViolation):
+        propose_edit("../../etc/passwd", "root", "hacked")
+
+
+def test_make_tools_propose_edit_rejects_noop_replacement(tmp_path):
+    (tmp_path / "m.py").write_text("x = 1\n", encoding="utf-8")
+    propose_edit = _tools_by_name(tmp_path)["propose_edit"]
+
+    result = propose_edit("m.py", "x = 1\n", "x = 1\n")
+
+    assert "igual ao original" in result.lower()
+
+
+def test_gerar_diff_unificado_matches_git_apply_for_multiline_change(tmp_path):
+    # O helper em si: dado conteúdo antigo e novo, produz um diff que aplica.
+    subprocess.run(["git", "init", "-q"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.email", "t@example.com"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "config", "user.name", "Teste"], cwd=tmp_path, check=True)
+    antigo = "linha 1\nlinha 2\nlinha 3\n"
+    (tmp_path / "f.txt").write_text(antigo, encoding="utf-8")
+    subprocess.run(["git", "add", "f.txt"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "x"], cwd=tmp_path, check=True)
+    novo = "linha 1\nlinha DOIS\nlinha 3\n"
+
+    diff = coding_agent._gerar_diff_unificado("f.txt", antigo, novo)
+
+    apply = subprocess.run(
+        ["git", "apply", "--check"], cwd=tmp_path, input=diff, capture_output=True, text=True
+    )
+    assert apply.returncode == 0, apply.stderr
+
+
+def test_run_coding_task_executes_propose_edit_tool_and_returns_the_generated_diff(monkeypatch, tmp_path):
+    # Fluxo completo no loop: o modelo lê o arquivo e chama propose_edit; o diff
+    # gerado pelo PROGRAMA volta como resultado de ferramenta e o modelo o
+    # apresenta. (Aqui o provider é roteirizado -- isto testa a fiação, não o
+    # modelo real; a avaliação com o modelo real é feita à parte.)
+    (tmp_path / "m.py").write_text("x = 1\n", encoding="utf-8")
+    provider = ScriptedProvider(
+        [
+            ProviderResponse(
+                content="", tool_calls=[ToolCallRequest(name="read_file", arguments={"path": "m.py"})]
+            ),
+            ProviderResponse(
+                content="",
+                tool_calls=[
+                    ToolCallRequest(
+                        name="propose_edit",
+                        arguments={"path": "m.py", "original": "x = 1\n", "replacement": "x = 2\n"},
+                    )
+                ],
+            ),
+            ProviderResponse(content="Segue o diff proposto."),
+        ]
+    )
+    _patch_provider(monkeypatch, provider)
+
+    result = run_coding_task("troque x para 2", str(tmp_path))
+
+    assert result == "Segue o diff proposto."
+    tool_result_msg = provider.calls[-1][-1]
+    assert tool_result_msg["role"] == "tool" and tool_result_msg["tool_name"] == "propose_edit"
+    assert "--- a/m.py" in tool_result_msg["content"]
+    assert "+x = 2" in tool_result_msg["content"]
+
+
 def test_run_coding_task_recovers_a_real_tool_call_written_as_plain_json_content(monkeypatch, tmp_path):
     # Real, live-observed gap (qwen2.5-coder:14b via Ollama, 2026-09-20):
     # the model picks the right tool but this tag's chat template never
@@ -353,3 +497,62 @@ def test_recover_tool_call_from_content_ignores_json_for_an_unknown_tool():
 def test_recover_tool_call_from_content_ignores_json_missing_arguments_shape():
     content = '{"name": "read_file", "arguments": "config.py"}'
     assert _recover_tool_call_from_content(content, {"read_file"}) is None
+
+
+def test_recuperar_chamada_de_json_inteiro():
+    content = '{"name": "read_file", "arguments": {"path": "x.py"}}'
+    chamada = coding_agent._recuperar_chamada(content, {"read_file"})
+    assert chamada is not None and chamada.name == "read_file"
+
+
+def test_recuperar_chamada_de_bloco_embutido_em_prosa():
+    # Caso do projeto B: o modelo narra e embute a tool-call num bloco ```json.
+    content = ("Para encontrar o defeito vou seguir estes passos:\n```json\n"
+               '{"name": "list_directory", "arguments": {}}\n```')
+    chamada = coding_agent._recuperar_chamada(content, {"list_directory", "run_tests"})
+    assert chamada is not None and chamada.name == "list_directory"
+
+
+def test_recuperar_chamada_ignora_prosa_pura_e_ferramenta_desconhecida():
+    assert coding_agent._recuperar_chamada("Só uma análise em texto.", {"read_file"}) is None
+    desconhecida = '```json\n{"name": "deletar_tudo", "arguments": {}}\n```'
+    assert coding_agent._recuperar_chamada(desconhecida, {"read_file"}) is None
+
+
+def test_parece_propor_patch():
+    assert coding_agent._parece_propor_patch("```diff\n--- a/x\n+++ b/x\n@@\n-a\n+b\n```") is True
+    assert coding_agent._parece_propor_patch("Aqui vai:\n```python\ndef f(): ...\n```") is True
+    assert coding_agent._parece_propor_patch("Só uma explicação do defeito, em texto.") is False
+
+
+def test_run_coding_task_conduz_a_leitura_antes_de_patch_sem_read_file(monkeypatch, tmp_path):
+    # Propõe um diff sem ter lido o arquivo -> é conduzido a read_file (limitado).
+    (tmp_path / "m.py").write_text("x = 1\n", encoding="utf-8")
+    patch_sem_ler = "Proponho:\n```diff\n--- a/m.py\n+++ b/m.py\n@@\n-x = 1\n+x = 2\n```"
+    ler = ProviderResponse(content="", tool_calls=[ToolCallRequest(name="read_file", arguments={"path": "m.py"})])
+    final = ProviderResponse(content="Patch final, baseado na leitura real.")
+    provider = ScriptedProvider([ProviderResponse(content=patch_sem_ler), ler, final])
+    _patch_provider(monkeypatch, provider)
+
+    result = run_coding_task("conserte o bug", str(tmp_path))
+
+    assert result == "Patch final, baseado na leitura real."
+    ultima = provider.calls[-1]
+    assert any(m.get("role") == "user" and "LEIA" in m.get("content", "") for m in ultima)  # houve condução
+    assert any(m.get("tool_name") == "read_file" for m in ultima)                            # leu de verdade
+
+
+def test_run_coding_task_executa_chamada_de_leitura_embutida_em_prosa(monkeypatch, tmp_path):
+    # Regressão do projeto B: uma tool-call de leitura embutida em prosa deve ser
+    # EXECUTADA (investigação), não descartada.
+    (tmp_path / "a.txt").write_text("conteúdo", encoding="utf-8")
+    narr = 'Vou investigar:\n```json\n{"name": "read_file", "arguments": {"path": "a.txt"}}\n```'
+    provider = ScriptedProvider([ProviderResponse(content=narr), ProviderResponse(content="Análise pronta.")])
+    _patch_provider(monkeypatch, provider)
+
+    result = run_coding_task("investigue", str(tmp_path))
+
+    assert result == "Análise pronta."
+    tool_result = provider.calls[1][-1]
+    assert tool_result["role"] == "tool" and tool_result["tool_name"] == "read_file"
+    assert "conteúdo" in tool_result["content"]  # a leitura realmente executou
