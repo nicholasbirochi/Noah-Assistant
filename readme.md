@@ -66,6 +66,9 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   origem, tipo, data de leitura, trecho, confiança, status de revisão). Conflitos entre
   fontes viram um registro em `conflicts`, nunca uma sobrescrita silenciosa. Toda mudança
   aplicada gera uma entrada em `change_log` (auditoria).
+- **`api_local.py`** — API local HTTP + JSON (F7) sobre o mesmo `send_turn` do modo
+  texto: só biblioteca padrão, só loopback (ou token), um turno por vez e histórico só em
+  memória. Ver "API local" abaixo.
 - **`indexing/`** — escaneia apenas diretórios autorizados (`config.py` →
   `AUTHORIZED_INDEX_ROOTS`), ignora o próprio repositório do Noah e ruído de
   dependências (`node_modules`, `.git`, `obj/`, etc.), calcula hash de cada arquivo para
@@ -309,6 +312,28 @@ simplesmente **não faz nada visível, sem erro nenhum** (`spctl --assess` mostr
 para sempre. `spctl --add` (que permitiria liberar isso via terminal, sem esse passo
 manual) foi descontinuado pelo próprio macOS -- não tem como pular essa etapa.
 
+## API local (F7, primeira versão)
+
+O mesmo turno de conversa do modo texto (`send_turn`, com as mesmas ferramentas e
+travas), exposto por HTTP + JSON em `src/api_local.py` -- só biblioteca padrão, sem
+FastAPI/uvicorn:
+
+```bash
+python src/api_local.py                      # http://127.0.0.1:8768
+curl -s http://127.0.0.1:8768/saude
+curl -s -X POST http://127.0.0.1:8768/conversa -H 'Content-Type: application/json' \
+  -d '{"mensagem": "oi, Noah"}'               # devolve {"sessao", "resposta"}
+```
+
+Mande o `sessao` devolvido nos próximos pedidos para manter o histórico;
+`DELETE /sessoes/<id>` o apaga. O histórico fica só em memória (até 32 sessões, 200
+mensagens cada). Escuta só no `127.0.0.1`; um endereço fora do loopback é recusado sem
+token (`NOAH_API_TOKEN` ou `--token`, enviado como `Authorization: Bearer ...`). O POST
+exige `Content-Type: application/json` e um `Host` local, o que barra formulários de
+outras páginas e DNS rebinding. Um turno roda por vez. Porta: `NOAH_API_PORT` ou
+`--porta` (8765 é o HUD, 8766 o XTTS e 8767 o portal). Sem streaming nem WebSocket
+nesta versão: a resposta chega inteira no fim do turno.
+
 ## Pedir uma mudança de código por voz
 
 Pedir pro Noah ("mude a cor do HUD pra verde", "peça pro Claude Code revisar o
@@ -487,6 +512,8 @@ a contagem de tokens ainda variou um pouco entre tentativas (142 vs. 147 num pro
   generalizar sem repetir esse processo por site.
 - MLXProvider: instalar `mlx-lm`, rodar de verdade e medir latência contra o Ollama antes
   de pensar em torná-lo padrão (o código e os testes simulados já existem).
+- API local (F7), próximo passo: FastAPI + WebSocket para resposta em streaming, depois
+  de autorizar a dependência; acesso pelo iPhone só via VPN privada e com token.
 - Itens extras no menu bar (abrir logs/perfil, revisar propostas pendentes direto do
   menu -- hoje só tem liga/desliga).
 
