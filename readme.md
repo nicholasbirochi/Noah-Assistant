@@ -415,6 +415,24 @@ pytest src/tests/
 Roda de qualquer diretório -- `src/conftest.py` garante que `src/` está no `sys.path`
 antes da coleta, independente de onde `pytest` foi chamado.
 
+### Benchmark de latência dos modelos (F14)
+
+```bash
+python src/scripts/benchmark_llm.py --plano   # só confere instalação e memória, não carrega nada
+python src/scripts/benchmark_llm.py           # qwen2.5-coder:7b/14b e qwen3-coder:30b
+```
+
+Mede TTFT, tokens/s de geração e de leitura do prompt (números do próprio Ollama) e tempo de
+carga, com prompts fixos, `temperature=0`, `seed`, `num_predict` e `num_ctx` fixos; o JSON
+(padrão `src/data/llm_benchmarks/`, ou `--saida`) guarda a configuração inteira e as
+medianas. Nunca baixa modelo (ausente = `nao_instalado`). Guarda de memória: se o modelo
+(com folga) não cabe na memória disponível do `vm_stat`, nem carrega (`pulado_memoria`); se o
+swap cresce mais que `--swap-max-mb` (512) durante a geração, interrompe e descarrega
+(`abortado_swap`). Numa rodada de 2026-10-18 neste Mac (M5, 24 GB, swap já em 2,6 GB), o
+7B deu mediana de ~22 tok/s e TTFT ~0,12 s com o modelo quente; o 14B e o 30B foram pulados
+pela guarda (precisariam de ~11 e ~21 GB, havia ~8 GB livres). Com `seed` e `temperature=0`
+a contagem de tokens ainda variou um pouco entre tentativas (142 vs. 147 num prompt).
+
 ## Roadmap
 
 - E-mail na Gupy: testar ao vivo, supervisionado, se mudar o e-mail dispara algum fluxo
