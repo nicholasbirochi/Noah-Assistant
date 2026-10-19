@@ -99,6 +99,9 @@ class _Handler(BaseHTTPRequestHandler):
             data_event = state.current_data()
             if data_event is not None:
                 self._write_event(data_event)  # likewise for whatever chart was last shown
+            presence_event = state.current_presence()
+            if presence_event is not None:
+                self._write_event(presence_event)  # and the proactive card (assistant/presence.py), its own slot
             while True:
                 try:
                     event = q.get(timeout=_KEEPALIVE_SECONDS)

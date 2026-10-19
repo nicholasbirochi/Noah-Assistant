@@ -291,6 +291,17 @@ class NoahMenuBarApp(rumps.App):
         else:
             native_window.open_window()
             self._visualizer_item.title = "Fechar"
+            threading.Thread(target=self._publish_presence_worker, daemon=True).start()
+
+    @staticmethod
+    def _publish_presence_worker() -> None:
+        # Off by default (NOAH_PRESENCE_ENABLED) -- see docs/ADR-0001-presenca-local-first.md.
+        try:
+            from assistant import presence
+
+            presence.publish_if_enabled()
+        except Exception:
+            pass  # best-effort suggestion card -- must never break opening the HUD
 
 
 def main() -> None:

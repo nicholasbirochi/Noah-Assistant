@@ -94,6 +94,12 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   (WKWebView via PyObjC -- o mesmo motor do Safari) em vez de uma aba de navegador --
   tentamos primeiro abrir o Chromium do Playwright em modo app (`--app=`), mas ele mostrava
   um aviso "atualize o Chrome" por cima da página, o que não é problema com WebKit direto.
+- **`assistant/presence.py`** — card de sugestões proativas no HUD (desligado por padrão,
+  `NOAH_PRESENCE_ENABLED=true`). Conta por código, sem LLM e sem rede, o que já está em
+  disco (propostas de currículo pendentes, conflitos em aberto, lembretes) e mostra cada
+  item como fonte → por que importa → o que fazer; o Noah só sugere, nunca executa. Canal
+  próprio em `visualizer/state.py` (`publish_presence`), independente do gráfico. Decisão
+  em [`docs/ADR-0001-presenca-local-first.md`](docs/ADR-0001-presenca-local-first.md).
 
 ## Setup
 
@@ -233,6 +239,13 @@ Digital, nenhum dado seu enviado a lugar nenhum) continua existindo em `--text-o
 O Noah também conhece as habilidades e certificações reais do currículo (Python, R, SQL,
 Power BI, estatística, etc.) e comenta sobre dados com entusiasmo quando o assunto surge --
 grounded no `src/data/resume.json`, não inventado (`assistant/llm_client.py`).
+
+Sugestões proativas (só leitura): `python src/cli.py presenca` lista o que está pendente
+no formato fonte → por quê → ação, ou "Nada pendente." quando não há nada. Com
+`NOAH_PRESENCE_ENABLED=true` no `.env`, o mesmo card aparece no canto do HUD ao clicar em
+"Abrir" no menu bar; sem a flag, o HUD não mostra nada novo. Nenhuma fonte usa rede ou
+nuvem, nem como fallback -- uma fonte ilegível é simplesmente pulada
+([ADR-0001](docs/ADR-0001-presenca-local-first.md)).
 
 Se as palmas não estiverem sendo detectadas (ou disparando à toa), meça o pico real do
 seu microfone/ambiente antes de ajustar `CLAP_PEAK_THRESHOLD` no `.env`:
@@ -456,6 +469,10 @@ antes da coleta, independente de onde `pytest` foi chamado.
 - MLXProvider como opção de menor latência.
 - Itens extras no menu bar (abrir logs/perfil, revisar propostas pendentes direto do
   menu -- hoje só tem liga/desliga).
+- Presença proativa, próximas fatias (cada uma com decisão própria, sempre local e sem
+  fallback de nuvem -- ver ADR-0001): rotinas agendadas por horário (agendador local),
+  novas fontes contáveis (Cérebro, Pontos Loop), resumo falado opcional e ações que só
+  rodam depois de aprovação explícita.
 
 ## Licença
 

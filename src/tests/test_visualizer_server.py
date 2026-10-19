@@ -18,6 +18,7 @@ def _reset(monkeypatch):
     monkeypatch.setattr(state, "_subscribers", [])
     monkeypatch.setattr(state, "_current", state.StateEvent(state="idle"))
     monkeypatch.setattr(state, "_current_data", None)
+    monkeypatch.setattr(state, "_current_presence", None)
 
 
 def _read_data_line(resp) -> str:
@@ -97,6 +98,43 @@ def test_events_endpoint_streams_subsequent_chart_publishes():
         _read_data_line(resp)  # the initial "idle" state snapshot -- not under test here
         state.publish_data("jobs", {"title": "Vagas", "bars": []})
         assert json.loads(_read_data_line(resp)) == {"type": "data", "kind": "jobs", "payload": {"title": "Vagas", "bars": []}}
+
+
+def test_events_endpoint_replays_presence_after_chart_on_connect():
+    port = server.start(port=0)
+    state.publish_data("finance", {"bars": []})
+    state.publish_presence({"title": "Sugestões", "items": [{"source": "Lembretes", "why": "1.", "action": "diga"}]})
+
+    with urllib.request.urlopen(f"http://127.0.0.1:{port}/events", timeout=5) as resp:
+        _read_data_line(resp)  # state snapshot
+        assert json.loads(_read_data_line(resp))["kind"] == "finance"
+        assert json.loads(_read_data_line(resp)) == {
+            "type": "data",
+            "kind": "presence",
+            "payload": {"title": "Sugestões", "items": [{"source": "Lembretes", "why": "1.", "action": "diga"}]},
+        }
+
+
+def test_events_endpoint_replays_presence_even_without_a_chart():
+    port = server.start(port=0)
+    state.publish_presence({"items": [{"source": "x", "why": "y", "action": "z"}]})
+
+    with urllib.request.urlopen(f"http://127.0.0.1:{port}/events", timeout=5) as resp:
+        _read_data_line(resp)  # state snapshot
+        assert json.loads(_read_data_line(resp))["kind"] == "presence"
+
+
+def test_hud_page_renders_presence_via_text_content_only():
+    port = server.start(port=0)
+
+    with urllib.request.urlopen(f"http://127.0.0.1:{port}/", timeout=5) as resp:
+        body = resp.read().decode("utf-8")
+
+    assert '<div id="presence-panel"' in body
+    start = body.index("function renderPresence(")
+    end = body.index("function connect()")
+    assert "innerHTML" not in body[start:end]
+    assert 'msg.kind === "presence"' in body
 
 
 # ---- HUD's own on/off button (POST /api/toggle) ----
