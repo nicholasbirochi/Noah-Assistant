@@ -35,6 +35,18 @@ def make_resume(**personal_info_overrides) -> Resume:
     )
 
 
+@pytest.fixture(autouse=True)
+def _fake_resume_store(monkeypatch):
+    """Keep the profile flow off the personal (gitignored) data/resume.json.
+
+    Tests that need specific résumé fields patch resume.store.load again;
+    their later monkeypatch wins over this default.
+    """
+    from resume import store as resume_store
+
+    monkeypatch.setattr(resume_store, "load", lambda path=None: make_resume())
+
+
 def test_strip_country_code():
     assert _strip_country_code("+55 11 90000-0000") == "11 90000-0000"
     assert _strip_country_code("+5511 90000-0000") == "11 90000-0000"
