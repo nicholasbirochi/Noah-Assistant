@@ -30,7 +30,15 @@ Three deliberate boundaries, each a real requirement of this integration:
 3. Failure is always a clear message, never a crash. Vault missing, command
    error, timeout and oversized output each map to a short, honest sentence --
    the voice loop must keep working (and say what went wrong) when the vault
-   is unavailable, per the protocol's own honesty rule."""
+   is unavailable, per the protocol's own honesty rule.
+
+One deliberate exception to "thin client": RANKING for reads. By default
+(config.CEREBRO_BUSCA == "bm25") consultar() ranks notes locally with BM25 in
+assistant/cerebro_busca.py -- read-only, mirroring the CLI's folder/status
+filters -- because the CLI's literal-count scoring missed word variants and
+showed at most 4 lines per note. Whenever that local path cannot run (vault
+without protocol, read error, or CEREBRO_BUSCA="cli"), the CLI's own `buscar`
+answers as before. Writes never take a local path."""
 
 from __future__ import annotations
 
@@ -116,6 +124,9 @@ def consultar(
     termos = [t for t in query.split() if t.strip()]
     if not termos:
         return "Preciso de ao menos um termo para consultar o Cérebro."
+    local = _consultar_bm25(query, projeto=projeto, max_notas=max_notas, orcamento=orcamento)
+    if local is not None:
+        return local
     args = ["buscar", *termos, "--trechos", "--max", str(max_notas), "--orcamento", str(orcamento)]
     if projeto:
         args += ["--projeto", projeto]
@@ -131,6 +142,27 @@ def consultar(
     # buscar --trechos still prints its trailing summary line when nothing
     # matched ("-- trechos de 0 nota(s)..."); turn that into a plain answer.
     if not saida or re.search(r"trechos de 0 nota", saida):
+        return "Nenhuma nota pertinente encontrada no Cérebro."
+    return _limitar(saida)
+
+
+def _consultar_bm25(query: str, *, projeto: str | None, max_notas: int, orcamento: int) -> str | None:
+    """Ranking local (assistant/cerebro_busca.py), somente leitura. Devolve None
+    para cair na CLI do cofre: modo "cli" configurado, cofre sem protocolo ou
+    erro de leitura -- a CLI continua dona das mensagens de falha."""
+    from config import CEREBRO_BUSCA, CEREBRO_DIR
+
+    if CEREBRO_BUSCA != "bm25":
+        return None
+    from assistant import cerebro_busca
+
+    try:
+        saida = cerebro_busca.buscar(
+            CEREBRO_DIR, query, projeto=projeto, max_notas=max_notas, orcamento=orcamento
+        )
+    except (cerebro_busca.CofreInvalido, OSError):
+        return None
+    if not saida:
         return "Nenhuma nota pertinente encontrada no Cérebro."
     return _limitar(saida)
 

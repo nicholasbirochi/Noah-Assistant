@@ -325,3 +325,9 @@ CEREBRO_DIR = Path(
 CEREBRO_SCRIPT = Path(
     os.environ.get("NOAH_CEREBRO_SCRIPT", str(CEREBRO_DIR / ".cerebro" / "cerebro.py"))
 ).expanduser()
+# Read-side ranking for consult_cerebro. "bm25" (default) ranks the vault's
+# notes locally in assistant/cerebro_busca.py (BM25 + light Portuguese
+# stemming + small synonym groups, longer excerpts) -- read-only, stdlib-only,
+# no embedding model. "cli" uses the vault CLI's own `buscar --trechos`. The
+# CLI stays the fallback (and the only path for writes) in either mode.
+CEREBRO_BUSCA = os.environ.get("NOAH_CEREBRO_BUSCA", "bm25").strip().lower()

@@ -136,9 +136,11 @@ def test_consultar_sem_resultado_responde_claro(cofre_real):
     assert "Nenhuma nota pertinente" in resultado
 
 
-def test_consultar_passa_argv_com_espacos_e_acentos(cofre_real):
+def test_consultar_passa_argv_com_espacos_e_acentos(cofre_real, monkeypatch):
     # The vault root has a space and an accent; a real query returning content
-    # proves the subprocess received the path intact (no shell quoting).
+    # proves the subprocess received the path intact (no shell quoting). Forces
+    # the CLI path -- by default consultar() ranks locally (cerebro_busca).
+    monkeypatch.setattr(config, "CEREBRO_BUSCA", "cli")
     vault, _ = cofre_real
     assert " " in str(vault) and "é" in str(vault)
 
