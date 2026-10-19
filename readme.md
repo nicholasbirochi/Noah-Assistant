@@ -47,6 +47,14 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   um workspace específico com proteção real contra sair da pasta (`WorkspaceViolation`).
   Ainda não edita nem executa nada -- primeira versão é propositalmente de
   auditoria/consulta, não de escrita.
+- **`assistant/cerebro.py`** / **`assistant/cerebro_busca.py`** — integração com o
+  segundo cérebro (cofre Obsidian). A ferramenta `consult_cerebro` ranqueia as notas
+  localmente com BM25 (radical leve em português, stopwords, alguns grupos de sinônimos,
+  título e "estado atual" com peso maior) e devolve trechos de até 8 linhas pertinentes por
+  nota, com contexto, dividindo o orçamento de caracteres entre as notas. Só lê `.md`, só
+  biblioteca padrão, sem modelo de embedding, e espelha os filtros da CLI do cofre.
+  `NOAH_CEREBRO_BUSCA=cli` volta ao `buscar --trechos` da CLI, que também é o fallback
+  quando o cofre não tem o protocolo e o único caminho de escrita.
 - **`resume/schema.py`** — currículo canônico com procedência: cada item
   (experiência, certificação, projeto...) carrega uma lista de `Evidence` (arquivo de
   origem, tipo, data de leitura, trecho, confiança, status de revisão). Conflitos entre
