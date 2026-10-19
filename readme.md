@@ -32,10 +32,16 @@ não inspecionado.
 Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` é
 `src/assistant/providers.py`).
 
-- **`assistant/providers.py`** — abstração `LocalLLMProvider`; hoje só existe
-  `OllamaProvider`, mas qualquer chamador (conversa, importação, indexador) passa por essa
-  interface, não por `ollama` diretamente — trocar para MLX no futuro não deve exigir
-  tocar em nenhum desses chamadores. Manda `keep_alive` em toda chamada (`OLLAMA_KEEP_ALIVE`,
+- **`assistant/providers.py`** — abstração `LocalLLMProvider`, com `OllamaProvider`
+  (padrão) e `MLXProvider` (opt-in, `NOAH_LLM_PROVIDER=mlx`); qualquer chamador (conversa,
+  importação, indexador) passa por essa interface, não por `ollama`/`mlx_lm` diretamente.
+  O `MLXProvider` roda o modelo no próprio processo com o pacote opcional `mlx-lm` (Apple
+  Silicon, fora do `requirements.txt`; import só quando escolhido), pesos em
+  `NOAH_MLX_MODEL` (padrão `mlx-community/Qwen2.5-7B-Instruct-4bit`, que o `mlx_lm` baixa no
+  primeiro uso). Decodificação gulosa, chamadas de ferramenta lidas dos blocos `<tool_call>`
+  do Qwen (só ferramentas declaradas) e JSON estruturado via schema no prompt, sem a
+  decodificação restrita do `format=` do Ollama. Coberto por testes com backend simulado;
+  ainda não rodado com o `mlx-lm` real nem medido contra o Ollama. Manda `keep_alive` em toda chamada (`OLLAMA_KEEP_ALIVE`,
   padrão 30min) -- o padrão do próprio Ollama (5min) foi a causa real de respostas lentas
   medida na prática: qualquer intervalo maior entre ativações do Noah forçava um recarregamento
   frio do modelo (~30s) na resposta seguinte.
@@ -479,7 +485,8 @@ a contagem de tokens ainda variou um pouco entre tentativas (142 vs. 147 num pro
 - Academia do Universitário -- ainda não investigado; precisa da mesma verificação ao vivo
   (domínios, seletores reais, e depois o envio real) feita para os outros sites, não dá pra
   generalizar sem repetir esse processo por site.
-- MLXProvider como opção de menor latência.
+- MLXProvider: instalar `mlx-lm`, rodar de verdade e medir latência contra o Ollama antes
+  de pensar em torná-lo padrão (o código e os testes simulados já existem).
 - Itens extras no menu bar (abrir logs/perfil, revisar propostas pendentes direto do
   menu -- hoje só tem liga/desliga).
 

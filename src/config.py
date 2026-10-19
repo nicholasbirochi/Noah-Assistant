@@ -47,9 +47,15 @@ REVIEW_DIR = DATA_DIR / "review"
 
 # Local LLM served by Ollama (https://ollama.com) -- no cloud API, no API key.
 # `ollama pull` the model once via CLI before first use; see readme.md.
-# LLM_PROVIDER selects the LocalLLMProvider implementation (assistant/providers.py);
-# only "ollama" exists today, kept configurable so a future MLXProvider slots in cleanly.
-LLM_PROVIDER = os.environ.get("NOAH_LLM_PROVIDER", "ollama")
+# LLM_PROVIDER selects the LocalLLMProvider implementation (assistant/providers.py):
+# "ollama" (default) or "mlx" (opt-in; needs the optional `mlx-lm` package,
+# Apple Silicon only, and runs the model in-process).
+LLM_PROVIDER = os.environ.get("NOAH_LLM_PROVIDER", "ollama").strip().lower()
+# Only used when LLM_PROVIDER=mlx: a Hugging Face repo or local path with MLX
+# weights. mlx_lm downloads a repo on first load -- nothing downloads unless
+# the user switches the provider. The default mirrors LOCAL_MODEL (qwen2.5 7B).
+MLX_MODEL = os.environ.get("NOAH_MLX_MODEL", "mlx-community/Qwen2.5-7B-Instruct-4bit")
+MLX_MAX_TOKENS = int(os.environ.get("NOAH_MLX_MAX_TOKENS", "1024"))
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 # qwen2.5:7b, not 14b -- measured live: once warm, the 7b model answered the
 # same simple prompt in 1.1s vs 14b's 4.7s (roughly 4x), and still correctly
