@@ -312,6 +312,13 @@ simplesmente **não faz nada visível, sem erro nenhum** (`spctl --assess` mostr
 para sempre. `spctl --add` (que permitiria liberar isso via terminal, sem esse passo
 manual) foi descontinuado pelo próprio macOS -- não tem como pular essa etapa.
 
+`codesign --verify` passa no app instalado, mas `codesign --verify --strict` falha
+("No such file or directory") e isso é esperado: o modo alias monta o bundle com links
+para o `.venv` e o `src/` do projeto (fora do bundle, o que o `--strict` recusa), e dois
+desses links (`lib/python3.12/config` e `site.pyc`) apontam para arquivos que não
+existem. Só um app congelado passaria no `--strict`; detalhes em
+`docs/RENOMEACAO_NOAH.md`.
+
 ## API local (F7, primeira versão)
 
 O mesmo turno de conversa do modo texto (`send_turn`, com as mesmas ferramentas e
