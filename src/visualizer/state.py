@@ -13,7 +13,14 @@ replaced or explicitly cleared), independent of whichever
 listening/thinking/speaking transition happens to fire next -- bundling
 them would mean every unrelated publish("listening") call elsewhere in
 the codebase would need to remember to carry the last chart forward or
-it'd flicker away."""
+it'd flicker away.
+
+publish_presence()/current_presence()/clear_presence() are a third slot,
+for assistant/presence.py's proactive suggestion card. Same DataEvent
+type on the wire (kind="presence"), but its own "last value" slot, kept
+apart from _current_data on purpose: a chart published afterwards must
+not erase the card for a newly opened HUD tab, and vice versa
+(docs/ADR-0001-presenca-local-first.md)."""
 
 from __future__ import annotations
 
@@ -56,6 +63,9 @@ _subscribers: list["queue.Queue[Event]"] = []
 # rather than just between wake-word sessions.
 _current = StateEvent(state="off")
 _current_data: DataEvent | None = None
+_current_presence: DataEvent | None = None
+
+PRESENCE_KIND = "presence"
 
 
 def current() -> StateEvent:
@@ -99,6 +109,33 @@ def clear_data() -> None:
     event = DataEvent(kind="", payload={})
     with _lock:
         _current_data = None
+        subscribers = list(_subscribers)
+    for q in subscribers:
+        q.put(event)
+
+
+def current_presence() -> DataEvent | None:
+    with _lock:
+        return _current_presence
+
+
+def publish_presence(payload: dict[str, Any]) -> None:
+    global _current_presence
+    event = DataEvent(kind=PRESENCE_KIND, payload=payload)
+    with _lock:
+        _current_presence = event
+        subscribers = list(_subscribers)
+    for q in subscribers:
+        q.put(event)
+
+
+def clear_presence() -> None:
+    """Hides the card in every open HUD -- an empty item list, not an
+    empty kind (that one means "clear the chart" -- see clear_data())."""
+    global _current_presence
+    event = DataEvent(kind=PRESENCE_KIND, payload={"items": []})
+    with _lock:
+        _current_presence = None
         subscribers = list(_subscribers)
     for q in subscribers:
         q.put(event)

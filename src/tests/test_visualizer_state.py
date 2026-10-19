@@ -8,6 +8,7 @@ def _reset(monkeypatch):
     monkeypatch.setattr(state, "_subscribers", [])
     monkeypatch.setattr(state, "_current", state.StateEvent(state="off"))
     monkeypatch.setattr(state, "_current_data", None)
+    monkeypatch.setattr(state, "_current_presence", None)
 
 
 def test_current_defaults_to_off():
@@ -111,3 +112,47 @@ def test_data_subscriber_receives_published_chart_events():
     state.publish_data("jobs", {"bars": [{"label": "InfoJobs", "value": 5}]})
 
     assert q.get_nowait() == state.DataEvent(kind="jobs", payload={"bars": [{"label": "InfoJobs", "value": 5}]})
+
+
+# ---- proactive presence card (assistant/presence.py) -- its own slot ----
+
+
+def test_current_presence_defaults_to_none():
+    assert state.current_presence() is None
+
+
+def test_publish_presence_updates_current_presence_and_notifies():
+    q = state.subscribe()
+    payload = {"title": "Sugestões", "items": [{"source": "Lembretes", "why": "1 lembrete.", "action": "diga"}]}
+
+    state.publish_presence(payload)
+
+    expected = state.DataEvent(kind=state.PRESENCE_KIND, payload=payload)
+    assert state.current_presence() == expected
+    assert q.get_nowait() == expected
+
+
+def test_clear_presence_resets_slot_and_sends_an_empty_item_list():
+    # An empty item list (not an empty kind) -- an empty kind would be
+    # read by the page as "clear the chart" instead.
+    state.publish_presence({"items": [{"source": "x", "why": "y", "action": "z"}]})
+    q = state.subscribe()
+
+    state.clear_presence()
+
+    assert state.current_presence() is None
+    assert q.get_nowait() == state.DataEvent(kind=state.PRESENCE_KIND, payload={"items": []})
+
+
+def test_presence_and_chart_slots_are_independent():
+    state.publish_presence({"items": [{"source": "x", "why": "y", "action": "z"}]})
+    state.publish_data("finance", {"bars": []})
+    state.clear_data()
+    state.publish("idle")
+
+    assert state.current_presence() is not None
+
+    state.publish_data("jobs", {"bars": []})
+    state.clear_presence()
+
+    assert state.current_data() == state.DataEvent(kind="jobs", payload={"bars": []})

@@ -23,7 +23,10 @@ NOAH_MODEL_CODING set in .env first;
 `python src/cli.py cerebro-registrar --destino <nota.md> --draft <arquivo>
 [--substituir]` reviews a staged note and, after an explicit confirmation,
 writes it to the second brain through its own tool (assistant/cerebro.py) --
-this is the real human authorization a Cérebro write requires."""
+this is the real human authorization a Cérebro write requires;
+`python src/cli.py presenca` prints the proactive suggestions
+(assistant/presence.py) -- fonte, por que importa, o que fazer -- counted
+from local files only, nothing executed (docs/ADR-0001-presenca-local-first.md)."""
 
 from __future__ import annotations
 
@@ -174,6 +177,10 @@ def main() -> None:
     cerebro_parser.add_argument(
         "--substituir", action="store_true", help="Substitui uma nota existente (protegido por SHA-256)."
     )
+    subparsers.add_parser(
+        "presenca",
+        help="Mostra as sugestões proativas (propostas, conflitos, lembretes) -- só leitura, assistant/presence.py.",
+    )
     args = parser.parse_args()
 
     if args.command == "index":
@@ -259,6 +266,12 @@ def main() -> None:
         from sites.linkedin import LinkedInAdapter
 
         LinkedInAdapter().login()
+        return
+
+    if args.command == "presenca":
+        from assistant import presence
+
+        print(presence.format_text(presence.build_presence_items()))
         return
 
     if args.command == "code":
