@@ -895,6 +895,7 @@ class GupyAdapter(SiteAdapter):
             page.wait_for_timeout(2000)
             page.wait_for_load_state("networkidle", timeout=30_000)
 
+            # A confirmação da etapa não autoriza o envio final: finalize é uma segunda decisão.
             if finalize:
                 clicked = self._click_text_button(page, "Finalizar candidatura")
                 if clicked:
