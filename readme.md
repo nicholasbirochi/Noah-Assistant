@@ -250,6 +250,10 @@ Digital, nenhum dado seu enviado a lugar nenhum) continua existindo em `--text-o
 O Noah também conhece as habilidades e certificações reais do currículo (Python, R, SQL,
 Power BI, estatística, etc.) e comenta sobre dados com entusiasmo quando o assunto surge --
 grounded no `src/data/resume.json`, não inventado (`assistant/llm_client.py`).
+Se o modelo responder que fez algo ("Adicionei...", "Preparei...", "Consultei...") sem
+nenhuma ferramenta correspondente ter rodado no turno, o `send_turn` devolve um aviso ao
+modelo e dá mais uma tentativa; se ele insistir, o Noah diz que nada foi feito, em vez de
+repetir a afirmação falsa. A ação nunca é executada no lugar do modelo.
 
 Se as palmas não estiverem sendo detectadas (ou disparando à toa), meça o pico real do
 seu microfone/ambiente antes de ajustar `CLAP_PEAK_THRESHOLD` no `.env`:

@@ -14,6 +14,10 @@ Verifique o codigo antes de confiar em um detalhe.
   consulta real ao Cerebro em pedido explicito ou em pergunta implicita sobre
   fatos/decisoes/capacidades do Noah (cumprimentos nao disparam). A escolha
   espontanea da ferramenta pelo modelo segue nao confiavel.
+  Resposta que afirma acao/consulta ("adicionei", "preparei", "consultei",
+  rotulo "[CONSULTA AO CEREBRO") sem ferramenta executada no turno recebe
+  um aviso de sistema e mais uma iteracao; se repetir, o usuario ouve que
+  nada foi feito. A acao nunca e executada no lugar do modelo.
 - `src/assistant/providers.py`: contrato `LocalLLMProvider`; implementacao
   atual `OllamaProvider`. MLX e outros providers ainda sao objetivos. Abriga
   `recover_tool_call_from_content`, reusada pelo agente de coding e pela conversa.
