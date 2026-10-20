@@ -20,10 +20,24 @@ def _escrever(caminho, linhas):
     return caminho
 
 
-def _bash_claude(comando, atras=30):
+def _bash_claude(comando, atras=30, ident="t"):
     return {"type": "assistant", "timestamp": _ts(atras), "message": {"role": "assistant", "content": [
-        {"type": "tool_use", "id": "t", "name": "Bash", "input": {"command": comando, "description": "x"}},
+        {"type": "tool_use", "id": ident, "name": "Bash", "input": {"command": comando, "description": "x"}},
     ]}}
+
+
+def _resultado_claude(ident, texto, atras=29):
+    return {"type": "user", "timestamp": _ts(atras), "message": {"role": "user", "content": [
+        {"type": "tool_result", "tool_use_id": ident, "content": [{"type": "text", "text": texto}]},
+    ]}}
+
+
+# Saída no formato do buscar --trechos (notas falsas).
+SAIDA_BUSCAR = """== 02 - Projetos/Projeto - Exemplo.md
+trecho falso
+== 03 - Graphify e Mapas de Projeto/Mapas/Mapa - Exemplo.md
+outro trecho
+-- trechos de 2 nota(s)"""
 
 
 def _texto_claude(texto, atras=30):
@@ -31,9 +45,14 @@ def _texto_claude(texto, atras=30):
             "message": {"role": "assistant", "content": [{"type": "text", "text": texto}]}}
 
 
-def _chamada_codex(argumentos, atras=30, tipo="function_call"):
+def _chamada_codex(argumentos, atras=30, tipo="function_call", ident="c"):
     return {"type": "response_item", "timestamp": _ts(atras),
-            "payload": {"type": tipo, "name": "exec_command", "arguments": json.dumps(argumentos)}}
+            "payload": {"type": tipo, "name": "exec_command", "arguments": json.dumps(argumentos), "call_id": ident}}
+
+
+def _saida_codex(ident, texto, atras=29, tipo="function_call_output"):
+    return {"type": "response_item", "timestamp": _ts(atras),
+            "payload": {"type": tipo, "call_id": ident, "output": json.dumps({"output": texto})}}
 
 
 def _codex(tmp_path, linhas):
@@ -92,6 +111,39 @@ def test_arquivo_antigo_nem_e_aberto(tmp_path):
     assert cerebro["consultas"] == 0
 
 
+def test_claude_partes_da_consulta_e_do_registro(tmp_path):
+    _escrever(tmp_path / "proj" / "s.jsonl", [
+        _bash_claude(f"{CEREBRO} buscar noah --trechos", atras=60, ident="b1"),
+        _resultado_claude("b1", SAIDA_BUSCAR, atras=59),
+        _bash_claude(f"{CEREBRO} contexto --projeto Noah", atras=50, ident="b2"),
+        _resultado_claude("b2", "Projeto: 02 - Projetos/Projeto - Exemplo.md", atras=49),
+        _bash_claude(f'{CEREBRO} gravar --destino "06 - Logs de Tarefas/2026/log.md" --novo', atras=40, ident="g1"),
+        _resultado_claude("g1", "gravado", atras=39),
+    ])
+    cerebro, _ = sinal_cerebro.contar_claude(tmp_path, agora=AGORA)
+    assert (cerebro["consultas"], cerebro["registros"]) == (2, 1)
+    assert cerebro["partes"] == {"02": 2, "03": 1, "06": 1}
+
+
+def test_claude_partes_so_de_resposta_do_cerebro(tmp_path):
+    _escrever(tmp_path / "proj" / "s.jsonl", [
+        _bash_claude("cat '05 - Padrões e Preferências/x.md'", ident="o1"),  # outra ferramenta
+        _resultado_claude("o1", "05 - Padrões e Preferências/x.md"),
+        _bash_claude(f"{CEREBRO} buscar y", ident="b1"),
+        _resultado_claude("b1", "nada em 01 - Índices sem barra"),  # sem caminho de nota
+        _resultado_claude("b9", "== 07 - Templates/a.md"),  # resposta de chamada desconhecida
+    ])
+    cerebro, _ = sinal_cerebro.contar_claude(tmp_path, agora=AGORA)
+    assert cerebro["consultas"] == 1
+    assert cerebro["partes"] == {}
+
+
+def test_pastas_citadas():
+    assert sinal_cerebro.pastas_citadas(SAIDA_BUSCAR) == ["02", "03"]
+    assert sinal_cerebro.pastas_citadas("x/08 - Outra/a.md 1002 - Y/b.md") == []
+    assert sinal_cerebro.pastas_citadas(None) == []
+
+
 # -- Codex ------------------------------------------------------------------------
 
 
@@ -108,6 +160,19 @@ def test_codex_conta_argv_e_texto(tmp_path):
     assert aux["delegacoes"] == 1
 
 
+def test_codex_partes_pela_saida_com_mesmo_call_id(tmp_path):
+    _codex(tmp_path, [
+        _chamada_codex({"cmd": f"{CEREBRO} buscar noah --trechos"}, ident="c1"),
+        _saida_codex("outro", "== 07 - Templates/Modelo.md"),  # saída de outra chamada
+        _saida_codex("c1", SAIDA_BUSCAR),
+        _chamada_codex({"cmd": "ls '04 - Decisões Técnicas/'"}, ident="c2"),  # não é o Cérebro
+        _saida_codex("c2", "04 - Decisões Técnicas/ADR.md"),
+    ])
+    cerebro, _ = sinal_cerebro.contar_codex(tmp_path, agora=AGORA)
+    assert cerebro["consultas"] == 1
+    assert cerebro["partes"] == {"02": 1, "03": 1}
+
+
 def test_codex_sem_pasta_e_zero(tmp_path):
     cerebro, aux = sinal_cerebro.contar_codex(tmp_path, agora=AGORA)
     assert cerebro["consultas"] == 0 and aux["delegacoes"] == 0
@@ -122,7 +187,17 @@ def test_noah_registra_so_o_horario_e_conta_na_janela(tmp_path):
     sinal_cerebro.registrar_consulta_noah(arquivo, agora=AGORA - 20)
     sinal_cerebro.registrar_consulta_noah(arquivo, agora=AGORA - 10)
     assert all(set(json.loads(l)) == {"t"} for l in arquivo.read_text().splitlines())
-    assert sinal_cerebro.contar_noah(arquivo, agora=AGORA) == {"consultas": 2, "registros": 0, "ultima": AGORA - 10}
+    assert sinal_cerebro.contar_noah(arquivo, agora=AGORA) == {"consultas": 2, "registros": 0, "ultima": AGORA - 10,
+                                                                "partes": {}}
+
+
+def test_noah_registra_so_os_codigos_das_pastas(tmp_path):
+    arquivo = tmp_path / "atividade.jsonl"
+    sinal_cerebro.registrar_consulta_noah(arquivo, agora=AGORA - 20, partes=["02", "03", "02"])
+    sinal_cerebro.registrar_consulta_noah(arquivo, agora=AGORA - 10, partes=["02", "termo secreto", "9"])
+    linhas = [json.loads(l) for l in arquivo.read_text().splitlines()]
+    assert [l["p"] for l in linhas] == [["02", "03"], ["02"]]
+    assert sinal_cerebro.contar_noah(arquivo, agora=AGORA)["partes"] == {"02": 2, "03": 1}
 
 
 def test_noah_arquivo_fica_pequeno(tmp_path):
@@ -144,11 +219,13 @@ def test_consultar_anota_a_consulta(monkeypatch, tmp_path):
     from assistant import cerebro
 
     anotadas = []
-    monkeypatch.setattr(cerebro, "registrar_consulta_noah", lambda: anotadas.append(1))
-    monkeypatch.setattr(cerebro, "_run", lambda *a, **k: subprocess.CompletedProcess(a, 0, "trecho", ""))
-    assert cerebro.consultar("noah") == "trecho"
+    monkeypatch.setattr(cerebro, "registrar_consulta_noah", lambda **k: anotadas.append(list(k["partes"])))
+    monkeypatch.setattr(cerebro, "_run", lambda *a, **k: subprocess.CompletedProcess(a, 0, SAIDA_BUSCAR, ""))
+    assert cerebro.consultar("noah").startswith("== 02 - Projetos")
     assert cerebro.consultar("   ") .startswith("Preciso")  # sem termos não chega ao Cérebro
-    assert anotadas == [1]
+    monkeypatch.setattr(cerebro, "_run", lambda *a, **k: subprocess.CompletedProcess(a, 2, SAIDA_BUSCAR, "erro"))
+    cerebro.consultar("noah")  # falhou: conta a consulta, mas sem pastas
+    assert anotadas == [["02", "03"], []]
 
 
 # -- resumo -----------------------------------------------------------------------
@@ -162,7 +239,7 @@ def test_ler_sinal_junta_as_fontes(tmp_path):
     assert sinal["janela_s"] == sinal_cerebro.JANELA_S
     assert sinal["cerebro"]["claude"]["consultas"] == 1
     assert sinal["cerebro"]["codex"]["consultas"] == 0
-    assert sinal["cerebro"]["noah"] == {"consultas": 0, "registros": 0, "ultima": None}
+    assert sinal["cerebro"]["noah"] == {"consultas": 0, "registros": 0, "ultima": None, "partes": {}}
     assert sinal["auxiliares"]["codex"]["delegacoes"] == 1
     assert sinal["falhas"] == []
 

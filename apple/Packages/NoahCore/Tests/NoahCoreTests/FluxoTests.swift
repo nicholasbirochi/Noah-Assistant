@@ -83,6 +83,29 @@ final class FluxoTests: XCTestCase {
         XCTAssertEqual(ligacao(semNada, .cerebro, .auxiliares)?.estado, .semSinal)
     }
 
+    func testPartesDoCerebroPorAgente() {
+        let s = sinal(claude: .init(consultas: 2, registros: 1, partes: ["02": 2, "03": 1, "06": 1, "09": 4, "05": 0]),
+                      codex: .init(consultas: 1, partes: ["02": 1]),
+                      noah: .init(consultas: 1, partes: [:]))
+        // Código fora de 00–07 e contagem zero não viram parte.
+        XCTAssertEqual(Fluxo.partes(.claude, s), [.projetos: 2, .mapas: 1, .logs: 1])
+        XCTAssertEqual(Fluxo.partes(.noah, s), [:])
+        XCTAssertEqual(Fluxo.visitas(s), [.projetos: [.claude, .codex], .mapas: [.claude], .logs: [.claude]])
+        XCTAssertEqual(Fluxo.rotuloDasPartes(Fluxo.partes(.claude, s) ?? [:]), "Projetos, Mapas, Logs")
+    }
+
+    func testPartesSemSinalNuncaInventam() {
+        // Central antiga (sem "partes"), fonte em falha ou sem sinal: nil, e nenhuma parte acesa.
+        let antiga = sinal(claude: .init(consultas: 3))
+        XCTAssertNil(Fluxo.partes(.claude, antiga))
+        XCTAssertNil(Fluxo.partes(.claude, nil))
+        let falhou = sinal(codex: .init(consultas: 2, partes: ["02": 2]), falhas: ["Codex"])
+        XCTAssertNil(Fluxo.partes(.codex, falhou))
+        XCTAssertEqual(Fluxo.visitas(falhou), [:])
+        XCTAssertEqual(Fluxo.visitas(nil), [:])
+        XCTAssertEqual(Fluxo.Parte.allCases.map(\.rawValue), ["00", "01", "02", "03", "04", "05", "06", "07"])
+    }
+
     func testCerebroNuncaFingeAtividade() {
         let lista = Fluxo.ligacoes(itens: [p("a"), p("b", fonte: "noah")], jobs: [job("a", "rodando")])
         let cerebro = lista.filter { $0.de == .cerebro || $0.para == .cerebro }

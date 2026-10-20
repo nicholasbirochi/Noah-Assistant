@@ -29,12 +29,14 @@ Verifique o codigo antes de confiar em um detalhe.
   Noah) e Presenca (`GET /central/api/presenca`, so leitura, desligada por padrao)
   em servidor proprio na 8769, so leitura dos transcripts locais e resposta por
   retomada sem edicao; `sinal_cerebro.py` conta consultas ao Cerebro e delegacoes
-  aos auxiliares nos ultimos 10 min (`GET /central/api/cerebro`); decisao em
+  aos auxiliares nos ultimos 10 min (`GET /central/api/cerebro`), com o codigo
+  das pastas do cofre tocadas (`partes`, nunca termos ou trechos); decisao em
   `docs/ADR-0002`.
 - `apple/`: app Noah nativo (SwiftUI, iPhone e Mac) sobre a mesma central; tela
   inicial so com tarefas (geradas pelo Noah marcadas), detalhe ao tocar, painel
   "Ao vivo", avisos com acao e aba Fluxo (mapa animado: ligacoes com a central
-  e consultas ao Cerebro ao vivo, tracejadas so sem sinal); logica testavel em
+  e consultas ao Cerebro ao vivo, tracejadas so sem sinal; Cerebro em pedacos
+  com as 8 pastas e bonequinhos por agente em `apple/App/Bonecos.swift`); logica testavel em
   `apple/Packages/NoahCore` (`swift test`); decisao em `docs/ADR-0003`.
 - `src/indexing/` e `src/resume/`: documentos de curriculo, propostas e revisao;
   nao equivalem a integracao com a memoria de projetos do Obsidian.

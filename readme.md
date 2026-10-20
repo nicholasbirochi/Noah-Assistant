@@ -401,6 +401,9 @@ num some do outro.
   de ferramenta que executam `cerebro.py` ou `auxiliares.py` nos transcripts locais, mais
   as consultas do Noah (só o horário). Se uma fonte falha, a ligação fica tracejada, "sem
   sinal ao vivo", sem número chutado.
+- O Cérebro aparece em pedaços, nas 8 pastas do cofre. Acendem as pastas que cada agente
+  tocou, e o bonequinho dele anda até elas. A central manda só o código da pasta (`partes`),
+  tirado dos caminhos de nota que a resposta da ferramenta trouxe.
 
 Como gerar, assinar e ligar o iPhone pela rede de casa está em
 [apple/README.md](apple/README.md). A decisão está em

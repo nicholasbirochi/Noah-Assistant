@@ -95,7 +95,7 @@ final class ClienteCentralTests: XCTestCase {
     func testLeSinalDoCerebro() async throws {
         Stub.resposta = (200, """
         {"janela_s":600,"cerebro":{"claude":{"consultas":2,"registros":1,"ultima":1.5},
-         "codex":{"consultas":0,"registros":0,"ultima":null},"noah":{"consultas":1,"registros":0,"ultima":2}},
+         "codex":{"consultas":0,"registros":0,"ultima":null},"noah":{"consultas":1,"registros":0,"ultima":2,"partes":{"02":2,"06":1}}},
          "auxiliares":{"claude":{"delegacoes":1,"ultima":3},"codex":{"delegacoes":0,"ultima":null}},
          "falhas":[],"gerado_em":4}
         """)
@@ -105,6 +105,9 @@ final class ClienteCentralTests: XCTestCase {
         XCTAssertEqual(s.janela, 600)
         XCTAssertEqual(s.cerebro["claude"], SinalCerebro.Uso(consultas: 2, registros: 1, ultima: 1.5))
         XCTAssertNil(s.cerebro["codex"]?.ultima)
+        // Central antiga manda o uso sem "partes": fica nil, não vazio.
+        XCTAssertNil(s.cerebro["claude"]?.partes)
+        XCTAssertEqual(s.cerebro["noah"]?.partes, ["02": 2, "06": 1])
         XCTAssertEqual(s.auxiliares["claude"]?.delegacoes, 1)
     }
 

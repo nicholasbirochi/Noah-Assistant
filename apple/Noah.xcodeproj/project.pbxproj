@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		00475B9C0CFC4C2E7D9F5C47 /* Telas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */; };
+		084C23EE77F2F6295001CB75 /* Bonecos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */; };
 		18368944AABEDA5ACBF614D9 /* Cofre.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6627B814EFA52F4C6B1917 /* Cofre.swift */; };
 		31CAAC7EB2003D166594B555 /* Ajustes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6524DDE4E9B454A3A9DEF628 /* Ajustes.swift */; };
 		35BC00AE9C068BBE4090021E /* Modelo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C916317CA806DD90E28471 /* Modelo.swift */; };
@@ -23,6 +24,7 @@
 		8C77F04F3E5A503578AE88CF /* Telas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */; };
 		A600CDCE373DB4183E6AFD32 /* Ajustes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6524DDE4E9B454A3A9DEF628 /* Ajustes.swift */; };
 		A7DD9D54EA0C0527F8D97862 /* Avisos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83AE75BF042DE2CEB091B8C1 /* Avisos.swift */; };
+		C295FE92034949D183FBFCF3 /* Bonecos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */; };
 		D43C9AFB798DECA2A950C4D4 /* NoahApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E834F031211A62BEC67CBF1F /* NoahApp.swift */; };
 		E895F84C46C44517BCA9D2E2 /* FluxoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2083B8505BEA74BDE79F4F99 /* FluxoView.swift */; };
 /* End PBXBuildFile section */
@@ -33,6 +35,7 @@
 		2083B8505BEA74BDE79F4F99 /* FluxoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxoView.swift; sourceTree = "<group>"; };
 		25EC626AA508A286339E463D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		27B9D1B56DE55FB8A2266ED8 /* Noah-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Noah-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bonecos.swift; sourceTree = "<group>"; };
 		6524DDE4E9B454A3A9DEF628 /* Ajustes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ajustes.swift; sourceTree = "<group>"; };
 		83AE75BF042DE2CEB091B8C1 /* Avisos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Avisos.swift; sourceTree = "<group>"; };
 		8E921A2F40DADD7F56855F94 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
@@ -86,6 +89,7 @@
 				6524DDE4E9B454A3A9DEF628 /* Ajustes.swift */,
 				25EC626AA508A286339E463D /* Assets.xcassets */,
 				83AE75BF042DE2CEB091B8C1 /* Avisos.swift */,
+				59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */,
 				CA6627B814EFA52F4C6B1917 /* Cofre.swift */,
 				2083B8505BEA74BDE79F4F99 /* FluxoView.swift */,
 				A9C916317CA806DD90E28471 /* Modelo.swift */,
@@ -221,6 +225,7 @@
 			files = (
 				31CAAC7EB2003D166594B555 /* Ajustes.swift in Sources */,
 				A7DD9D54EA0C0527F8D97862 /* Avisos.swift in Sources */,
+				C295FE92034949D183FBFCF3 /* Bonecos.swift in Sources */,
 				6C243AB00D5C0CBE3AB58747 /* Cofre.swift in Sources */,
 				386488289E41D9A4B2A199AC /* FluxoView.swift in Sources */,
 				35BC00AE9C068BBE4090021E /* Modelo.swift in Sources */,
@@ -235,6 +240,7 @@
 			files = (
 				A600CDCE373DB4183E6AFD32 /* Ajustes.swift in Sources */,
 				36375A2A5FF694DFB65DE047 /* Avisos.swift in Sources */,
+				084C23EE77F2F6295001CB75 /* Bonecos.swift in Sources */,
 				18368944AABEDA5ACBF614D9 /* Cofre.swift in Sources */,
 				E895F84C46C44517BCA9D2E2 /* FluxoView.swift in Sources */,
 				84CC8A955FE3DD6207670FC6 /* Modelo.swift in Sources */,
