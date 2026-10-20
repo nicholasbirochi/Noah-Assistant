@@ -40,7 +40,7 @@ import subprocess
 import sys
 import tempfile
 
-from central.sinal_cerebro import registrar_consulta_noah
+from central.sinal_cerebro import pastas_citadas, registrar_consulta_noah
 
 # The vault reads many files per query; writes take the lock + fsync. These are
 # generous for a local, personal CLI -- their only job is to stop a wedged
@@ -127,10 +127,11 @@ def consultar(
         return f"Cérebro indisponível: {exc}. Sigo sem consultar quando for seguro."
     except subprocess.TimeoutExpired:
         return f"A consulta ao Cérebro excedeu o tempo limite ({_BUSCAR_TIMEOUT}s)."
-    registrar_consulta_noah()  # só o horário, para o sinal ao vivo do app Noah
+    saida = (proc.stdout or "").strip()
+    # Só o horário e os códigos das pastas citadas, para o sinal ao vivo do app Noah.
+    registrar_consulta_noah(partes=pastas_citadas(saida) if proc.returncode == 0 else ())
     if proc.returncode != 0:
         return f"Não consegui consultar o Cérebro: {_detalhe_erro(proc)}"
-    saida = proc.stdout.strip()
     # buscar --trechos still prints its trailing summary line when nothing
     # matched ("-- trechos de 0 nota(s)..."); turn that into a plain answer.
     if not saida or re.search(r"trechos de 0 nota", saida):

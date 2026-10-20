@@ -5,7 +5,9 @@ import Foundation
 /// chegam e respostas em andamento. As ligações com o Cérebro e os auxiliares
 /// vêm do sinal da central (`SinalCerebro`): consultas, registros e delegações
 /// nos últimos minutos. Sem esse sinal (central antiga) ou com a fonte em falha,
-/// a ligação fica "sem sinal ao vivo", nunca com atividade inventada.
+/// a ligação fica "sem sinal ao vivo", nunca com atividade inventada. O mesmo
+/// sinal conta as pastas do cofre citadas (`Parte`), para o Cérebro aparecer em
+/// pedaços com as partes que cada agente tocou; sem essa contagem, nada acende.
 public enum Fluxo {
     public enum No: String, CaseIterable, Sendable {
         case claude, codex, noah, auxiliares, cerebro, central, aparelhos
@@ -119,6 +121,75 @@ public enum Fluxo {
             ? Ligacao(de: .cerebro, para: .auxiliares, estado: .viva, quantidade: n,
                       rotulo: contar(n, "tarefa delegada", "tarefas delegadas"))
             : Ligacao(de: .cerebro, para: .auxiliares, estado: .parada, rotulo: nadaNaJanela(sinal))
+    }
+
+    // MARK: - Partes do Cérebro
+
+    /// As pastas do cofre, na ordem em que o Cérebro aparece em pedaços.
+    public enum Parte: String, CaseIterable, Sendable, Comparable {
+        case regras = "00", indices = "01", projetos = "02", mapas = "03"
+        case decisoes = "04", padroes = "05", logs = "06", templates = "07"
+
+        public var nome: String {
+            switch self {
+            case .regras: "Regras"
+            case .indices: "Índices"
+            case .projetos: "Projetos"
+            case .mapas: "Mapas"
+            case .decisoes: "Decisões"
+            case .padroes: "Padrões"
+            case .logs: "Logs"
+            case .templates: "Templates"
+            }
+        }
+
+        /// Nome da pasta no cofre.
+        public var pasta: String {
+            switch self {
+            case .regras: "00 - Regras para Agentes"
+            case .indices: "01 - Índices"
+            case .projetos: "02 - Projetos"
+            case .mapas: "03 - Graphify e Mapas de Projeto"
+            case .decisoes: "04 - Decisões Técnicas"
+            case .padroes: "05 - Padrões e Preferências"
+            case .logs: "06 - Logs de Tarefas"
+            case .templates: "07 - Templates"
+            }
+        }
+
+        public static func < (a: Parte, b: Parte) -> Bool { a.rawValue < b.rawValue }
+    }
+
+    /// Agentes que consultam o Cérebro (cada um tem seu bonequinho no Fluxo).
+    public static let consultam: [No] = [.claude, .codex, .noah]
+
+    /// Que partes do Cérebro o agente tocou na janela e quantas vezes.
+    /// nil = sem sinal por parte: central antiga (sem `partes`), fonte em falha
+    /// ou sinal ausente. Vazio = tem sinal, mas nenhuma pasta foi citada.
+    public static func partes(_ no: No, _ sinal: SinalCerebro?) -> [Parte: Int]? {
+        guard let sinal, !sinal.falhas.contains(no.nome), let brutas = sinal.cerebro[no.rawValue]?.partes else {
+            return nil
+        }
+        var saida: [Parte: Int] = [:]
+        for (codigo, n) in brutas where n > 0 {
+            if let parte = Parte(rawValue: codigo) { saida[parte, default: 0] += n }
+        }
+        return saida
+    }
+
+    /// Para cada parte do Cérebro, quem a tocou na janela (na ordem de `consultam`).
+    public static func visitas(_ sinal: SinalCerebro?) -> [Parte: [No]] {
+        var saida: [Parte: [No]] = [:]
+        for no in consultam {
+            for parte in (partes(no, sinal) ?? [:]).keys.sorted() { saida[parte, default: []].append(no) }
+        }
+        return saida
+    }
+
+    /// Texto curto das partes tocadas, da mais citada para a menos ("Projetos, Mapas").
+    public static func rotuloDasPartes(_ partes: [Parte: Int]) -> String {
+        partes.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }
+            .map(\.key.nome).joined(separator: ", ")
     }
 
     static func nadaNaJanela(_ sinal: SinalCerebro) -> String {

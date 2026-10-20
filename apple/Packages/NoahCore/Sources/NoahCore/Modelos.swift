@@ -149,11 +149,15 @@ public struct SinalCerebro: Codable, Sendable, Equatable {
         public var consultas: Int
         public var registros: Int
         public var ultima: Double?
+        /// Quantas vezes cada pasta do cofre ("00"…"07") apareceu nas consultas
+        /// e registros da janela. nil quando a central é anterior a essa contagem.
+        public var partes: [String: Int]?
 
-        public init(consultas: Int = 0, registros: Int = 0, ultima: Double? = nil) {
+        public init(consultas: Int = 0, registros: Int = 0, ultima: Double? = nil, partes: [String: Int]? = nil) {
             self.consultas = consultas
             self.registros = registros
             self.ultima = ultima
+            self.partes = partes
         }
     }
 

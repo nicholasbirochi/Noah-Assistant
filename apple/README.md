@@ -32,6 +32,13 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
     (`GET /central/api/cerebro`), contado nos últimos 10 minutos. Com atividade, a linha
     ganha partículas e a contagem ("2 consultas · 1 registro", "1 tarefa delegada"). Sem
     nada na janela, ela fica parada ("nada nos últimos 10 min").
+  - **Cérebro em pedaços:** o Cérebro aparece dividido nas 8 pastas do cofre (00 Regras a
+    07 Templates). Acendem as pastas que algum agente tocou na janela, com um ponto na cor
+    de cada um. Os bonequinhos do Claude Code, do Codex e do Noah andam até as pastas que
+    consultaram. A contagem por pasta vem do mesmo sinal (`partes`). Com uma central
+    antiga, sem essa contagem, nenhuma pasta acende e os bonequinhos ficam parados.
+  - O painel "Agora", abaixo do mapa, lista cada ligação viva e as pastas tocadas
+    ("1 consulta em Projetos, Decisões").
   - **Sem sinal ao vivo:** se a central é antiga (sem a rota) ou não conseguiu ler uma
     fonte, a ligação fica tracejada. O mapa mostra que o caminho existe sem inventar
     atividade.
@@ -109,6 +116,8 @@ conversas reais):**
 - a aba Fluxo com o sinal do Cérebro: partículas e contagem nas consultas do Claude Code
   e do Noah e na delegação ao Qwen; com a leitura do Codex em falha, a ligação dele
   tracejada e a legenda "sem sinal ao vivo";
+- a aba Fluxo com o Cérebro em pedaços (só no Mac): pastas acesas por agente, bonequinhos
+  andando até elas e rótulos das ligações com o Cérebro fora do bloco dele;
 - um item novo aparecendo nos dois;
 - "Aceitar" no iPhone chegou à central, e o Mac moveu o item para Respostas e registrou
   no feed.
@@ -117,11 +126,16 @@ conversas reais):**
 - um iPhone de verdade;
 - o toque no aviso abrindo o detalhe;
 - o pedido de permissão de avisos no Mac;
-- o refresh em segundo plano do iOS.
+- o refresh em segundo plano do iOS;
+- o Cérebro em pedaços no iPhone (layout estreito, 4 colunas). O target do iOS compila,
+  mas a tela não foi vista. A janela do Mac tem largura mínima de 860, por isso ele usa
+  sempre o layout largo.
 
 **Limite do sinal do Cérebro:** ele conta só chamadas de ferramenta que executam
 `cerebro.py buscar|contexto|gravar` e `auxiliares.py`. O hook de início de sessão roda fora
-das ferramentas e não entra.
+das ferramentas e não entra. As pastas vêm dos caminhos de nota que a própria resposta da
+ferramenta trouxe (ou do `--destino` num registro). Uma consulta que não citou nenhum
+caminho conta, mas não acende pasta.
 
 ## Problema conhecido
 
