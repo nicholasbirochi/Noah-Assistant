@@ -24,6 +24,26 @@ enum Ajustes {
         set { UserDefaults.standard.set(newValue, forKey: chaveAceitar) }
     }
 
+    /// Pede Face ID (Touch ID ou senha no Mac) antes de aceitar, responder ou dispensar.
+    static var pedirBiometria: Bool {
+        get { UserDefaults.standard.object(forKey: "pedirBiometria") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "pedirBiometria") }
+    }
+
+    /// iPhone: Live Activity na ilha dinâmica e na tela bloqueada. Mac: a ilha no notch
+    /// (ou no meio da barra de menus, em telas sem notch).
+    static var ilhaLigada: Bool {
+        get { UserDefaults.standard.object(forKey: "ilhaLigada") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "ilhaLigada") }
+    }
+
+    /// Mac: com o Alcove aberto, a ilha encosta ao lado da área dele (que fica por
+    /// cima de tudo no meio do topo) em vez de ficar escondida embaixo.
+    static var ilhaAoLadoDoAlcove: Bool {
+        get { UserDefaults.standard.object(forKey: "ilhaAoLadoDoAlcove") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "ilhaAoLadoDoAlcove") }
+    }
+
     static func cliente() throws -> ClienteCentral {
         guard let base = ClienteCentral.endereco(endereco) else { throw ErroCentral.enderecoInvalido }
         return ClienteCentral(base: base, token: Cofre.ler())

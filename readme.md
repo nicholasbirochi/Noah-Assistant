@@ -454,8 +454,17 @@ num some do outro.
 - O Cérebro aparece em pedaços, nas 8 pastas do cofre. Acendem as pastas que cada agente
   tocou, e o bonequinho dele anda até elas. A central manda só o código da pasta (`partes`),
   tirado dos caminhos de nota que a resposta da ferramenta trouxe.
+- No iPhone, a ilha dinâmica e a tela bloqueada mostram o estado: azul "Trabalhando",
+  âmbar "Esperando você" com "!" e verde "Tudo pronto". Há widgets para a tela de início
+  e a tela bloqueada.
+- Responder, Aceitar e Dispensar pedem Face ID no iPhone e Touch ID no Mac. Ilha e widgets
+  só abrem o app.
+- No Mac, o painel da barra de menus lista as pendências e abre o app do agente.
+- No Mac, uma ilha no notch mostra o mesmo estado. Ela abre com o mouse, fecha pouco depois
+  que ele sai e, com o Alcove aberto, encosta ao lado dele.
+- O ícone é um botzinho preto e branco, gerado por `src/scripts/generate_app_icon.py`.
 
-Como gerar, assinar e ligar o iPhone pela rede de casa está em
+Como gerar, instalar no iPhone e ligá-lo pela rede de casa está em
 [apple/README.md](apple/README.md). A decisão está em
 [docs/ADR-0003](docs/ADR-0003-app-nativo.md).
 

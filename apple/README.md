@@ -50,11 +50,54 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - O aviso tem a mesma chave nos dois aparelhos.
   - O aviso some quando a pendência sai da lista ou alguém começa a respondê-la.
   - O número no ícone é a contagem do que espera você.
+- **Ilha dinâmica e tela bloqueada (iPhone).** Uma Live Activity resume a central com as
+  cores do protótipo `noah-coucou.html`:
+  - azul, "Trabalhando": algum agente está respondendo;
+  - âmbar, "Esperando você", com "!" e a contagem: há pendência para você;
+  - verde, "Tudo pronto", olhos ^^: respostas terminaram há pouco e nada espera você.
+
+  Esperando vence trabalhando, que vence pronto. Sem nada a mostrar, a atividade encerra.
+  Tocar na ilha abre a pendência da vez (ou o Fluxo). Ligue e desligue em **Ajustes >
+  Ilha dinâmica**. Na primeira vez o iOS pergunta, na tela bloqueada, se permite Atividades
+  ao Vivo do Noah.
+- **Widgets (iPhone).** O widget "Noah" existe nos tamanhos pequeno e médio da tela de
+  início e nos formatos circular, retangular e em linha da tela bloqueada. Ele lê o mesmo
+  resumo da ilha pelo App Group `group.com.nicholasbirochi.noah`.
+- **Aprovação com Face ID.** Responder, Aceitar e Dispensar pedem Face ID no iPhone e
+  Touch ID ou senha no Mac. Se você cancelar, nada é enviado e a pendência continua.
+  - A trava fica no modelo do app, então vale para todo botão.
+  - Ilha e widgets só abrem o app (links `noah://`): nada aprova sem passar pela trava.
+  - As ações do aviso usam `.authenticationRequired`, e o iOS pede o desbloqueio.
+  - Desligue em **Ajustes > Aprovação**. Sem senha no aparelho não há o que pedir, e a
+    ação segue.
 - **Mac.** O app fica na barra de menus mesmo com a janela fechada, para continuar
-  avisando. O menu lista as pendências e abre o detalhe de cada uma.
+  avisando. O painel da barra mostra o rosto do Noah no estado atual e até 8 pendências.
+  Cada uma tem um botão que abre o app do agente (Claude, ou o ChatGPT, onde fica o Codex)
+  e "Aceitar", que pede Touch ID. Há também "Abrir Noah" e "Sair".
+- **Ilha no notch (Mac).** Uma pílula preta no notch, ou no meio da barra de menus se a
+  tela não tiver notch, nas mesmas três cores da ilha do iPhone.
+  - Passar o mouse ou clicar abre o cartão com as pendências e o que está sendo respondido.
+  - Fecha só uns 0,6 s depois que o mouse sai. Uma margem de 20 pt em volta do cartão, e
+    tudo acima dele até o topo da tela, ainda contam como "em cima": encostar na borda ou
+    na sombra não fecha.
+  - Quando chega pendência nova, abre sozinha por 4 s.
+  - **Alcove.** O Alcove desenha por cima de qualquer janela no meio do topo. Com ele
+    aberto, a ilha do Noah encosta à direita da área dele (ou à esquerda, se não couber).
+    Desligue em **Ajustes > Encostar ao lado do Alcove**. O Alcove é fechado e licenciado,
+    sem API de integração: mexer no app dele quebraria a assinatura e a licença, por isso o
+    Noah só detecta onde ele está.
+  - Liga e desliga em **Ajustes > Mostrar a ilha no alto da tela**.
+- **Ícone.** Um botzinho preto e branco, sem antena: rosto claro em fundo grafite. Os
+  PNGs do iPhone e do Mac e o `src/assets/AppIcon.icns` saem do mesmo script:
+  `.venv/bin/python src/scripts/generate_app_icon.py` (precisa do PyObjC da `.venv`).
 - **Atualização.** A cada 20 s, e a cada 4 s enquanto alguém responde. No iPhone, com o
   app fechado, o iOS acorda o app de tempos em tempos (`BGAppRefresh`). Sem conta paga
-  da Apple não há push (APNs).
+  da Apple não há push (APNs). Por isso a ilha e os widgets só mudam quando o app roda ou
+  o iOS o acorda, e a Live Activity só começa com o app aberto. A ilha marca o resumo como
+  velho depois de 30 min sem atualizar.
+
+**Limites do iOS:** o app não consegue fechar nem apagar outros apps, e não existem widgets
+do Mac por enquanto.
 
 O token fica no Keychain. O endereço da central e o texto do "Aceitar" (padrão "Pode
 seguir.") ficam em UserDefaults.
@@ -68,11 +111,31 @@ O `Noah.xcodeproj` gerado também está no repositório, para abrir sem instalar
 cd apple && xcodegen
 ```
 
-Para rodar no seu iPhone, copie `Config/Local.xcconfig.example` para `Config/Local.xcconfig`
-e ponha o seu Team ID (Xcode > Settings > Accounts). Esse arquivo é ignorado pelo git, e o
-repositório é público. A conta gratuita serve, mas o perfil vale 7 dias: depois disso é
-preciso instalar de novo pelo Xcode. O app do Mac é assinado localmente (`-`) e não
-precisa de conta.
+O app do Mac é assinado localmente (`-`) e não precisa de conta.
+
+### Instalar no iPhone
+
+A conta gratuita da Apple serve, mas o perfil vale 7 dias: depois disso, instale de novo.
+
+1. No Xcode, **Settings > Accounts**, entre com o seu Apple ID. Ele cria o time pessoal.
+2. Copie `Config/Local.xcconfig.example` para `Config/Local.xcconfig` e ponha o Team ID
+   desse time. O arquivo é ignorado pelo git, e o repositório é público.
+3. Ligue o iPhone no Mac pelo cabo, desbloqueie e toque em "Confiar".
+4. No iPhone, ligue **Ajustes > Privacidade e Segurança > Modo de Desenvolvedor** (ele
+   reinicia).
+5. Abra `Noah.xcodeproj`, escolha o esquema **Noah-iOS** e o seu iPhone, e rode (⌘R).
+   Pela linha de comando:
+
+   ```bash
+   xcodebuild -project Noah.xcodeproj -scheme Noah-iOS -configuration Release -destination 'generic/platform=iOS' -derivedDataPath "$TMPDIR/noah-dd-device" -allowProvisioningUpdates build
+   xcrun devicectl device install app --device <UDID do iPhone> "$TMPDIR/noah-dd-device/Build/Products/Release-iphoneos/Noah.app"
+   ```
+
+   O UDID aparece em `xcrun devicectl list devices`. O build fica fora do OneDrive porque
+   a sincronia dele estraga a assinatura.
+6. Na primeira vez, o iPhone pede para confiar no desenvolvedor: **Ajustes > Geral > VPN e
+   Gerenciamento de Dispositivos**, toque no seu Apple ID e em "Confiar".
+7. Ligue o app à central pelo Wi-Fi de casa (próxima seção).
 
 ## Ligar à central
 
@@ -93,7 +156,9 @@ precisaria de VPN (Tailscale), ainda não instalada.
 ## Testes
 
 A lógica que não depende da tela fica no pacote `Packages/NoahCore`: modelos, cliente da
-central, comparação de avisos, feed de atividade e as ligações da aba Fluxo. Ela tem
+central, comparação de avisos, feed de atividade, as ligações da aba Fluxo, o resumo da
+ilha, as regras da ilha no notch do Mac (abrir, fechar, encostar no Alcove) e os links
+`noah://`. Ela tem
 testes:
 
 ```bash
@@ -120,16 +185,30 @@ conversas reais):**
   andando até elas e rótulos das ligações com o Cérebro fora do bloco dele;
 - um item novo aparecendo nos dois;
 - "Aceitar" no iPhone chegou à central, e o Mac moveu o item para Respostas e registrou
-  no feed.
+  no feed;
+- a ilha dinâmica nos três visuais (âmbar com "!" e contagem, azul, verde com ^^) e a Live
+  Activity na tela bloqueada;
+- o link `noah://pendencia?chave=…` abrindo o detalhe da pendência;
+- o Face ID antes de Aceitar: com rosto não reconhecido e "Cancelar", nada chegou à central;
+  com rosto reconhecido, a resposta chegou;
+- o app do Mac compila com o painel novo da barra de menus;
+- a ilha no notch do Mac: abre com o mouse, continua aberta com o mouse na borda e fecha
+  depois que ele sai; com o Alcove aberto, encosta ao lado dele;
+- o ícone novo no Mac e na tela de início do Simulador.
 
 **Ainda não verificado:**
-- um iPhone de verdade;
+- um iPhone de verdade: o build para aparelho para em "No Account for Team" até haver
+  um Apple ID no Xcode;
 - o toque no aviso abrindo o detalhe;
 - o pedido de permissão de avisos no Mac;
 - o refresh em segundo plano do iOS;
 - o Cérebro em pedaços no iPhone (layout estreito, 4 colunas). O target do iOS compila,
   mas a tela não foi vista. A janela do Mac tem largura mínima de 860, por isso ele usa
   sempre o layout largo.
+- os widgets colocados na tela de início e na tela bloqueada (compilam e vão no app, mas
+  adicioná-los pede edição manual da tela);
+- o painel da barra de menus aberto na tela, o Touch ID no Mac e o botão que abre o app
+  do agente.
 
 **Limite do sinal do Cérebro:** ele conta só chamadas de ferramenta que executam
 `cerebro.py buscar|contexto|gravar` e `auxiliares.py`. O hook de início de sessão roda fora

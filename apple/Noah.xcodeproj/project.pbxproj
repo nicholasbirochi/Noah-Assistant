@@ -8,26 +8,65 @@
 
 /* Begin PBXBuildFile section */
 		00475B9C0CFC4C2E7D9F5C47 /* Telas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */; };
+		07B6493FB3B575829642023F /* NoahCore in Frameworks */ = {isa = PBXBuildFile; productRef = 3FB418449297CB51D77F6E06 /* NoahCore */; };
 		084C23EE77F2F6295001CB75 /* Bonecos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */; };
+		17FE2055E910D3A5D2EC2F71 /* Cadeado.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4448D16D138EDAB95517D35E /* Cadeado.swift */; };
 		18368944AABEDA5ACBF614D9 /* Cofre.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6627B814EFA52F4C6B1917 /* Cofre.swift */; };
 		31CAAC7EB2003D166594B555 /* Ajustes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6524DDE4E9B454A3A9DEF628 /* Ajustes.swift */; };
+		34FE690C31ACAAB4706E5B34 /* Rosto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92AB7857534698C2AC8B0111 /* Rosto.swift */; };
 		35BC00AE9C068BBE4090021E /* Modelo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C916317CA806DD90E28471 /* Modelo.swift */; };
 		36375A2A5FF694DFB65DE047 /* Avisos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83AE75BF042DE2CEB091B8C1 /* Avisos.swift */; };
 		386488289E41D9A4B2A199AC /* FluxoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2083B8505BEA74BDE79F4F99 /* FluxoView.swift */; };
 		3C47D6EBD8C20CB6FCEF0785 /* NoahApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E834F031211A62BEC67CBF1F /* NoahApp.swift */; };
 		3F83CA0F219C81B88B215286 /* NoahCore in Frameworks */ = {isa = PBXBuildFile; productRef = 96DDD5B717E97D6B9B74E7C2 /* NoahCore */; };
+		43A4D03C9A9BCE3F9F8D037A /* NoahAtributos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE09B8EDFE023883860602 /* NoahAtributos.swift */; };
 		479D7B7B98EB5B7773A0657D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 25EC626AA508A286339E463D /* Assets.xcassets */; };
+		6119B9D1698F6CF25456B454 /* Cadeado.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4448D16D138EDAB95517D35E /* Cadeado.swift */; };
+		642ED14C4993CFE6FAD00FFB /* IlhaMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C3D52B287A8732C8CE6C7B /* IlhaMac.swift */; };
 		64DCB704904C757AAF117575 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 25EC626AA508A286339E463D /* Assets.xcassets */; };
 		6C243AB00D5C0CBE3AB58747 /* Cofre.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6627B814EFA52F4C6B1917 /* Cofre.swift */; };
+		6CF17BB328EA7D985F678DAD /* NoahAtributos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE09B8EDFE023883860602 /* NoahAtributos.swift */; };
 		6F03ECBA1BEC124D48A61407 /* NoahCore in Frameworks */ = {isa = PBXBuildFile; productRef = 32FE113F8DB0963C3B1E2D73 /* NoahCore */; };
+		719D6715535A83FD4673AA55 /* Rosto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92AB7857534698C2AC8B0111 /* Rosto.swift */; };
+		7449C0C696F866174080AA7A /* Vitrine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCC254136C258234B5B70AD /* Vitrine.swift */; };
+		82BD8B62EF994C779E0A5394 /* NoahWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7A5043898E2682A853693C7A /* NoahWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		84CC8A955FE3DD6207670FC6 /* Modelo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C916317CA806DD90E28471 /* Modelo.swift */; };
 		8C77F04F3E5A503578AE88CF /* Telas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */; };
+		95CC8E28F13FA330681A505A /* NoahWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE799611396266451C18D60 /* NoahWidgets.swift */; };
+		A160E78E96ACE7DB5156502E /* NoahAtributos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE09B8EDFE023883860602 /* NoahAtributos.swift */; };
 		A600CDCE373DB4183E6AFD32 /* Ajustes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6524DDE4E9B454A3A9DEF628 /* Ajustes.swift */; };
 		A7DD9D54EA0C0527F8D97862 /* Avisos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83AE75BF042DE2CEB091B8C1 /* Avisos.swift */; };
+		BB5FA9AB53A2D2BEE5EA2F2A /* IlhaMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C3D52B287A8732C8CE6C7B /* IlhaMac.swift */; };
 		C295FE92034949D183FBFCF3 /* Bonecos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */; };
 		D43C9AFB798DECA2A950C4D4 /* NoahApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E834F031211A62BEC67CBF1F /* NoahApp.swift */; };
 		E895F84C46C44517BCA9D2E2 /* FluxoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2083B8505BEA74BDE79F4F99 /* FluxoView.swift */; };
+		EA0822FA83018966D7294F30 /* Vitrine.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADCC254136C258234B5B70AD /* Vitrine.swift */; };
+		F68B77E92614F253826CAFA2 /* Rosto.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92AB7857534698C2AC8B0111 /* Rosto.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		AC80CA91D0DC9B8806B07608 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 02B987B56A84CE7DBAE16B55 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CE4E8CFDA18DD16635D21A29;
+			remoteInfo = NoahWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		5CC4CB9BE95E5606A10BCD3F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				82BD8B62EF994C779E0A5394 /* NoahWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Telas.swift; sourceTree = "<group>"; };
@@ -35,12 +74,19 @@
 		2083B8505BEA74BDE79F4F99 /* FluxoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxoView.swift; sourceTree = "<group>"; };
 		25EC626AA508A286339E463D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		27B9D1B56DE55FB8A2266ED8 /* Noah-macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Noah-macOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		4448D16D138EDAB95517D35E /* Cadeado.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cadeado.swift; sourceTree = "<group>"; };
+		4AE799611396266451C18D60 /* NoahWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoahWidgets.swift; sourceTree = "<group>"; };
 		59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Bonecos.swift; sourceTree = "<group>"; };
 		6524DDE4E9B454A3A9DEF628 /* Ajustes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ajustes.swift; sourceTree = "<group>"; };
+		7A5043898E2682A853693C7A /* NoahWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = NoahWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		83AE75BF042DE2CEB091B8C1 /* Avisos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Avisos.swift; sourceTree = "<group>"; };
+		8DEE09B8EDFE023883860602 /* NoahAtributos.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoahAtributos.swift; sourceTree = "<group>"; };
 		8E921A2F40DADD7F56855F94 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		92AB7857534698C2AC8B0111 /* Rosto.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Rosto.swift; sourceTree = "<group>"; };
 		9B9DE918BC1E184FF0556798 /* Noah-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Noah-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9C916317CA806DD90E28471 /* Modelo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Modelo.swift; sourceTree = "<group>"; };
+		ADCC254136C258234B5B70AD /* Vitrine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vitrine.swift; sourceTree = "<group>"; };
+		C4C3D52B287A8732C8CE6C7B /* IlhaMac.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IlhaMac.swift; sourceTree = "<group>"; };
 		CA6627B814EFA52F4C6B1917 /* Cofre.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cofre.swift; sourceTree = "<group>"; };
 		E834F031211A62BEC67CBF1F /* NoahApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoahApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -62,9 +108,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		177786B1CD8B1DBA6BC5576A /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				07B6493FB3B575829642023F /* NoahCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		4EB8A37EAD3A1E8C08CB111C /* Widgets */ = {
+			isa = PBXGroup;
+			children = (
+				4AE799611396266451C18D60 /* NoahWidgets.swift */,
+			);
+			path = Widgets;
+			sourceTree = "<group>";
+		};
+		512CB664DC8D7459473558C7 /* Compartilhado */ = {
+			isa = PBXGroup;
+			children = (
+				8DEE09B8EDFE023883860602 /* NoahAtributos.swift */,
+				92AB7857534698C2AC8B0111 /* Rosto.swift */,
+			);
+			path = Compartilhado;
+			sourceTree = "<group>";
+		};
 		645449D31B28CB34560A445F /* Config */ = {
 			isa = PBXGroup;
 			children = (
@@ -77,8 +148,10 @@
 			isa = PBXGroup;
 			children = (
 				8CA0B7BF969F7BC8D622C3E7 /* App */,
+				512CB664DC8D7459473558C7 /* Compartilhado */,
 				645449D31B28CB34560A445F /* Config */,
 				FC2ABC4B5B10CE26BE9B231C /* Packages */,
+				4EB8A37EAD3A1E8C08CB111C /* Widgets */,
 				F3E0896E0A277E1FF448D5FC /* Products */,
 			);
 			sourceTree = "<group>";
@@ -90,11 +163,14 @@
 				25EC626AA508A286339E463D /* Assets.xcassets */,
 				83AE75BF042DE2CEB091B8C1 /* Avisos.swift */,
 				59F4BE2D3CE8AC21217936A6 /* Bonecos.swift */,
+				4448D16D138EDAB95517D35E /* Cadeado.swift */,
 				CA6627B814EFA52F4C6B1917 /* Cofre.swift */,
 				2083B8505BEA74BDE79F4F99 /* FluxoView.swift */,
+				C4C3D52B287A8732C8CE6C7B /* IlhaMac.swift */,
 				A9C916317CA806DD90E28471 /* Modelo.swift */,
 				E834F031211A62BEC67CBF1F /* NoahApp.swift */,
 				0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */,
+				ADCC254136C258234B5B70AD /* Vitrine.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -104,6 +180,7 @@
 			children = (
 				9B9DE918BC1E184FF0556798 /* Noah-iOS.app */,
 				27B9D1B56DE55FB8A2266ED8 /* Noah-macOS.app */,
+				7A5043898E2682A853693C7A /* NoahWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -126,10 +203,12 @@
 				430827082CE33348CEC5BF4A /* Sources */,
 				B959DE420A61FE965E09AE70 /* Resources */,
 				072B0E4F8D2F5C6DB81603EF /* Frameworks */,
+				5CC4CB9BE95E5606A10BCD3F /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A7BD01F20844238A3D10794B /* PBXTargetDependency */,
 			);
 			name = "Noah-iOS";
 			packageProductDependencies = (
@@ -138,6 +217,25 @@
 			productName = "Noah-iOS";
 			productReference = 9B9DE918BC1E184FF0556798 /* Noah-iOS.app */;
 			productType = "com.apple.product-type.application";
+		};
+		CE4E8CFDA18DD16635D21A29 /* NoahWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A45457FF1E8E105F99700133 /* Build configuration list for PBXNativeTarget "NoahWidgets" */;
+			buildPhases = (
+				861BB24ADFBE045A5C281A07 /* Sources */,
+				177786B1CD8B1DBA6BC5576A /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = NoahWidgets;
+			packageProductDependencies = (
+				3FB418449297CB51D77F6E06 /* NoahCore */,
+			);
+			productName = NoahWidgets;
+			productReference = 7A5043898E2682A853693C7A /* NoahWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		D6C53958E198267E5FF91222 /* Noah-macOS */ = {
 			isa = PBXNativeTarget;
@@ -171,6 +269,9 @@
 					0148E398485BE86326D9D1EE = {
 						ProvisioningStyle = Automatic;
 					};
+					CE4E8CFDA18DD16635D21A29 = {
+						ProvisioningStyle = Automatic;
+					};
 					D6C53958E198267E5FF91222 = {
 						ProvisioningStyle = Manual;
 					};
@@ -194,6 +295,7 @@
 			projectRoot = "";
 			targets = (
 				0148E398485BE86326D9D1EE /* Noah-iOS */,
+				CE4E8CFDA18DD16635D21A29 /* NoahWidgets */,
 				D6C53958E198267E5FF91222 /* Noah-macOS */,
 			);
 		};
@@ -226,11 +328,16 @@
 				31CAAC7EB2003D166594B555 /* Ajustes.swift in Sources */,
 				A7DD9D54EA0C0527F8D97862 /* Avisos.swift in Sources */,
 				C295FE92034949D183FBFCF3 /* Bonecos.swift in Sources */,
+				6119B9D1698F6CF25456B454 /* Cadeado.swift in Sources */,
 				6C243AB00D5C0CBE3AB58747 /* Cofre.swift in Sources */,
 				386488289E41D9A4B2A199AC /* FluxoView.swift in Sources */,
+				642ED14C4993CFE6FAD00FFB /* IlhaMac.swift in Sources */,
 				35BC00AE9C068BBE4090021E /* Modelo.swift in Sources */,
 				3C47D6EBD8C20CB6FCEF0785 /* NoahApp.swift in Sources */,
+				A160E78E96ACE7DB5156502E /* NoahAtributos.swift in Sources */,
+				F68B77E92614F253826CAFA2 /* Rosto.swift in Sources */,
 				8C77F04F3E5A503578AE88CF /* Telas.swift in Sources */,
+				EA0822FA83018966D7294F30 /* Vitrine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,21 +348,45 @@
 				A600CDCE373DB4183E6AFD32 /* Ajustes.swift in Sources */,
 				36375A2A5FF694DFB65DE047 /* Avisos.swift in Sources */,
 				084C23EE77F2F6295001CB75 /* Bonecos.swift in Sources */,
+				17FE2055E910D3A5D2EC2F71 /* Cadeado.swift in Sources */,
 				18368944AABEDA5ACBF614D9 /* Cofre.swift in Sources */,
 				E895F84C46C44517BCA9D2E2 /* FluxoView.swift in Sources */,
+				BB5FA9AB53A2D2BEE5EA2F2A /* IlhaMac.swift in Sources */,
 				84CC8A955FE3DD6207670FC6 /* Modelo.swift in Sources */,
 				D43C9AFB798DECA2A950C4D4 /* NoahApp.swift in Sources */,
+				6CF17BB328EA7D985F678DAD /* NoahAtributos.swift in Sources */,
+				719D6715535A83FD4673AA55 /* Rosto.swift in Sources */,
 				00475B9C0CFC4C2E7D9F5C47 /* Telas.swift in Sources */,
+				7449C0C696F866174080AA7A /* Vitrine.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		861BB24ADFBE045A5C281A07 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				43A4D03C9A9BCE3F9F8D037A /* NoahAtributos.swift in Sources */,
+				95CC8E28F13FA330681A505A /* NoahWidgets.swift in Sources */,
+				34FE690C31ACAAB4706E5B34 /* Rosto.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A7BD01F20844238A3D10794B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CE4E8CFDA18DD16635D21A29 /* NoahWidgets */;
+			targetProxy = AC80CA91D0DC9B8806B07608 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		232307E13A7CFCD535839391 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Config/Noah-iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = "Config/Noah-iOS-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -272,6 +403,26 @@
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
+		};
+		6511F65B84A091E22995E3D9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Config/NoahWidgets.entitlements;
+				INFOPLIST_FILE = "Config/NoahWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.nicholasbirochi.noah.ios.widgets;
+				PRODUCT_NAME = NoahWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
 		};
 		8680FA3AFF9FCC7A84991629 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -389,6 +540,26 @@
 			};
 			name = Debug;
 		};
+		C2D4F63B68943BEAFF248532 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = "";
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = "";
+				CODE_SIGN_ENTITLEMENTS = Config/NoahWidgets.entitlements;
+				INFOPLIST_FILE = "Config/NoahWidgets-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.nicholasbirochi.noah.ios.widgets;
+				PRODUCT_NAME = NoahWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		D28081D44C2002B749D1F452 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8E921A2F40DADD7F56855F94 /* Base.xcconfig */;
@@ -458,6 +629,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Config/Noah-iOS.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				INFOPLIST_FILE = "Config/Noah-iOS-Info.plist";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -483,6 +655,15 @@
 			buildConfigurations = (
 				232307E13A7CFCD535839391 /* Debug */,
 				DA81FC3804CA2A81DC962155 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A45457FF1E8E105F99700133 /* Build configuration list for PBXNativeTarget "NoahWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C2D4F63B68943BEAFF248532 /* Debug */,
+				6511F65B84A091E22995E3D9 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
@@ -516,6 +697,10 @@
 
 /* Begin XCSwiftPackageProductDependency section */
 		32FE113F8DB0963C3B1E2D73 /* NoahCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NoahCore;
+		};
+		3FB418449297CB51D77F6E06 /* NoahCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = NoahCore;
 		};

@@ -449,6 +449,11 @@ struct AjustesView: View {
     @State private var endereco = Ajustes.endereco
     @State private var token = Cofre.ler() ?? ""
     @State private var aceitar = Ajustes.respostaAceitar
+    @State private var pedirBiometria = Ajustes.pedirBiometria
+    @State private var ilhaLigada = Ajustes.ilhaLigada
+    #if os(macOS)
+    @State private var aoLadoDoAlcove = Ajustes.ilhaAoLadoDoAlcove
+    #endif
     @State private var resultado: String?
     @State private var testando = false
     #if os(macOS)
@@ -487,6 +492,29 @@ struct AjustesView: View {
                 }
 
                 Section {
+                    Toggle("Pedir \(Cadeado.nome)", isOn: $pedirBiometria)
+                        .onChange(of: pedirBiometria) { _, v in Ajustes.pedirBiometria = v }
+                } header: {
+                    Text("Aprovação")
+                } footer: {
+                    Text("Antes de Aceitar, Responder ou Dispensar no app, o Noah pede \(Cadeado.nome). Nos botões do aviso, o sistema pede o desbloqueio do aparelho.")
+                }
+
+                #if os(iOS)
+                Section {
+                    Toggle("Mostrar na ilha e na tela bloqueada", isOn: $ilhaLigada)
+                        .onChange(of: ilhaLigada) { _, v in
+                            Ajustes.ilhaLigada = v
+                            Task { await Vitrine.publicar(modelo.resumo) }
+                        }
+                } header: {
+                    Text("Ilha dinâmica")
+                } footer: {
+                    Text("Azul trabalhando, âmbar esperando você, verde tudo pronto. Some quando nada espera nem roda. Sem push, muda enquanto o app está aberto ou quando o iOS o acorda. Os widgets da tela inicial e da tela bloqueada se adicionam pelo próprio iOS (segure a tela, +, Noah).")
+                }
+                #endif
+
+                Section {
                     LabeledContent("Avisos", value: modelo.permissao.rotulo)
                     if modelo.permissao == .desconhecida || modelo.permissao == .naoPedida {
                         Button("Permitir avisos") { Task { await modelo.pedirPermissao() } }
@@ -502,6 +530,24 @@ struct AjustesView: View {
                 }
 
                 #if os(macOS)
+                Section {
+                    Toggle("Mostrar a ilha no alto da tela", isOn: $ilhaLigada)
+                        .onChange(of: ilhaLigada) { _, v in
+                            Ajustes.ilhaLigada = v
+                            IlhaMac.shared.aplicar()
+                        }
+                    Toggle("Encostar ao lado do Alcove", isOn: $aoLadoDoAlcove)
+                        .disabled(!ilhaLigada)
+                        .onChange(of: aoLadoDoAlcove) { _, v in
+                            Ajustes.ilhaAoLadoDoAlcove = v
+                            IlhaMac.shared.reposicionar()
+                        }
+                } header: {
+                    Text("Ilha no notch")
+                } footer: {
+                    Text("Uma pílula preta no notch, ou no meio da barra de menus se a tela não tiver notch. Azul trabalhando, âmbar esperando você, verde tudo pronto. Passe o mouse ou clique para ver as pendências; fecha quando o mouse sai de perto. Abre sozinha por alguns segundos quando chega uma nova. O Alcove desenha por cima de tudo no meio do topo; com ele aberto, a ilha do Noah encosta ao lado dele.")
+                }
+
                 Section {
                     Toggle("Abrir ao iniciar sessão", isOn: $abrirAoIniciar)
                         .onChange(of: abrirAoIniciar) { _, ligar in

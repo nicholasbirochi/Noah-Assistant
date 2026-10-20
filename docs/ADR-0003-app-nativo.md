@@ -64,6 +64,20 @@ repositório público (nenhum Team ID ou dado pessoal no git).
    nil e nada acende.
 7. **Segredos fora do git.** O token fica no Keychain. O Team ID fica em
    `Config/Local.xcconfig`, que o git ignora, e o repositório leva só o `.example`.
+8. **Ilha, widgets e tela bloqueada leem um resumo só.** O app calcula `Ilha.resumo`
+   (esperando vence trabalhando, que vence pronto), grava no App Group
+   `group.com.nicholasbirochi.noah` e atualiza a Live Activity. A extensão de widgets lê
+   esse resumo e não fala com a central. Sem APNs, a Live Activity só começa com o app
+   aberto e fica velha depois de 30 min sem atualizar.
+9. **Aprovar pede o dono do aparelho.** Responder, Aceitar e Dispensar passam pela trava
+   do modelo (`Cadeado`, LocalAuthentication: Face ID, Touch ID ou senha). Ilha e widgets
+   só levam links `noah://`, e as ações do aviso usam `.authenticationRequired`. Assim
+   nenhum caminho aprova sem desbloqueio. A trava pode ser desligada em Ajustes.
+10. **Ilha no notch do Mac ao lado do Alcove, sem mexer nele.** As regras de abrir, fechar
+    e posicionar ficam em `IlhaNotch` (NoahCore, com testes): fecha 0,6 s depois que o
+    mouse sai de uma área com 20 pt de margem. O Alcove é fechado e licenciado e não tem
+    API; alterar o app dele quebraria a assinatura e a licença. Por isso o Noah lê onde a
+    janela do Alcove está e encosta ao lado dela.
 
 ## Consequências
 
@@ -78,4 +92,7 @@ repositório público (nenhum Team ID ou dado pessoal no git).
   consultas do próprio Noah. Uma consulta feita fora disso (o hook de início de sessão,
   um terminal à parte) não aparece.
 - Verificado só no Simulador e no Mac, com uma central falsa. Ainda falta testar num
-  iPhone real, o toque no aviso abrindo o detalhe e o refresh em segundo plano.
+  iPhone real, o toque no aviso abrindo o detalhe, o refresh em segundo plano, os widgets
+  colocados nas telas e o painel da barra de menus com Touch ID. O build para aparelho
+  precisa de um Apple ID no Xcode (conta gratuita: perfil de 7 dias).
+- O iOS não deixa o app fechar nem apagar outros apps, e não há widgets do Mac.

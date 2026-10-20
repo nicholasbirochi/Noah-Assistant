@@ -33,6 +33,8 @@ final class Modelo {
     private var sono: Task<Void, Never>?
 
     var jobsVisiveis: [Job] { Sincronia.jobsVisiveis(jobs) }
+    /// O que a ilha, os widgets e a barra de menus mostram.
+    var resumo: ResumoIlha { Ilha.resumo(itens: itens, jobs: jobs) }
     var contagem: Int { itens.filter { !$0.respondendo }.count }
     func item(_ chave: String) -> Pendencia? { itens.first { $0.chave == chave } }
 
@@ -81,6 +83,7 @@ final class Modelo {
             erro = nil
             atualizadoEm = Date()
             await Avisos.shared.sincronizar(r.itens)
+            await Vitrine.publicar(resumo)
         } catch {
             self.erro = error.localizedDescription
         }
@@ -114,6 +117,11 @@ final class Modelo {
     }
 
     func responder(_ p: Pendencia, texto: String) async {
+        await responder(p, texto: texto, motivo: "Enviar a resposta para \(Fonte.nome(p.fonte))")
+    }
+
+    private func responder(_ p: Pendencia, texto: String, motivo: String) async {
+        guard await Cadeado.confirmar(motivo) else { return mostrar("Não confirmado. Nada foi enviado.") }
         enviando.insert(p.chave)
         defer { enviando.remove(p.chave) }
         do {
@@ -127,10 +135,13 @@ final class Modelo {
     }
 
     func aceitar(_ p: Pendencia) async {
-        await responder(p, texto: Ajustes.respostaAceitar)
+        await responder(p, texto: Ajustes.respostaAceitar, motivo: "Aceitar o pedido de \(Fonte.nome(p.fonte))")
     }
 
     func dispensar(_ p: Pendencia) async {
+        guard await Cadeado.confirmar("Dispensar a pendência de \(Fonte.nome(p.fonte))") else {
+            return mostrar("Não confirmado. A pendência continua.")
+        }
         enviando.insert(p.chave)
         defer { enviando.remove(p.chave) }
         do {
@@ -147,6 +158,16 @@ final class Modelo {
     func abrir(_ chave: String) {
         aba = .pendencias
         selecionada = chave
+    }
+
+    /// Links `noah://` da ilha, dos widgets e da barra de menus.
+    func ir(_ url: URL) {
+        switch Atalho.destino(url) {
+        case .pendencia(let chave): abrir(chave)
+        case .lista: aba = .pendencias
+        case .fluxo: aba = .fluxo
+        case nil: break
+        }
     }
 
     func mostrar(_ texto: String) {
