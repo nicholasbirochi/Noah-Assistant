@@ -19,6 +19,9 @@ struct NoahApp: App {
         let m = Modelo()
         _modelo = State(initialValue: m)
         m.iniciar()
+        #if os(macOS)
+        IlhaMac.shared.modelo = m
+        #endif
     }
 
     var body: some Scene {
@@ -31,21 +34,27 @@ struct NoahApp: App {
                 .frame(minWidth: 860, minHeight: 520)
                 // Pede depois que a janela existe; o pedido não segura a lista.
                 .task { await modelo.pedirPermissao() }
+                .onOpenURL { modelo.ir($0) }
         }
         .defaultSize(width: 1100, height: 720)
+        .handlesExternalEvents(matching: [Atalho.esquema])
 
         // Fica na barra de menus mesmo com a janela fechada, para continuar avisando.
+        // Estilo janela: um painel com o rosto do Noah, como a ilha do iPhone.
         MenuBarExtra {
-            MenuDaBarra().environment(modelo)
+            PainelDaBarra().environment(modelo)
         } label: {
-            Image(systemName: modelo.contagem > 0 ? "bell.badge.fill" : "bell")
-            if modelo.contagem > 0 { Text("\(modelo.contagem)") }
+            let r = modelo.resumo
+            Image(systemName: r.estado.simbolo)
+            if r.esperando > 0 { Text("\(r.esperando)") }
         }
+        .menuBarExtraStyle(.window)
         #else
         WindowGroup {
             ContentView()
                 .environment(modelo)
                 .task { await modelo.pedirPermissao() }
+                .onOpenURL { modelo.ir($0) }
         }
         .onChange(of: fase) { _, nova in
             switch nova {
@@ -68,32 +77,89 @@ struct NoahApp: App {
 #if os(macOS)
 final class Delegado: NSObject, NSApplicationDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated { IlhaMac.shared.aplicar() }
+    }
 }
 
-struct MenuDaBarra: View {
+/// Painel da barra de menus: estado no mesmo código de cores da ilha, as
+/// pendências com Aceitar (pede Touch ID) e um atalho para o app de cada agente.
+struct PainelDaBarra: View {
     @Environment(Modelo.self) private var modelo
     @Environment(\.openWindow) private var abrirJanela
 
     var body: some View {
-        if modelo.itens.isEmpty {
-            Text("Nada esperando você")
+        let r = modelo.resumo
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Rosto(estado: r.estado, tamanho: 34)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(r.estado.titulo).font(.headline).foregroundStyle(r.estado.cor)
+                    Text(r.linha).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                }
+                Spacer()
+                Button { Task { await modelo.atualizar() } } label: { Image(systemName: "arrow.clockwise") }
+                    .buttonStyle(.borderless).help("Atualizar").keyboardShortcut("r")
+            }
+            Divider()
+            if modelo.itens.isEmpty {
+                Text("Nada esperando você").foregroundStyle(.secondary).padding(.vertical, 6)
+            } else {
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(modelo.itens.prefix(8)) { p in linha(p) }
+                    }
+                }
+                .frame(maxHeight: 320)
+            }
+            Divider()
+            HStack {
+                Button("Abrir Noah") { abrir() }.keyboardShortcut("o")
+                Spacer()
+                Button("Sair") { NSApp.terminate(nil) }.keyboardShortcut("q")
+            }
+            .buttonStyle(.borderless)
         }
-        ForEach(modelo.itens.prefix(10)) { p in
-            Button("\(Fonte.nome(p.fonte)): \(p.tarefa)") {
-                modelo.abrir(p.chave)
-                abrir()
+        .padding(12)
+        .frame(width: 340)
+    }
+
+    private func linha(_ p: Pendencia) -> some View {
+        let ocupado = p.respondendo || modelo.enviando.contains(p.chave)
+        return HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 1) {
+                Text(Fonte.nome(p.fonte)).font(.caption2.bold()).foregroundStyle(.secondary)
+                Text(p.tarefa).font(.callout).lineLimit(2)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+            .onTapGesture { modelo.abrir(p.chave); abrir() }
+            if let app = Fonte.app(p.fonte) {
+                Button { abrirApp(app) } label: { Image(systemName: "arrow.up.forward.app") }
+                    .buttonStyle(.borderless).help("Abrir no \(Fonte.nome(p.fonte))")
+            }
+            if !p.automatica {
+                Button(ocupado ? "…" : "Aceitar") { Task { await modelo.aceitar(p) } }
+                    .controlSize(.small).disabled(ocupado)
+                    .help("Pede Touch ID antes de enviar")
             }
         }
-        Divider()
-        Button("Abrir Noah") { abrir() }.keyboardShortcut("o")
-        Button("Atualizar") { Task { await modelo.atualizar() } }.keyboardShortcut("r")
-        Divider()
-        Button("Sair do Noah") { NSApp.terminate(nil) }.keyboardShortcut("q")
+        .padding(8)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
     }
 
     private func abrir() {
         abrirJanela(id: "principal")
         NSApp.activate()
+    }
+
+    /// Só abre o app do agente; fechar ou apagar outro app não cabe aqui.
+    private func abrirApp(_ identificador: String) {
+        guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: identificador) else {
+            return modelo.mostrar("App não encontrado neste Mac.")
+        }
+        NSWorkspace.shared.openApplication(at: url, configuration: .init())
     }
 }
 #else
@@ -114,6 +180,7 @@ enum Fundo {
         guard let cliente = try? Ajustes.cliente(),
               let r = try? await cliente.pendencias() else { return }
         await Avisos.shared.sincronizar(r.itens)
+        await Vitrine.publicar(Ilha.resumo(itens: r.itens, jobs: r.respondendo))
     }
 }
 #endif
