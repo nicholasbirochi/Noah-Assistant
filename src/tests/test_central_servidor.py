@@ -22,7 +22,7 @@ ITENS = [
 def servidor_factory(tmp_path):
     criados = []
 
-    def criar(*, token=None):
+    def criar(*, token=None, presenca=None):
         respondidas = []
 
         def executor(p, texto):
@@ -34,6 +34,8 @@ def servidor_factory(tmp_path):
             listar=lambda: (list(ITENS), ["Codex"]),
             respostas=Respostas(executor),
             dispensadas=Dispensadas(tmp_path / "dispensadas.json"),
+            presenca=presenca or (lambda: {"ligada": False, "variavel": "NOAH_PRESENCE_ENABLED",
+                                           "itens": [], "falhas": []}),
         )
         srv.respondidas = respondidas
         threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -80,8 +82,10 @@ def test_pagina_sem_token_com_cabecalhos(servidor_factory):
     assert status == 200 and b"Pend" in corpo
     assert "default-src 'none'" in h["Content-Security-Policy"]
     assert h["X-Content-Type-Options"] == "nosniff" and h["Cache-Control"] == "no-store"
-    for caminho in ("/central/app.js", "/central/manifest.webmanifest", "/central/icone.svg"):
+    for caminho in ("/central/app.js", "/central/manifest.webmanifest", "/central/icone.svg",
+                    "/central/icone-180.png", "/central/icone-512.png"):
         assert _req(srv, "GET", caminho)[0] == 200
+    assert _req(srv, "GET", "/central/icone-180.png")[2].startswith(b"\x89PNG")
     status, h, _ = _req(srv, "GET", "/")
     assert status == 302 and h["Location"] == "/central/"
 
@@ -92,12 +96,16 @@ def test_token(servidor_factory):
     assert _req(srv, "GET", "/central/api/pendencias", headers={"Authorization": "Bearer errado"})[0] == 401
     assert _req(srv, "GET", "/central/api/pendencias", headers={"Authorization": "Bearer segredo"})[0] == 200
     assert _req(srv, "POST", "/central/api/dispensar", {"fonte": "claude", "id": "s1"})[0] == 401
+    assert _req(srv, "GET", "/central/api/presenca")[0] == 401
+    assert _req(srv, "GET", "/central/api/presenca", headers={"Authorization": "Bearer segredo"})[0] == 200
 
 
 def test_host_e_origem(servidor_factory):
     srv = servidor_factory()
     assert _req(srv, "GET", "/central/", headers={"Host": "evil.example"})[0] == 403
     assert _req(srv, "GET", "/central/api/pendencias", headers={"Host": "evil.example"})[0] == 403
+    assert _req(srv, "GET", "/central/api/presenca", headers={"Host": "evil.example"})[0] == 403
+    assert _req(srv, "GET", "/central/api/presenca", headers={"Origin": "https://evil.example"})[0] == 403
     corpo = {"fonte": "claude", "id": "s1", "texto": "oi"}
     assert _req(srv, "POST", "/central/api/responder", corpo, headers={"Origin": "https://evil.example"})[0] == 403
     porta = srv.server_address[1]
@@ -147,3 +155,76 @@ def test_fora_do_loopback_exige_token(capsys, monkeypatch):
         ServidorCentral(("0.0.0.0", 0))
     assert central_servidor.main(["--host", "0.0.0.0", "--porta", "0"]) == 2
     assert "exige token" in capsys.readouterr().err
+
+
+# -- app Noah: abas e presença ------------------------------------------------------
+
+
+def test_app_noah_tem_duas_abas_e_manifesto_noah(servidor_factory):
+    srv = servidor_factory()
+    pagina = _req(srv, "GET", "/central/")[2].decode()
+    assert "<title>Noah</title>" in pagina
+    assert 'id="aba-pendencias"' in pagina and 'id="aba-presenca"' in pagina
+    assert 'aria-labelledby="aba-presenca" hidden' in pagina
+    manifesto = _req(srv, "GET", "/central/manifest.webmanifest")[2]
+    assert manifesto["name"] == manifesto["short_name"] == "Noah"
+    assert {"icone-180.png", "icone-512.png"} <= {i["src"] for i in manifesto["icons"]}
+
+
+def test_app_js_so_insere_texto_por_textcontent(servidor_factory):
+    js = _req(servidor_factory(), "GET", "/central/app.js")[2].decode()
+    assert ".innerHTML" not in js and "insertAdjacentHTML" not in js and "eval(" not in js
+
+
+def test_presenca_desligada_nao_traz_numeros(servidor_factory):
+    srv = servidor_factory()
+    status, h, dados = _req(srv, "GET", "/central/api/presenca")
+    assert status == 200 and h["Cache-Control"] == "no-store"
+    assert dados["ligada"] is False and dados["itens"] == [] and dados["falhas"] == []
+    assert dados["variavel"] == "NOAH_PRESENCE_ENABLED" and "gerado_em" in dados
+
+
+def test_presenca_ligada_lista_fonte_porque_acao(servidor_factory):
+    item = {"source": "Lembretes", "why": "2 vencidos", "action": "Abra os lembretes"}
+    srv = servidor_factory(presenca=lambda: {"ligada": True, "variavel": "NOAH_PRESENCE_ENABLED",
+                                             "itens": [item], "falhas": []})
+    dados = _req(srv, "GET", "/central/api/presenca")[2]
+    assert dados["ligada"] is True and dados["itens"] == [item]
+
+
+def test_ler_presenca_desligada_nao_le_fontes(monkeypatch):
+    from assistant import presence
+
+    monkeypatch.setattr(presence, "is_enabled", lambda: False)
+    monkeypatch.setattr(presence, "build_presence_items", lambda: pytest.fail("leu fontes desligada"))
+    assert central_servidor.ler_presenca() == {
+        "ligada": False, "variavel": presence.ENABLED_ENV_VAR, "itens": [], "falhas": []}
+
+
+def test_ler_presenca_ligada_e_falha_vira_aviso(monkeypatch):
+    from assistant import presence
+
+    monkeypatch.setattr(presence, "is_enabled", lambda: True)
+    monkeypatch.setattr(presence, "build_presence_items",
+                        lambda: [presence.PresenceItem("Agenda", "reunião às 15h", "Revise a pauta")])
+    estado = central_servidor.ler_presenca()
+    assert estado["ligada"] is True and estado["falhas"] == []
+    assert estado["itens"] == [{"source": "Agenda", "why": "reunião às 15h", "action": "Revise a pauta"}]
+
+    def quebra():
+        raise RuntimeError("fonte ilegível")
+
+    monkeypatch.setattr(presence, "build_presence_items", quebra)
+    estado = central_servidor.ler_presenca()
+    assert estado["itens"] == [] and estado["falhas"] == ["Presença"]
+
+
+def test_ler_presenca_respeita_a_variavel(monkeypatch):
+    from assistant import presence
+
+    monkeypatch.setattr(presence, "build_presence_items", lambda: [])
+    monkeypatch.setenv(presence.ENABLED_ENV_VAR, "false")
+    assert central_servidor.ler_presenca()["ligada"] is False
+    monkeypatch.setenv(presence.ENABLED_ENV_VAR, "true")
+    assert central_servidor.ler_presenca() == {
+        "ligada": True, "variavel": presence.ENABLED_ENV_VAR, "itens": [], "falhas": []}

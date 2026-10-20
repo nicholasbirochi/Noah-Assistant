@@ -1,11 +1,14 @@
-// Central de pendências: lista o que espera resposta (Claude Code, Codex, Noah)
-// e responde retomando a conversa sem editar nada. Todo texto vindo do servidor
-// entra na página por textContent -- nada de innerHTML com dado.
+// App Noah. Aba Pendências: lista o que espera resposta (Claude Code, Codex,
+// Noah) e responde retomando a conversa sem editar nada. Aba Presença: as
+// sugestões da presença (fonte -> por quê -> o que fazer), só leitura. Todo
+// texto vindo do servidor entra na página por textContent -- nada de innerHTML com dado.
 "use strict";
 
 const API = "api/";
 const CHAVE_TOKEN = "noah_central_token";
 const CHAVE_FILTRO = "noah_central_filtro";
+const CHAVE_ABA = "noah_central_aba";
+const ABAS = ["pendencias", "presenca"];
 const FONTES = { claude: "Claude", codex: "Codex", noah: "Noah" };
 const INTERVALO = 20000;
 const INTERVALO_RESPONDENDO = 4000;
@@ -18,6 +21,10 @@ const expandidos = new Set();
 let itens = [];
 let jobs = [];
 let filtro = lerLocal(CHAVE_FILTRO) || "todas";
+let aba = ABAS.includes(lerLocal(CHAVE_ABA)) ? lerLocal(CHAVE_ABA) : "pendencias";
+let presenca = null; // {ligada, variavel, itens, falhas} da última leitura
+let erroPresenca = null;
+let assinaturaPresenca = "";
 let timer = null;
 let carregando = false;
 
@@ -155,7 +162,10 @@ async function api(caminho, corpo) {
 function pedirToken() {
   $("token").hidden = false;
   $("lista").replaceChildren();
+  $("lista-presenca").replaceChildren();
   cartoes.clear();
+  presenca = null;
+  assinaturaPresenca = "";
   setTimeout(() => $("campo-token").focus(), 50);
 }
 
@@ -164,14 +174,31 @@ async function carregar({ manual = false } = {}) {
   carregando = true;
   $("atualizar").classList.add("girando");
   try {
-    const dados = await api("pendencias");
+    // As duas abas se atualizam juntas; uma falhar não apaga a outra.
+    const [pend, pres] = await Promise.allSettled([api("pendencias"), api("presenca")]);
+    if (pend.status === "rejected" && pres.status === "rejected") throw pend.reason;
     $("token").hidden = true;
-    itens = dados.itens || [];
-    jobs = dados.respondendo || [];
-    desenharAvisos(dados.falhas || []);
-    desenhar();
+    if (pend.status === "fulfilled") {
+      itens = pend.value.itens || [];
+      jobs = pend.value.respondendo || [];
+      desenharAvisos(pend.value.falhas || []);
+      desenhar();
+    } else {
+      desenharAvisos([], pend.reason.message);
+    }
+    if (pres.status === "fulfilled") {
+      presenca = pres.value;
+      erroPresenca = null;
+    } else {
+      erroPresenca = pres.reason.message;
+    }
+    desenharPresenca();
   } catch (e) {
-    if ($("token").hidden) desenharAvisos([], e.message);
+    if ($("token").hidden) {
+      desenharAvisos([], e.message);
+      erroPresenca = e.message;
+      desenharPresenca();
+    }
   } finally {
     carregando = false;
     $("atualizar").classList.remove("girando");
@@ -206,10 +233,63 @@ function desenharChips() {
       class: "chip", type: "button", "aria-pressed": String(filtro === k),
       onclick: () => { filtro = k; gravarLocal(CHAVE_FILTRO, k); desenhar(); },
     }, k === "todas" ? null : el("span", { class: `ponto ${k}` }), rotulo, el("span", { class: "n" }, contagem[k]))));
-  const c = $("contagem");
-  c.textContent = itens.length;
-  c.classList.toggle("zero", itens.length === 0);
-  document.title = itens.length ? `(${itens.length}) Pendências` : "Pendências";
+  atualizarContagens();
+}
+
+function atualizarContagens() {
+  const nPres = presenca && presenca.ligada ? (presenca.itens || []).length : 0;
+  for (const [id, n] of [["n-pendencias", itens.length], ["n-presenca", nPres]]) {
+    $(id).textContent = n;
+    $(id).classList.toggle("zero", n === 0);
+  }
+  document.title = itens.length ? `(${itens.length}) Noah` : "Noah";
+}
+
+function mostrarAba(nova) {
+  aba = nova;
+  gravarLocal(CHAVE_ABA, nova);
+  for (const nome of ABAS) {
+    $(`aba-${nome}`).setAttribute("aria-selected", String(nome === aba));
+    $(`painel-${nome}`).hidden = nome !== aba;
+  }
+  $("chips").hidden = aba !== "pendencias";
+}
+
+// -- presença -------------------------------------------------------------------------
+
+function desenharPresenca() {
+  const avisos = $("avisos-presenca");
+  avisos.replaceChildren();
+  if (erroPresenca) avisos.append(el("div", { class: "aviso erro" }, `Não deu para atualizar: ${erroPresenca}`));
+  if (presenca && (presenca.falhas || []).length) {
+    avisos.append(el("div", { class: "aviso" }, `Fonte com problema (pulada): ${presenca.falhas.join(", ")}`));
+  }
+  atualizarContagens();
+  if (!presenca) return;
+  // Só redesenha quando muda: a lista não "pisca" a cada atualização.
+  const assinatura = JSON.stringify([presenca.ligada, presenca.itens]);
+  if (assinatura === assinaturaPresenca) return;
+  assinaturaPresenca = assinatura;
+  const lista = $("lista-presenca");
+  if (!presenca.ligada) {
+    // Desligada não conta nada: diz como ligar em vez de mostrar números.
+    lista.replaceChildren(el("div", { class: "vazio" },
+      el("strong", {}, "Presença desligada"),
+      el("p", {}, "Enquanto estiver desligada, nada é contado. Para ligar, ponha ",
+        el("code", {}, `${presenca.variavel || "NOAH_PRESENCE_ENABLED"}=true`),
+        " no .env do Noah e abra o app de novo com ", el("code", {}, "python src/cli.py central"), ".")));
+    return;
+  }
+  if (!(presenca.itens || []).length) {
+    lista.replaceChildren(el("div", { class: "vazio" },
+      el("strong", {}, "Nada agora"),
+      "Quando algo pedir sua atenção (propostas, conflitos, lembretes), aparece aqui."));
+    return;
+  }
+  lista.replaceChildren(...presenca.itens.map((i) => el("article", {},
+    el("div", { class: "meta" }, el("span", { class: "fonte" }, el("span", { class: "ponto noah" }), i.source)),
+    el("p", { class: "porque" }, i.why),
+    el("div", { class: "acao-noah" }, el("span", { class: "rotulo-acao" }, "O que fazer"), el("code", {}, i.action)))));
 }
 
 function desenharJobs() {
@@ -375,6 +455,8 @@ $("form-token").addEventListener("submit", (e) => {
   carregar();
 });
 $("atualizar").addEventListener("click", () => carregar({ manual: true }));
+for (const nome of ABAS) $(`aba-${nome}`).addEventListener("click", () => mostrarAba(nome));
+mostrarAba(aba);
 document.addEventListener("visibilitychange", () => {
   if (document.hidden) clearTimeout(timer); else carregar();
 });

@@ -1,7 +1,7 @@
 {
-  "name": "Pendências (Noah)",
-  "short_name": "Pendências",
-  "description": "O que o Claude Code, o Codex e o Noah esperam de você.",
+  "name": "Noah",
+  "short_name": "Noah",
+  "description": "Noah: o que o Claude Code e o Codex esperam de você, e as sugestões da presença.",
   "lang": "pt-BR",
   "start_url": "./",
   "scope": "./",
@@ -9,6 +9,8 @@
   "background_color": "#0b0b10",
   "theme_color": "#0b0b10",
   "icons": [
-    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icone-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
   ]
 }
