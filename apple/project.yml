@@ -28,7 +28,7 @@ targets:
   Noah-iOS:
     type: application
     platform: iOS
-    sources: [App]
+    sources: [App, Compartilhado]
     info:
       path: Config/Noah-iOS-Info.plist
       properties:
@@ -36,6 +36,12 @@ targets:
           NSAllowsLocalNetworking: true
         UIBackgroundModes: [fetch]
         BGTaskSchedulerPermittedIdentifiers: [com.nicholasbirochi.noah.atualizar]
+        # Ilha dinâmica e tela bloqueada (Live Activity) e aprovação com Face ID.
+        NSSupportsLiveActivities: true
+        NSFaceIDUsageDescription: "O Noah pede o Face ID antes de aceitar, responder ou dispensar uma pendência."
+        CFBundleURLTypes:
+          - CFBundleURLName: com.nicholasbirochi.noah
+            CFBundleURLSchemes: [noah]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nicholasbirochi.noah.ios
@@ -45,17 +51,45 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGN_ENTITLEMENTS: Config/Noah-iOS.entitlements
+    dependencies:
+      - package: NoahCore
+      - target: NoahWidgets
+  # Widgets da tela inicial e da tela bloqueada, mais a Live Activity da ilha.
+  # Lê o resumo que o app grava no App Group (Ilha.grupo).
+  NoahWidgets:
+    type: app-extension
+    platform: iOS
+    sources: [Widgets, Compartilhado]
+    info:
+      path: Config/NoahWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Noah
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nicholasbirochi.noah.ios.widgets
+        PRODUCT_NAME: NoahWidgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        CODE_SIGN_ENTITLEMENTS: Config/NoahWidgets.entitlements
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
     dependencies:
       - package: NoahCore
   Noah-macOS:
     type: application
     platform: macOS
-    sources: [App]
+    sources: [App, Compartilhado]
     info:
       path: Config/Noah-macOS-Info.plist
       properties:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        CFBundleURLTypes:
+          - CFBundleURLName: com.nicholasbirochi.noah
+            CFBundleURLSchemes: [noah]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.nicholasbirochi.noah.macos
