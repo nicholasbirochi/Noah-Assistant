@@ -35,11 +35,14 @@ public enum Sincronia {
     /// Intervalos do PWA: 20 s parado, 4 s enquanto alguma resposta roda.
     public static let intervalo: TimeInterval = 20
     public static let intervaloRespondendo: TimeInterval = 4
+    /// Com a aba Fluxo aberta o mapa precisa do sinal do Cérebro mais fresco.
+    public static let intervaloFluxo: TimeInterval = 10
     /// Respostas terminadas ficam visíveis por 10 min.
     public static let jobVisivel: TimeInterval = 600
 
-    public static func proximoIntervalo(_ jobs: [Job]) -> TimeInterval {
-        jobs.contains(where: \.rodando) ? intervaloRespondendo : intervalo
+    public static func proximoIntervalo(_ jobs: [Job], vendoFluxo: Bool = false) -> TimeInterval {
+        if jobs.contains(where: \.rodando) { return intervaloRespondendo }
+        return vendoFluxo ? intervaloFluxo : intervalo
     }
 
     public static func jobsVisiveis(_ jobs: [Job], agora: Double = Date().timeIntervalSince1970) -> [Job] {

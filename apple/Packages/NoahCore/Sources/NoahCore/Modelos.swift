@@ -140,6 +140,54 @@ public struct EstadoPresenca: Codable, Sendable, Equatable {
     }
 }
 
+/// Sinal ao vivo do Cérebro (`GET /central/api/cerebro`): quem consultou,
+/// registrou ou delegou aos auxiliares na janela recente. A central conta só
+/// chamadas de ferramenta que executam a CLI do Cérebro; uma fonte que falhou
+/// vem em `falhas`, zerada.
+public struct SinalCerebro: Codable, Sendable, Equatable {
+    public struct Uso: Codable, Sendable, Equatable {
+        public var consultas: Int
+        public var registros: Int
+        public var ultima: Double?
+
+        public init(consultas: Int = 0, registros: Int = 0, ultima: Double? = nil) {
+            self.consultas = consultas
+            self.registros = registros
+            self.ultima = ultima
+        }
+    }
+
+    public struct Delegacao: Codable, Sendable, Equatable {
+        public var delegacoes: Int
+        public var ultima: Double?
+
+        public init(delegacoes: Int = 0, ultima: Double? = nil) {
+            self.delegacoes = delegacoes
+            self.ultima = ultima
+        }
+    }
+
+    public var janela: Int
+    /// Por fonte: "claude", "codex", "noah".
+    public var cerebro: [String: Uso]
+    /// Por fonte: "claude", "codex".
+    public var auxiliares: [String: Delegacao]
+    /// Nomes das fontes que a central não conseguiu ler ("Claude Code", "Codex", "Noah").
+    public var falhas: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case janela = "janela_s", cerebro, auxiliares, falhas
+    }
+
+    public init(janela: Int = 600, cerebro: [String: Uso] = [:], auxiliares: [String: Delegacao] = [:],
+                falhas: [String] = []) {
+        self.janela = janela
+        self.cerebro = cerebro
+        self.auxiliares = auxiliares
+        self.falhas = falhas
+    }
+}
+
 public struct RespostaJob: Codable, Sendable {
     public var job: Job
 }

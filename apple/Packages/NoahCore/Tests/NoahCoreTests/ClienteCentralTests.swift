@@ -92,6 +92,38 @@ final class ClienteCentralTests: XCTestCase {
         XCTAssertEqual(p.itens, [ItemPresenca(source: "Agenda", why: "reunião às 15h", action: "Revise a pauta")])
     }
 
+    func testLeSinalDoCerebro() async throws {
+        Stub.resposta = (200, """
+        {"janela_s":600,"cerebro":{"claude":{"consultas":2,"registros":1,"ultima":1.5},
+         "codex":{"consultas":0,"registros":0,"ultima":null},"noah":{"consultas":1,"registros":0,"ultima":2}},
+         "auxiliares":{"claude":{"delegacoes":1,"ultima":3},"codex":{"delegacoes":0,"ultima":null}},
+         "falhas":[],"gerado_em":4}
+        """)
+        let lido = try await cliente.cerebro()
+        let s = try XCTUnwrap(lido)
+        XCTAssertEqual(Stub.pedidos.first?.url?.path, "/central/api/cerebro")
+        XCTAssertEqual(s.janela, 600)
+        XCTAssertEqual(s.cerebro["claude"], SinalCerebro.Uso(consultas: 2, registros: 1, ultima: 1.5))
+        XCTAssertNil(s.cerebro["codex"]?.ultima)
+        XCTAssertEqual(s.auxiliares["claude"]?.delegacoes, 1)
+    }
+
+    func testCentralSemRotaDoCerebroDaNil() async throws {
+        Stub.resposta = (404, #"{"erro":"rota desconhecida"}"#)
+        let s = try await cliente.cerebro()
+        XCTAssertNil(s)
+    }
+
+    func testOutroErroDoCerebroSobe() async {
+        Stub.resposta = (500, #"{"erro":"quebrou"}"#)
+        do {
+            _ = try await cliente.cerebro()
+            XCTFail("devia falhar")
+        } catch {
+            XCTAssertEqual(error as? ErroCentral, .servidor(status: 500, mensagem: "quebrou"))
+        }
+    }
+
     func testResponderMandaJsonComTextoLimpo() async throws {
         Stub.resposta = (202, """
         {"job":{"id":"j1","chave":"claude:s1","titulo":"Conversa","fonte":"claude","estado":"rodando",

@@ -38,6 +38,7 @@ struct ContentView: View {
         .animation(.default, value: modelo.aviso)
         .onChange(of: modelo.aba) { _, aba in
             if aba == .presenca { Task { await modelo.atualizarPresenca() } }
+            if aba == .fluxo { Task { await modelo.atualizarCerebro() } }
         }
     }
 }

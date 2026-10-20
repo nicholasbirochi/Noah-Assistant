@@ -59,6 +59,16 @@ public struct ClienteCentral: Sendable {
         try await pedir("GET", "presenca")
     }
 
+    /// Sinal ao vivo do Cérebro. `nil` quando a central é anterior à rota (404):
+    /// o app mantém essas ligações como "sem sinal ao vivo".
+    public func cerebro() async throws -> SinalCerebro? {
+        do {
+            return try await pedir("GET", "cerebro") as SinalCerebro
+        } catch ErroCentral.servidor(status: 404, mensagem: _) {
+            return nil
+        }
+    }
+
     @discardableResult
     public func responder(_ p: Pendencia, texto: String) async throws -> Job {
         let limpo = texto.trimmingCharacters(in: .whitespacesAndNewlines)
