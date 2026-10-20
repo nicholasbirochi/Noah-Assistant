@@ -1,0 +1,14 @@
+{
+  "name": "Pendências (Noah)",
+  "short_name": "Pendências",
+  "description": "O que o Claude Code, o Codex e o Noah esperam de você.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b0b10",
+  "theme_color": "#0b0b10",
+  "icons": [
+    { "src": "icone.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

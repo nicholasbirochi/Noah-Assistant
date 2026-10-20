@@ -1,0 +1,90 @@
+# ADR-0002 — Central de pendências (Claude Code, Codex e Noah)
+
+- **Status:** aceito (primeira versão em `src/central/`)
+- **Data:** 2026-10-19
+
+## Contexto
+
+Com várias conversas abertas ao mesmo tempo, no Claude Code e no Codex, fica difícil
+saber quais delas terminaram e estão esperando uma resposta. A ideia veio do card de
+presença do ADR-0001, inspirado no Grok Bot. Ela tem três requisitos:
+
+- uma lista bonita só do que espera o usuário, no Mac e no iPhone;
+- responder dali mesmo;
+- o Noah entrar como mais uma fonte.
+
+As duas ferramentas já gravam tudo em disco:
+
+- **Claude Code:** `~/.claude/projects/<pasta>/<sessão>.jsonl`;
+- **Codex:** `~/.codex/sessions/AAAA/MM/DD/rollout-*.jsonl`, com os títulos em
+  `~/.codex/session_index.jsonl`.
+
+Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume` e
+`codex exec resume`.
+
+## Decisão
+
+1. **Leitura só local, só leitura.** `central/fontes.py` lê o fim dos transcripts
+   recentes. O padrão é 3 dias, com no máximo 40 itens. Nada é copiado nem enviado para
+   fora. Para identificar o que está pendente, a regra é escrita em código, sem modelo:
+   - **Claude:** a última mensagem é do assistente, tem texto, não tem `tool_use` em
+     aberto e terminou o turno (`stop_reason` `end_turn`, `stop_sequence` ou
+     `max_tokens`).
+   - **Codex:** o último evento de turno é `task_complete`, com `last_agent_message`.
+     O Codex Desktop grava `source` `vscode` e entra normalmente.
+
+   Ficam de fora:
+   - trechos de subagente (`isSidechain`);
+   - sessões automáticas, ou seja, `claude -p` (`entrypoint` `sdk-cli`), `codex exec`
+     (`source` `exec`) e subagentes do Codex;
+   - a pasta `archived_sessions` (conversas arquivadas no Codex). O banco SQLite do
+     Codex não é lido: os rollouts e o `session_index.jsonl` bastam.
+2. **Responder sem editar.** `central/resposta.py` retoma a própria conversa em segundo
+   plano, passando a mensagem pelo stdin. Assim, um texto que comece com `-` nunca vira
+   flag. O comando é montado como lista, sem shell.
+   - **Claude:** `claude -p --resume <id> --permission-mode plan --tools Read,Grep,Glob
+     --strict-mcp-config --output-format text`. Ele lê o projeto, mas não edita, não roda comandos e não
+     carrega servidores MCP.
+   - **Codex:** `codex exec resume -c sandbox_mode="read-only" -c
+     approval_policy="never" --skip-git-repo-check <id> -` (o `-` final lê a mensagem
+     do stdin). Comandos só rodam dentro do sandbox somente leitura do
+     próprio Codex, que bloqueia qualquer escrita. O binário preferido é o que vem
+     dentro do app ChatGPT/Codex. No teste, o `codex` 0.147 do PATH recusou o modelo
+     configurado no app, e o 0.163 do app respondeu. `NOAH_CODEX_BIN` passa por cima
+     dessa escolha.
+
+   Para mudar arquivos, o caminho continua sendo abrir a conversa no app. Só aceitamos
+   ids que a própria central listou, então a página não consegue retomar uma sessão
+   arbitrária. Há uma resposta por conversa por vez e no máximo duas ao mesmo tempo, com
+   um teto de 15 minutos.
+3. **Servidor próprio, mesmas travas da API local.** `central/servidor.py` usa só a
+   biblioteca padrão e escuta na porta **8769**. As travas são as mesmas do
+   `src/api_local.py`:
+   - por padrão, só no 127.0.0.1;
+   - fora do loopback, só com token, sempre `Authorization: Bearer`;
+   - `Host` conferido, e `Origin` de outro endereço recusado com 403;
+   - POST só com `application/json`, sem CORS e com corpo de até 64 KB.
+
+   A página e o manifesto abrem sem token porque não contêm dado nenhum. Já a lista e a
+   resposta sempre exigem o token, quando ele existe. A central ficou fora da 8768 porque
+   aquele servidor ainda está sendo construído por outra frente de trabalho. A junção fica
+   para quando os dois estiverem estáveis.
+4. **Noah como fonte.** Os itens da presença (ADR-0001) entram na mesma lista, mas só
+   para leitura. Eles aparecem só com `NOAH_PRESENCE_ENABLED=true`, como no HUD.
+5. **Dispensar é local e por versão.** "Dispensar" guarda a versão atual do item (o
+   horário da última resposta) e o esconde até chegar uma resposta nova naquela
+   conversa. A marca fica em `LOCAL_STATE_DIR/central/dispensadas.json`, fora do
+   repositório e fora da nuvem.
+
+## Consequências
+
+- O acesso só funciona no Wi-Fi de casa, porque a central não tem acesso remoto. Para
+  usar fora de casa, seria preciso uma VPN como o Tailscale, que hoje não está instalado
+  e exige autorização.
+- A resposta enviada pela central é gravada no mesmo transcript. Se a conversa estiver
+  aberta no app do Claude ou do Codex, talvez seja preciso reabri-la para ver o turno
+  novo.
+- Os formatos dos transcripts não são uma API pública. Se mudarem, o leitor pula a linha
+  ou o arquivo, porque falha fechado. Ele nunca inventa uma pendência.
+- A resposta usa o plano da própria CLI, ou seja, a assinatura do usuário. Não há chave
+  de API nem custo novo.
