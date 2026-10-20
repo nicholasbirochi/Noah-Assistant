@@ -100,11 +100,12 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   item como fonte → por que importa → o que fazer; o Noah só sugere, nunca executa. Canal
   próprio em `visualizer/state.py` (`publish_presence`), independente do gráfico. Decisão
   em [`docs/ADR-0001-presenca-local-first.md`](docs/ADR-0001-presenca-local-first.md).
-- **`central/`** — central de pendências: lista as conversas do Claude Code e do Codex
-  que terminaram e esperam uma resposta sua (mais os itens da presença do Noah) e deixa
-  responder dali, no Mac ou no iPhone. `fontes.py` lê os transcripts locais por código,
-  `resposta.py` retoma a conversa só em modo leitura e `servidor.py` serve a página (PWA
-  em `central/pwa/`) na porta 8769. Decisão em
+- **`central/`** — app Noah, com duas abas. **Pendências** lista as conversas do Claude
+  Code e do Codex que terminaram e esperam uma resposta sua (mais os itens da presença do
+  Noah) e deixa responder dali, no Mac ou no iPhone. **Presença** mostra as sugestões da
+  presença (fonte → por quê → o que fazer), só leitura. `fontes.py` lê os transcripts
+  locais por código, `resposta.py` retoma a conversa só em modo leitura e `servidor.py`
+  serve o app (PWA em `central/pwa/`) na porta 8769. Decisão em
   [`docs/ADR-0002-central-de-pendencias.md`](docs/ADR-0002-central-de-pendencias.md).
 
 ## Setup
@@ -314,7 +315,19 @@ simplesmente **não faz nada visível, sem erro nenhum** (`spctl --assess` mostr
 para sempre. `spctl --add` (que permitiria liberar isso via terminal, sem esse passo
 manual) foi descontinuado pelo próprio macOS -- não tem como pular essa etapa.
 
-## Central de pendências (Claude Code, Codex e Noah)
+## App Noah: central de pendências e presença
+
+O app Noah (`python src/cli.py central`) tem duas abas: **Pendências**, descrita abaixo,
+e **Presença**, com as sugestões da presença (ADR-0001).
+
+A aba Presença lê `GET /central/api/presenca`, só leitura. Cada item mostra a fonte, o
+porquê e o que fazer. Ela segue a mesma chave do HUD: com `NOAH_PRESENCE_ENABLED`
+desligada (o padrão), a aba diz "Presença desligada" e explica como ligar, sem contar
+nada. Para ligar, ponha `NOAH_PRESENCE_ENABLED=true` no `.env` e abra o app de novo.
+Ligada e sem nada a sugerir, ela fica quieta ("Nada agora"). Uma fonte ilegível é pulada,
+e se a leitura toda falhar a aba avisa, sem número chutado.
+
+### Pendências (Claude Code, Codex e Noah)
 
 Uma lista só do que está esperando você: conversas do Claude Code e do Codex cujo último
 turno terminou com uma resposta do agente, mais os itens da presença do Noah (só leitura,
@@ -345,11 +358,13 @@ No iPhone, pelo Wi-Fi de casa:
    "$(openssl rand -hex 16)"` (fora do `127.0.0.1` o token é obrigatório). Guarde o
    token que você gerou.
 2. No Safari do iPhone, abra `http://<IP do Mac>:8769/central/`, cole o token no campo
-   da página e use "Adicionar à Tela de Início".
+   da página e use "Adicionar à Tela de Início". O ícone (PNG de 180 px) e o nome "Noah"
+   vêm do manifesto. Esse caminho ainda não foi testado num iPhone de verdade.
 
 As travas são as mesmas da API local: `Host` conferido, `Origin` de outro endereço
-recusado, `Authorization: Bearer` nas rotas de dados, POST só com JSON e corpo de até
-64 KB, sem CORS. A página e o manifesto abrem sem token porque não têm dado nenhum.
+recusado, `Authorization: Bearer` nas rotas de dados (pendências e presença), POST só
+com JSON e corpo de até 64 KB, sem CORS. A página, o manifesto e os ícones abrem sem
+token porque não têm dado nenhum.
 
 Variáveis opcionais: `NOAH_CENTRAL_TOKEN`, `NOAH_CENTRAL_PORT` (padrão 8769),
 `NOAH_CLAUDE_BIN` e `NOAH_CODEX_BIN` (caminho das CLIs). Sem `NOAH_CODEX_BIN`, a
@@ -366,7 +381,9 @@ Limites conhecidos:
 - se a conversa estiver aberta no app do Claude ou do Codex, talvez seja preciso
   reabri-la para ver o turno enviado pela central;
 - os formatos dos transcripts não são uma API pública: se mudarem, a fonte é pulada
-  (a página avisa "Fonte com problema"), nunca inventada.
+  (a página avisa "Fonte com problema"), nunca inventada;
+- com a presença ligada, os itens dela aparecem nas duas abas: em Pendências como
+  cartões "Noah" (só leitura) e na aba Presença com o "o que fazer".
 
 ## Pedir uma mudança de código por voz
 

@@ -1,4 +1,5 @@
-"""Servidor da central de pendências (stdlib, porta 8769). Decisão em docs/ADR-0002.
+"""Servidor do app Noah: central de pendências + presença (stdlib, porta 8769).
+Decisão em docs/ADR-0002.
 
 Mesmas travas de src/api_local.py: escuta só no 127.0.0.1 por padrão; fora do
 loopback, só com token (``Authorization: Bearer``); ``Host`` conferido; POST só
@@ -8,6 +9,7 @@ dado nenhum; a lista e as ações sempre exigem o token, quando ele existe.
 
   GET  /central/                         -> página (PWA)
   GET  /central/api/pendencias           -> {itens, respondendo, falhas, gerado_em}
+  GET  /central/api/presenca             -> {ligada, variavel, itens, falhas, gerado_em}
   POST /central/api/responder            {fonte, id, texto} -> 202 {job}
   POST /central/api/dispensar            {fonte, id} -> 200 (guarda a versão atual)
 """
@@ -21,6 +23,7 @@ import json
 import os
 import sys
 import time
+from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Callable
@@ -38,6 +41,9 @@ ESTATICOS = {
     "/central/app.js": ("app.js", "text/javascript; charset=utf-8"),
     "/central/manifest.webmanifest": ("manifest.webmanifest", "application/manifest+json"),
     "/central/icone.svg": ("icone.svg", "image/svg+xml"),
+    # O iOS não aceita SVG como ícone da tela de início: PNG gerado do icone.svg.
+    "/central/icone-180.png": ("icone-180.png", "image/png"),
+    "/central/icone-512.png": ("icone-512.png", "image/png"),
 }
 
 CABECALHOS_ESTATICOS = {
@@ -52,6 +58,24 @@ CABECALHOS_ESTATICOS = {
 }
 
 Listar = Callable[[], tuple[list[fontes.Pendencia], list[str]]]
+Presenca = Callable[[], dict]
+
+
+def ler_presenca() -> dict:
+    """Aba Presença (docs/ADR-0001), só leitura. Desligada, não conta nada: a
+    página diz como ligar em vez de mostrar números. Uma fonte ilegível já é
+    pulada por build_presence_items(); se a leitura toda falhar, sai em
+    ``falhas`` e a lista fica vazia -- nunca um número chutado."""
+    from assistant import presence
+
+    estado = {"ligada": presence.is_enabled(), "variavel": presence.ENABLED_ENV_VAR, "itens": [], "falhas": []}
+    if not estado["ligada"]:
+        return estado
+    try:
+        estado["itens"] = [asdict(i) for i in presence.build_presence_items()]
+    except Exception:
+        estado["falhas"] = ["Presença"]
+    return estado
 
 
 def e_loopback(host: str) -> bool:
@@ -67,7 +91,8 @@ class ServidorCentral(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, endereco, *, token: str | None = None, listar: Listar | None = None,
-                 respostas: Respostas | None = None, dispensadas: fontes.Dispensadas | None = None):
+                 respostas: Respostas | None = None, dispensadas: fontes.Dispensadas | None = None,
+                 presenca: Presenca | None = None):
         host = endereco[0]
         if not e_loopback(host) and not token:
             raise ValueError(f"recusado: escutar em {host} (fora do loopback) exige token")
@@ -76,6 +101,7 @@ class ServidorCentral(ThreadingHTTPServer):
         self.dispensadas = dispensadas or fontes.Dispensadas()
         self.listar = listar or (lambda: fontes.listar(dispensadas=self.dispensadas.carregar()))
         self.respostas = respostas or Respostas()
+        self.presenca = presenca or ler_presenca
 
     def hosts_aceitos(self) -> set[str]:
         host, porta = self.server_address[:2]
@@ -114,6 +140,8 @@ class _Handler(BaseHTTPRequestHandler):
             return
         if caminho == "/central/api/pendencias":
             self._pendencias()
+        elif caminho == "/central/api/presenca":
+            self._json(200, {**self.server.presenca(), "gerado_em": time.time()})
         else:
             self._erro(404, "rota inexistente")
 
@@ -251,7 +279,7 @@ class _Handler(BaseHTTPRequestHandler):
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Central de pendências do Noah (Claude Code, Codex e Noah).")
+    parser = argparse.ArgumentParser(description="App Noah: central de pendências (Claude Code, Codex e Noah) e presença.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--porta", type=int, default=int(os.environ.get("NOAH_CENTRAL_PORT", PORTA_PADRAO)))
     parser.add_argument("--token", default=os.environ.get("NOAH_CENTRAL_TOKEN") or None)
@@ -262,7 +290,7 @@ def main(argv: list[str] | None = None) -> int:
         print(exc, file=sys.stderr)
         return 2
     host, porta = servidor.server_address[:2]
-    print(f"Central em http://{host}:{porta}/central/ (token: {'sim' if args.token else 'não'}). Ctrl+C encerra.")
+    print(f"App Noah em http://{host}:{porta}/central/ (token: {'sim' if args.token else 'não'}). Ctrl+C encerra.")
     try:
         servidor.serve_forever()
     except KeyboardInterrupt:

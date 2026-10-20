@@ -1,4 +1,4 @@
-# ADR-0002 — Central de pendências (Claude Code, Codex e Noah)
+# ADR-0002 — Central de pendências (Claude Code, Codex e Noah) e app Noah
 
 - **Status:** aceito (primeira versão em `src/central/`)
 - **Data:** 2026-10-19
@@ -75,6 +75,21 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
    horário da última resposta) e o esconde até chegar uma resposta nova naquela
    conversa. A marca fica em `LOCAL_STATE_DIR/central/dispensadas.json`, fora do
    repositório e fora da nuvem.
+6. **App Noah: duas abas num só app.** A página virou o app "Noah" (título, manifesto e
+   ícone), com as abas **Pendências** e **Presença**. A aba Presença lê
+   `GET /central/api/presenca`, que devolve `{ligada, variavel, itens, falhas,
+   gerado_em}`:
+   - a rota é só leitura, exige o token como `pendencias` e passa pelas mesmas travas de
+     `Host` e `Origin`;
+   - `itens` vem de `build_presence_items()`, no formato fonte → por quê → ação;
+   - desligada (`is_enabled()` falso), a rota nem lê as fontes e a aba explica como ligar,
+     sem números;
+   - uma fonte ilegível já é pulada pela presença; se a leitura toda falhar, sai
+     `falhas: ["Presença"]` e a lista fica vazia.
+
+   As duas abas se atualizam juntas, e a falha de uma não apaga a outra. O ícone da tela
+   de início vem em PNG (180 e 512 px), gerado do `icone.svg` com o `qlmanage`/`sips` do
+   macOS, porque o iOS não aceita SVG ali.
 
 ## Consequências
 
@@ -86,5 +101,10 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
   novo.
 - Os formatos dos transcripts não são uma API pública. Se mudarem, o leitor pula a linha
   ou o arquivo, porque falha fechado. Ele nunca inventa uma pendência.
+- Com a presença ligada, os mesmos itens aparecem nas duas abas: em Pendências como
+  cartões "Noah" e na aba Presença com o "o que fazer". Se a repetição incomodar, os
+  cartões "Noah" podem sair de Pendências.
+- O app no iPhone (ícone e "Adicionar à Tela de Início") ainda não foi testado num
+  aparelho.
 - A resposta usa o plano da própria CLI, ou seja, a assinatura do usuário. Não há chave
   de API nem custo novo.

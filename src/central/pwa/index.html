@@ -5,12 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Pendências">
+<meta name="apple-mobile-web-app-title" content="Noah">
 <meta name="theme-color" content="#0b0b10">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icone.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icone.svg">
-<title>Pendências</title>
+<link rel="apple-touch-icon" href="icone-180.png">
+<title>Noah</title>
 <style>
   :root {
     --fundo: #f4f4f7; --cartao: #ffffff; --cartao-2: #f0f0f4; --texto: #15151c; --suave: #6b6b7a;
@@ -39,11 +39,20 @@
   }
   .topo { display: flex; align-items: center; gap: 10px; max-width: 680px; margin: 0 auto; }
   h1 { font-size: 1.55rem; letter-spacing: -.02em; margin: 0; font-weight: 700; }
-  .contagem {
-    min-width: 26px; height: 26px; padding: 0 8px; border-radius: 13px; background: var(--acento); color: var(--sobre-acento);
-    font-size: .8rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+  .abas {
+    display: flex; gap: 4px; max-width: 680px; margin: 12px auto 0; padding: 3px; border-radius: 12px;
+    background: var(--cartao-2); border: 1px solid var(--borda);
   }
-  .contagem.zero { background: var(--cartao-2); color: var(--suave); }
+  .aba {
+    flex: 1; border: 0; border-radius: 9px; background: none; color: var(--suave); font: inherit; font-size: .9rem;
+    font-weight: 600; padding: 7px 10px; cursor: pointer; display: inline-flex; gap: 8px; align-items: center; justify-content: center;
+  }
+  .aba[aria-selected="true"] { background: var(--cartao); color: var(--texto); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+  .contagem {
+    min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; background: var(--acento); color: var(--sobre-acento);
+    font-size: .75rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center;
+  }
+  .contagem.zero { display: none; }
   .espaco { flex: 1; }
   .icone-btn {
     width: 36px; height: 36px; border-radius: 18px; border: 1px solid var(--borda); background: var(--cartao);
@@ -100,6 +109,11 @@
   .msg h3 { font-size: .95rem; margin: .4em 0 .3em; }
   .mais { background: none; border: 0; color: var(--suave); font: inherit; font-size: .82rem; font-weight: 600; padding: 4px 0; cursor: pointer; }
   .acao-noah { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--cartao-2); font-size: .88rem; }
+  .porque { margin: 8px 0 0; font-size: .95rem; overflow-wrap: anywhere; }
+  .acao-noah .rotulo-acao { display: block; font-size: .75rem; font-weight: 700; color: var(--suave); margin-bottom: 2px; }
+  .acao-noah code { font: .85rem ui-monospace, "SF Mono", Menlo, monospace; overflow-wrap: anywhere; }
+  .vazio p { margin: 8px auto 0; max-width: 440px; }
+  .vazio code { font: .85em ui-monospace, "SF Mono", Menlo, monospace; background: var(--cartao-2); padding: 1px 5px; border-radius: 5px; }
 
   form.responder { margin-top: 12px; display: flex; gap: 8px; align-items: flex-end; }
   textarea {
@@ -139,18 +153,23 @@
 <body>
 <header>
   <div class="topo">
-    <h1>Pendências</h1>
-    <span id="contagem" class="contagem zero">0</span>
+    <h1>Noah</h1>
     <span class="espaco"></span>
     <button id="atualizar" class="icone-btn" type="button" aria-label="Atualizar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 4v5h-5"/></svg>
     </button>
   </div>
+  <nav class="abas" role="tablist" aria-label="Seções">
+    <button id="aba-pendencias" class="aba" type="button" role="tab" aria-controls="painel-pendencias" aria-selected="true">
+      Pendências <span id="n-pendencias" class="contagem zero">0</span>
+    </button>
+    <button id="aba-presenca" class="aba" type="button" role="tab" aria-controls="painel-presenca" aria-selected="false">
+      Presença <span id="n-presenca" class="contagem zero">0</span>
+    </button>
+  </nav>
   <div id="chips" class="chips" role="toolbar" aria-label="Filtrar por fonte"></div>
 </header>
 <main>
-  <div id="avisos"></div>
-  <div id="andamento" class="andamento"></div>
   <section id="token" class="token" hidden>
     <p>Esta central pede um token. Use o mesmo que você passou em <code>--token</code> ao abrir a central no Mac.</p>
     <form id="form-token">
@@ -158,7 +177,15 @@
       <button type="submit">Entrar</button>
     </form>
   </section>
-  <div id="lista" class="lista" aria-live="polite"></div>
+  <section id="painel-pendencias" role="tabpanel" aria-labelledby="aba-pendencias">
+    <div id="avisos"></div>
+    <div id="andamento" class="andamento"></div>
+    <div id="lista" class="lista" aria-live="polite"></div>
+  </section>
+  <section id="painel-presenca" role="tabpanel" aria-labelledby="aba-presenca" hidden>
+    <div id="avisos-presenca"></div>
+    <div id="lista-presenca" class="lista" aria-live="polite"></div>
+  </section>
 </main>
 <div id="toast" class="toast" role="status" hidden></div>
 <script src="app.js"></script>
