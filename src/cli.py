@@ -26,7 +26,11 @@ writes it to the second brain through its own tool (assistant/cerebro.py) --
 this is the real human authorization a Cérebro write requires;
 `python src/cli.py presenca` prints the proactive suggestions
 (assistant/presence.py) -- fonte, por que importa, o que fazer -- counted
-from local files only, nothing executed (docs/ADR-0001-presenca-local-first.md)."""
+from local files only, nothing executed (docs/ADR-0001-presenca-local-first.md);
+`python src/cli.py pendencias` lists the Claude Code / Codex conversations
+waiting for a reply (plus Noah's suggestions), and `python src/cli.py central
+[--host IP --token T]` serves the same list as a page you can answer from,
+phone included (central/, docs/ADR-0002-central-de-pendencias.md)."""
 
 from __future__ import annotations
 
@@ -181,6 +185,17 @@ def main() -> None:
         "presenca",
         help="Mostra as sugestões proativas (propostas, conflitos, lembretes) -- só leitura, assistant/presence.py.",
     )
+    subparsers.add_parser(
+        "pendencias",
+        help="Lista as conversas do Claude Code e do Codex que esperam resposta (e as sugestões do Noah).",
+    )
+    central_parser = subparsers.add_parser(
+        "central",
+        help="Abre a central de pendências (página para responder, também no celular) -- central/servidor.py.",
+    )
+    central_parser.add_argument("--host", help="Endereço de escuta (padrão 127.0.0.1; fora dele exige --token).")
+    central_parser.add_argument("--porta", type=int, help="Porta (padrão 8769 ou NOAH_CENTRAL_PORT).")
+    central_parser.add_argument("--token", help="Token exigido pela página (padrão NOAH_CENTRAL_TOKEN).")
     args = parser.parse_args()
 
     if args.command == "index":
@@ -273,6 +288,24 @@ def main() -> None:
 
         print(presence.format_text(presence.build_presence_items()))
         return
+
+    if args.command == "pendencias":
+        from central import fontes
+
+        print(fontes.formatar_texto(*fontes.listar(dispensadas=fontes.Dispensadas().carregar())))
+        return
+
+    if args.command == "central":
+        import sys
+
+        from central.servidor import main as central_main
+
+        argv = []
+        for nome in ("host", "porta", "token"):
+            valor = getattr(args, nome)
+            if valor is not None:
+                argv += [f"--{nome}", str(valor)]
+        sys.exit(central_main(argv))
 
     if args.command == "code":
         from assistant.coding_agent import run_coding_task

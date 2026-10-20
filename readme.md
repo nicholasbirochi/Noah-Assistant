@@ -100,6 +100,12 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   item como fonte → por que importa → o que fazer; o Noah só sugere, nunca executa. Canal
   próprio em `visualizer/state.py` (`publish_presence`), independente do gráfico. Decisão
   em [`docs/ADR-0001-presenca-local-first.md`](docs/ADR-0001-presenca-local-first.md).
+- **`central/`** — central de pendências: lista as conversas do Claude Code e do Codex
+  que terminaram e esperam uma resposta sua (mais os itens da presença do Noah) e deixa
+  responder dali, no Mac ou no iPhone. `fontes.py` lê os transcripts locais por código,
+  `resposta.py` retoma a conversa só em modo leitura e `servidor.py` serve a página (PWA
+  em `central/pwa/`) na porta 8769. Decisão em
+  [`docs/ADR-0002-central-de-pendencias.md`](docs/ADR-0002-central-de-pendencias.md).
 
 ## Setup
 
@@ -308,6 +314,60 @@ simplesmente **não faz nada visível, sem erro nenhum** (`spctl --assess` mostr
 para sempre. `spctl --add` (que permitiria liberar isso via terminal, sem esse passo
 manual) foi descontinuado pelo próprio macOS -- não tem como pular essa etapa.
 
+## Central de pendências (Claude Code, Codex e Noah)
+
+Uma lista só do que está esperando você: conversas do Claude Code e do Codex cujo último
+turno terminou com uma resposta do agente, mais os itens da presença do Noah (só leitura,
+com `NOAH_PRESENCE_ENABLED=true`). Tudo é lido do disco por código, sem modelo e sem
+rede: `~/.claude/projects/` e `~/.codex/sessions/` (títulos em
+`~/.codex/session_index.jsonl`), janela de 3 dias e no máximo 40 itens.
+
+```bash
+python src/cli.py pendencias   # lista no terminal
+python src/cli.py central      # página em http://127.0.0.1:8769/central/
+```
+
+Na página, cada cartão mostra a fonte, o título, o projeto e a última mensagem do agente.
+"Responder" retoma a própria conversa em segundo plano, **sem editar nada**:
+
+- Claude: `claude -p --resume <id>` em modo `plan`, só com as ferramentas Read, Grep e
+  Glob e sem servidores MCP;
+- Codex: `codex exec resume <id>` com `sandbox_mode="read-only"`.
+
+A mensagem vai pelo stdin (até 4.000 caracteres), uma resposta por conversa por vez e no
+máximo duas ao mesmo tempo. Para o agente mudar arquivos, abra a conversa no app.
+"Dispensar" esconde o item até chegar uma resposta nova naquela conversa (marca local em
+`LOCAL_STATE_DIR/central/dispensadas.json`).
+
+No iPhone, pelo Wi-Fi de casa:
+
+1. No Mac: `python src/cli.py central --host "$(ipconfig getifaddr en0)" --token
+   "$(openssl rand -hex 16)"` (fora do `127.0.0.1` o token é obrigatório). Guarde o
+   token que você gerou.
+2. No Safari do iPhone, abra `http://<IP do Mac>:8769/central/`, cole o token no campo
+   da página e use "Adicionar à Tela de Início".
+
+As travas são as mesmas da API local: `Host` conferido, `Origin` de outro endereço
+recusado, `Authorization: Bearer` nas rotas de dados, POST só com JSON e corpo de até
+64 KB, sem CORS. A página e o manifesto abrem sem token porque não têm dado nenhum.
+
+Variáveis opcionais: `NOAH_CENTRAL_TOKEN`, `NOAH_CENTRAL_PORT` (padrão 8769),
+`NOAH_CLAUDE_BIN` e `NOAH_CODEX_BIN` (caminho das CLIs). Sem `NOAH_CODEX_BIN`, a
+central usa o `codex` que vem dentro do app ChatGPT/Codex, que é a mesma versão que
+gravou as conversas. Só se ele não existir é que ela recorre ao PATH: um `codex`
+antigo no PATH recusa o modelo configurado no app.
+
+Limites conhecidos:
+
+- só funciona na rede de casa; fora dela precisaria de uma VPN (Tailscale), ainda não
+  instalada;
+- sessões automáticas (`claude -p`, `codex exec`, subagentes) e conversas arquivadas no
+  Codex não aparecem;
+- se a conversa estiver aberta no app do Claude ou do Codex, talvez seja preciso
+  reabri-la para ver o turno enviado pela central;
+- os formatos dos transcripts não são uma API pública: se mudarem, a fonte é pulada
+  (a página avisa "Fonte com problema"), nunca inventada.
+
 ## Pedir uma mudança de código por voz
 
 Pedir pro Noah ("mude a cor do HUD pra verde", "peça pro Claude Code revisar o
@@ -467,6 +527,9 @@ antes da coleta, independente de onde `pytest` foi chamado.
   (domínios, seletores reais, e depois o envio real) feita para os outros sites, não dá pra
   generalizar sem repetir esse processo por site.
 - MLXProvider como opção de menor latência.
+- Central de pendências: testar de verdade no iPhone; acesso fora de casa (Tailscale,
+  depende de autorização); juntar com a API local (8768) quando as duas estiverem
+  estáveis; respostas do Noah como fonte respondível.
 - Itens extras no menu bar (abrir logs/perfil, revisar propostas pendentes direto do
   menu -- hoje só tem liga/desliga).
 - Presença proativa, próximas fatias (cada uma com decisão própria, sempre local e sem
