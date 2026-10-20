@@ -396,8 +396,11 @@ num some do outro.
 - O painel "Ao vivo" mostra a sincronização e o feed do que mudou.
 - Cada pendência nova vira um aviso com Responder, Aceitar e Dispensar.
 - A aba Fluxo anima o caminho da informação: as ligações com a central têm partículas
-  ao vivo; as consultas ao Cérebro aparecem tracejadas, "sem sinal ao vivo", porque a
-  central não as enxerga.
+  ao vivo. As consultas ao Cérebro e as tarefas delegadas ao Qwen também, com a contagem
+  dos últimos 10 minutos lida em `GET /central/api/cerebro`. A central conta só chamadas
+  de ferramenta que executam `cerebro.py` ou `auxiliares.py` nos transcripts locais, mais
+  as consultas do Noah (só o horário). Se uma fonte falha, a ligação fica tracejada, "sem
+  sinal ao vivo", sem número chutado.
 
 Como gerar, assinar e ligar o iPhone pela rede de casa está em
 [apple/README.md](apple/README.md). A decisão está em

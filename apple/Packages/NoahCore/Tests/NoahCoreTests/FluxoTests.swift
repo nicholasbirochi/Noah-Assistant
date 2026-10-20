@@ -45,6 +45,44 @@ final class FluxoTests: XCTestCase {
         XCTAssertEqual(ligacao(lista, .central, .claude)?.estado, .parada)
     }
 
+    func sinal(claude: SinalCerebro.Uso = .init(), codex: SinalCerebro.Uso = .init(), noah: SinalCerebro.Uso = .init(),
+               delegClaude: Int = 0, delegCodex: Int = 0, falhas: [String] = []) -> SinalCerebro {
+        SinalCerebro(janela: 600, cerebro: ["claude": claude, "codex": codex, "noah": noah],
+                     auxiliares: ["claude": .init(delegacoes: delegClaude), "codex": .init(delegacoes: delegCodex)],
+                     falhas: falhas)
+    }
+
+    func testSinalDoCerebroAcendeQuemConsultou() {
+        let lista = Fluxo.ligacoes(itens: [], jobs: [], cerebro: sinal(
+            claude: .init(consultas: 2, registros: 1), noah: .init(consultas: 1), delegClaude: 1, delegCodex: 2))
+        let claude = ligacao(lista, .claude, .cerebro)
+        XCTAssertEqual(claude?.estado, .viva)
+        XCTAssertEqual(claude?.quantidade, 3)
+        XCTAssertEqual(claude?.rotulo, "2 consultas · 1 registro")
+        XCTAssertEqual(ligacao(lista, .noah, .cerebro)?.rotulo, "1 consulta")
+        XCTAssertEqual(ligacao(lista, .codex, .cerebro)?.estado, .parada)
+        XCTAssertEqual(ligacao(lista, .codex, .cerebro)?.rotulo, "nada nos últimos 10 min")
+        XCTAssertEqual(ligacao(lista, .cerebro, .auxiliares)?.rotulo, "3 tarefas delegadas")
+        XCTAssertEqual(lista.count, 11)
+    }
+
+    func testSinalZeradoDeixaCerebroParado() {
+        let lista = Fluxo.ligacoes(itens: [], jobs: [], cerebro: sinal())
+        let cerebro = lista.filter { $0.de == .cerebro || $0.para == .cerebro }
+        XCTAssertTrue(cerebro.allSatisfy { $0.estado == .parada })
+    }
+
+    func testFonteQueFalhouFicaSemSinal() {
+        let lista = Fluxo.ligacoes(itens: [], jobs: [], cerebro: sinal(
+            codex: .init(consultas: 5), delegClaude: 1, delegCodex: 4, falhas: ["Codex"]))
+        XCTAssertEqual(ligacao(lista, .codex, .cerebro)?.estado, .semSinal)
+        XCTAssertEqual(ligacao(lista, .claude, .cerebro)?.estado, .parada)
+        // Só soma a delegação da fonte que a central leu.
+        XCTAssertEqual(ligacao(lista, .cerebro, .auxiliares)?.rotulo, "1 tarefa delegada")
+        let semNada = Fluxo.ligacoes(itens: [], jobs: [], cerebro: sinal(falhas: ["Claude Code", "Codex"]))
+        XCTAssertEqual(ligacao(semNada, .cerebro, .auxiliares)?.estado, .semSinal)
+    }
+
     func testCerebroNuncaFingeAtividade() {
         let lista = Fluxo.ligacoes(itens: [p("a"), p("b", fonte: "noah")], jobs: [job("a", "rodando")])
         let cerebro = lista.filter { $0.de == .cerebro || $0.para == .cerebro }

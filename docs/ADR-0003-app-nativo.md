@@ -53,10 +53,12 @@ repositório público (nenhum Team ID ou dado pessoal no git).
    feed do que mudou (`Atividade.eventos`). No Mac é uma coluna fixa ao lado do detalhe; no
    iPhone, uma folha. `.inspector` foi descartado porque derrubava o app no macOS.
 6. **Aba Fluxo só anima o que a central vê.** O mapa (`Fluxo.ligacoes`) liga agentes,
-   Cérebro, Qwen local, central e aparelhos. Só as ligações com a central ficam vivas
-   (partículas e contagem), porque só elas têm dado. As consultas ao Cérebro e as tarefas
-   delegadas ao Qwen ficam tracejadas com "sem sinal ao vivo": o caminho existe, mas a
-   central não o enxerga, e o app não inventa atividade.
+   Cérebro, Qwen local, central e aparelhos. As ligações com a central vivem das
+   pendências e respostas. As consultas ao Cérebro e as tarefas delegadas ao Qwen vivem
+   do sinal `GET /central/api/cerebro` (ADR-0002, ponto 7), contado numa janela de 10
+   minutos. Sem a rota (central antiga, 404) ou com a fonte em falha, a ligação fica
+   tracejada com "sem sinal ao vivo": o caminho existe, mas a central não o enxerga, e o
+   app não inventa atividade.
 7. **Segredos fora do git.** O token fica no Keychain. O Team ID fica em
    `Config/Local.xcconfig`, que o git ignora, e o repositório leva só o `.example`.
 
@@ -69,7 +71,8 @@ repositório público (nenhum Team ID ou dado pessoal no git).
 - Com a conta gratuita, o app no iPhone precisa ser reinstalado a cada 7 dias.
 - A página web do ADR-0002 continua existindo. O app nativo não a substitui na central, só
   no uso diário.
-- Mostrar consultas ao Cérebro ao vivo exige uma fonte nova na central (por exemplo, a
-  CLI do Cérebro registrando cada consulta). Até lá, essas ligações ficam tracejadas.
+- O sinal do Cérebro conta só chamadas de ferramenta registradas nos transcripts e as
+  consultas do próprio Noah. Uma consulta feita fora disso (o hook de início de sessão,
+  um terminal à parte) não aparece.
 - Verificado só no Simulador e no Mac, com uma central falsa. Ainda falta testar num
   iPhone real, o toque no aviso abrindo o detalhe e o refresh em segundo plano.

@@ -48,6 +48,8 @@ final class SincroniaTests: XCTestCase {
         let velho = Job(id: "3", chave: "claude:c", titulo: "c", fonte: "claude", estado: "erro", inicio: 0, fim: 100)
         XCTAssertEqual(Sincronia.proximoIntervalo([rodando, recente]), 4)
         XCTAssertEqual(Sincronia.proximoIntervalo([recente]), 20)
+        XCTAssertEqual(Sincronia.proximoIntervalo([recente], vendoFluxo: true), 10)
+        XCTAssertEqual(Sincronia.proximoIntervalo([rodando], vendoFluxo: true), 4)
         XCTAssertEqual(Sincronia.jobsVisiveis([rodando, recente, velho], agora: 1300).map(\.id), ["1", "2"])
         XCTAssertEqual(recente.rotuloEstado, "respondeu")
         XCTAssertEqual(velho.rotuloEstado, "falhou")
