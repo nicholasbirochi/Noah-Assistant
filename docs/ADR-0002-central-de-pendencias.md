@@ -102,6 +102,12 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
      é uma delegação;
    - o Noah anota só o horário de cada consulta (nunca os termos) em
      `LOCAL_STATE_DIR/central/atividade_cerebro.jsonl`, limitado às últimas 200;
+   - cada uso traz `partes`, com o código da pasta do cofre (`"00"` a `"07"`) e quantas
+     chamadas a tocaram. Num registro vale a pasta do `--destino`. Numa consulta valem as
+     pastas dos caminhos de nota que a resposta da própria ferramenta trouxe (Claude:
+     `tool_result` com o mesmo `tool_use_id`; Codex: `*_output` com o mesmo `call_id`).
+     Só o código sai da central, nunca termos, trechos ou nomes de nota;
+   - o Noah anota também os códigos das pastas que a resposta da consulta citou;
    - uma fonte que falha sai em `falhas` e fica zerada; o resultado fica em cache por 5 s.
 
 ## Consequências

@@ -58,7 +58,10 @@ repositório público (nenhum Team ID ou dado pessoal no git).
    do sinal `GET /central/api/cerebro` (ADR-0002, ponto 7), contado numa janela de 10
    minutos. Sem a rota (central antiga, 404) ou com a fonte em falha, a ligação fica
    tracejada com "sem sinal ao vivo": o caminho existe, mas a central não o enxerga, e o
-   app não inventa atividade.
+   app não inventa atividade. O Cérebro aparece em pedaços, nas 8 pastas do cofre
+   (`Fluxo.Parte`), e acende só as que o sinal conta em `partes`. Os bonequinhos de cada
+   agente andam até essas pastas. Sem `partes` (central antiga), `Fluxo.partes` devolve
+   nil e nada acende.
 7. **Segredos fora do git.** O token fica no Keychain. O Team ID fica em
    `Config/Local.xcconfig`, que o git ignora, e o repositório leva só o `.example`.
 
