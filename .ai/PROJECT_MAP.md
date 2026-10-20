@@ -25,7 +25,8 @@ Verifique o codigo antes de confiar em um detalhe.
   projeto identificado) e registro gravado so com autorizacao humana real.
 - `src/voice/`: microfone, wake word, STT e TTS; XTTS usa worker separado.
 - `src/visualizer/`: HUD via HTTP/SSE local e WKWebView.
-- `src/central/`: central de pendencias (Claude Code, Codex e presenca do Noah)
+- `src/central/`: app Noah com abas Pendencias (Claude Code, Codex e presenca do
+  Noah) e Presenca (`GET /central/api/presenca`, so leitura, desligada por padrao)
   em servidor proprio na 8769, so leitura dos transcripts locais e resposta por
   retomada sem edicao; decisao em `docs/ADR-0002`.
 - `src/indexing/` e `src/resume/`: documentos de curriculo, propostas e revisao;
