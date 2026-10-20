@@ -385,6 +385,24 @@ Limites conhecidos:
 - com a presença ligada, os itens dela aparecem nas duas abas: em Pendências como
   cartões "Noah" (só leitura) e na aba Presença com o "o que fazer".
 
+### App nativo (iPhone e Mac)
+
+Em `apple/` há um app SwiftUI com as mesmas abas, mais a aba Fluxo, que lê a mesma
+central. A central sincroniza os dois aparelhos: o que você aceita, responde ou dispensa
+num some do outro.
+
+- A tela inicial mostra só as tarefas: Para fazer, Geradas automaticamente pelo Noah
+  (marcadas) e Respostas. Tocar numa tarefa abre o detalhe com o porquê e as ações.
+- O painel "Ao vivo" mostra a sincronização e o feed do que mudou.
+- Cada pendência nova vira um aviso com Responder, Aceitar e Dispensar.
+- A aba Fluxo anima o caminho da informação: as ligações com a central têm partículas
+  ao vivo; as consultas ao Cérebro aparecem tracejadas, "sem sinal ao vivo", porque a
+  central não as enxerga.
+
+Como gerar, assinar e ligar o iPhone pela rede de casa está em
+[apple/README.md](apple/README.md). A decisão está em
+[docs/ADR-0003](docs/ADR-0003-app-nativo.md).
+
 ## Pedir uma mudança de código por voz
 
 Pedir pro Noah ("mude a cor do HUD pra verde", "peça pro Claude Code revisar o
