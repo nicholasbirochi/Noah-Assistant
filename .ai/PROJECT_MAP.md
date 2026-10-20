@@ -20,6 +20,10 @@ Verifique o codigo antes de confiar em um detalhe.
 - `src/assistant/coding_agent.py`: loop com limite de iteracoes, consulta de
   arquivos/git e execucao de pytest; ainda sem editar codigo.
 - `src/assistant/tools.py`: ferramentas oferecidas ao assistente.
+- `src/finance.py`: leitura (so leitura) da planilha de patrimonio em
+  `config.PATRIMONIO_PATH`. `src/finance_pluggy.py`: saldos por banco ao vivo do
+  Meu Pluggy, opt-in (`NOAH_FINANCE_SOURCE=pluggy`), lista fechada de 3 chamadas
+  de leitura, credenciais no Keychain, planilha como reserva.
 - `src/assistant/cerebro.py`: ponte para o segundo cerebro (Cerebro) pela CLI
   existente (`.cerebro/cerebro.py`): consulta (`buscar --trechos`, escopo no
   projeto identificado) e registro gravado so com autorizacao humana real.
