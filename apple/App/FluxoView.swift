@@ -3,14 +3,15 @@ import SwiftUI
 
 /// Aba Fluxo: por onde a informação passa entre os agentes, o Cérebro, a
 /// central e os aparelhos. Partículas só correm nas ligações com dado real da
-/// central (`Fluxo.ligacoes`); os caminhos do Cérebro são tracejados, porque a
-/// central não enxerga essas consultas.
+/// central (`Fluxo.ligacoes`), inclusive as consultas ao Cérebro e as tarefas
+/// delegadas aos auxiliares (sinal de `GET /central/api/cerebro`). Sem esse
+/// sinal (central antiga) esses caminhos ficam tracejados.
 struct FluxoView: View {
     @Environment(Modelo.self) private var modelo
     @Environment(\.accessibilityReduceMotion) private var reduzirMovimento
 
     var body: some View {
-        let ligacoes = Fluxo.ligacoes(itens: modelo.itens, jobs: modelo.jobs)
+        let ligacoes = Fluxo.ligacoes(itens: modelo.itens, jobs: modelo.jobs, cerebro: modelo.cerebro)
         VStack(spacing: 0) {
             cabecalho
             GeometryReader { geo in
@@ -30,7 +31,7 @@ struct FluxoView: View {
                 }
             }
             .padding(.horizontal, 12)
-            Agora(ligacoes: ligacoes)
+            Agora(ligacoes: ligacoes, janela: modelo.cerebro?.janela)
         }
         .background(Paleta.fundo.ignoresSafeArea())
         .environment(\.colorScheme, .dark)
@@ -261,13 +262,16 @@ struct NoFluxo: View {
 /// Embaixo do mapa: o que está passando agora, em texto, e a legenda.
 struct Agora: View {
     let ligacoes: [Fluxo.Ligacao]
+    /// Janela do sinal do Cérebro em segundos; nil sem o sinal.
+    let janela: Int?
 
     var body: some View {
         let vivas = ligacoes.filter { $0.estado == .viva }
+        let semSinal = ligacoes.contains { $0.estado == .semSinal }
         VStack(alignment: .leading, spacing: 6) {
             Text("AGORA").font(.system(size: 10, weight: .bold, design: .monospaced)).foregroundStyle(.secondary)
             if vivas.isEmpty {
-                Text("Nada passando pela central agora.").font(.system(.caption, design: .monospaced))
+                Text("Nada passando agora.").font(.system(.caption, design: .monospaced))
             }
             ForEach(vivas) { l in
                 Text("\(l.de.nome) → \(l.para.nome) · \(l.rotulo)")
@@ -275,9 +279,14 @@ struct Agora: View {
                     .foregroundStyle(Paleta.cor(l.de))
             }
             Divider().padding(.vertical, 2)
-            Legenda(tracejada: false, texto: "ao vivo: dado lido da central")
-            Legenda(tracejada: true,
-                    texto: "caminho sem sinal ao vivo: consultas ao Cérebro e aos auxiliares não passam pela central")
+            Legenda(tracejada: false, texto: janela.map {
+                "ao vivo: dado lido da central (Cérebro e auxiliares: últimos \(max(1, $0 / 60)) min)"
+            } ?? "ao vivo: dado lido da central")
+            if semSinal {
+                Legenda(tracejada: true, texto: janela == nil
+                    ? "sem sinal ao vivo: esta central ainda não conta as consultas ao Cérebro; atualize o Noah no Mac"
+                    : "sem sinal ao vivo: a central não conseguiu ler essa fonte agora")
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)

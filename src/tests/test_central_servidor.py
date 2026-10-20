@@ -22,7 +22,7 @@ ITENS = [
 def servidor_factory(tmp_path):
     criados = []
 
-    def criar(*, token=None, presenca=None):
+    def criar(*, token=None, presenca=None, sinal=None):
         respondidas = []
 
         def executor(p, texto):
@@ -36,6 +36,7 @@ def servidor_factory(tmp_path):
             dispensadas=Dispensadas(tmp_path / "dispensadas.json"),
             presenca=presenca or (lambda: {"ligada": False, "variavel": "NOAH_PRESENCE_ENABLED",
                                            "itens": [], "falhas": []}),
+            sinal=sinal or (lambda: {"janela_s": 600, "cerebro": {}, "auxiliares": {}, "falhas": []}),
         )
         srv.respondidas = respondidas
         threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -228,3 +229,16 @@ def test_ler_presenca_respeita_a_variavel(monkeypatch):
     monkeypatch.setenv(presence.ENABLED_ENV_VAR, "true")
     assert central_servidor.ler_presenca() == {
         "ligada": True, "variavel": presence.ENABLED_ENV_VAR, "itens": [], "falhas": []}
+
+
+def test_sinal_do_cerebro_exige_token_e_traz_gerado_em(servidor_factory):
+    sinal = {"janela_s": 600, "cerebro": {"claude": {"consultas": 2, "registros": 1, "ultima": 1.0}},
+             "auxiliares": {"codex": {"delegacoes": 1, "ultima": 2.0}}, "falhas": []}
+    srv = servidor_factory(token="t", sinal=lambda: sinal)
+    status, _, _ = _req(srv, "GET", "/central/api/cerebro")
+    assert status == 401
+    status, _, dados = _req(srv, "GET", "/central/api/cerebro", headers={"Authorization": "Bearer t"})
+    assert status == 200
+    assert dados["cerebro"]["claude"]["consultas"] == 2
+    assert dados["auxiliares"]["codex"]["delegacoes"] == 1
+    assert isinstance(dados["gerado_em"], float)

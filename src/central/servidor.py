@@ -10,6 +10,7 @@ dado nenhum; a lista e as ações sempre exigem o token, quando ele existe.
   GET  /central/                         -> página (PWA)
   GET  /central/api/pendencias           -> {itens, respondendo, falhas, gerado_em}
   GET  /central/api/presenca             -> {ligada, variavel, itens, falhas, gerado_em}
+  GET  /central/api/cerebro              -> {janela_s, cerebro, auxiliares, falhas, gerado_em}
   POST /central/api/responder            {fonte, id, texto} -> 202 {job}
   POST /central/api/dispensar            {fonte, id} -> 200 (guarda a versão atual)
 """
@@ -29,7 +30,7 @@ from pathlib import Path
 from typing import Callable
 from urllib.parse import urlsplit
 
-from central import fontes
+from central import fontes, sinal_cerebro
 from central.resposta import MAX_TEXTO, RespostaRecusada, Respostas
 
 PORTA_PADRAO = 8769
@@ -59,6 +60,7 @@ CABECALHOS_ESTATICOS = {
 
 Listar = Callable[[], tuple[list[fontes.Pendencia], list[str]]]
 Presenca = Callable[[], dict]
+Sinal = Callable[[], dict]
 
 
 def ler_presenca() -> dict:
@@ -92,7 +94,7 @@ class ServidorCentral(ThreadingHTTPServer):
 
     def __init__(self, endereco, *, token: str | None = None, listar: Listar | None = None,
                  respostas: Respostas | None = None, dispensadas: fontes.Dispensadas | None = None,
-                 presenca: Presenca | None = None):
+                 presenca: Presenca | None = None, sinal: Sinal | None = None):
         host = endereco[0]
         if not e_loopback(host) and not token:
             raise ValueError(f"recusado: escutar em {host} (fora do loopback) exige token")
@@ -102,6 +104,7 @@ class ServidorCentral(ThreadingHTTPServer):
         self.listar = listar or (lambda: fontes.listar(dispensadas=self.dispensadas.carregar()))
         self.respostas = respostas or Respostas()
         self.presenca = presenca or ler_presenca
+        self.sinal = sinal or sinal_cerebro.ler_sinal
 
     def hosts_aceitos(self) -> set[str]:
         host, porta = self.server_address[:2]
@@ -142,6 +145,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._pendencias()
         elif caminho == "/central/api/presenca":
             self._json(200, {**self.server.presenca(), "gerado_em": time.time()})
+        elif caminho == "/central/api/cerebro":
+            self._json(200, {**self.server.sinal(), "gerado_em": time.time()})
         else:
             self._erro(404, "rota inexistente")
 

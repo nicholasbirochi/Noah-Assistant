@@ -6,7 +6,7 @@ import UserNotifications
 enum Aba: Hashable { case pendencias, fluxo, presenca, ajustes }
 
 /// Estado do app. Atualiza sozinho no mesmo ritmo do PWA (20 s; 4 s enquanto
-/// alguém responde) e repassa a lista aos avisos.
+/// alguém responde; 10 s com a aba Fluxo aberta) e repassa a lista aos avisos.
 @MainActor @Observable
 final class Modelo {
     var itens: [Pendencia] = []
@@ -15,6 +15,8 @@ final class Modelo {
     var erro: String?
     var presenca: EstadoPresenca?
     var erroPresenca: String?
+    /// Sinal ao vivo do Cérebro para a aba Fluxo; nil numa central sem a rota.
+    var cerebro: SinalCerebro?
     var aviso: String?
     var rascunhos: [String: String] = [:]
     var enviando: Set<String> = []
@@ -45,7 +47,7 @@ final class Modelo {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.atualizar()
-                await self.esperar(Sincronia.proximoIntervalo(self.jobs))
+                await self.esperar(Sincronia.proximoIntervalo(self.jobs, vendoFluxo: self.aba == .fluxo))
             }
         }
     }
@@ -85,6 +87,7 @@ final class Modelo {
         // A permissão pode mudar fora do app (Ajustes do sistema): relê a cada ciclo.
         await lerPermissao()
         if aba == .presenca { await atualizarPresenca() }
+        if aba == .fluxo { await atualizarCerebro() }
     }
 
     func lerPermissao() async {
@@ -103,6 +106,11 @@ final class Modelo {
         } catch {
             erroPresenca = error.localizedDescription
         }
+    }
+
+    /// Falha de rede deixa o mapa sem sinal (nil) em vez de mostrar contagem velha.
+    func atualizarCerebro() async {
+        cerebro = try? await Ajustes.cliente().cerebro()
     }
 
     func responder(_ p: Pendencia, texto: String) async {

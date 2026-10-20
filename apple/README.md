@@ -28,9 +28,14 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   Cérebro, Qwen local, a central e os aparelhos.
   - **Ligações com a central:** têm sinal ao vivo. Quando há pendência esperando ou
     resposta em andamento, partículas correm pela linha com a contagem ("1 para fazer").
-  - **Consultas ao Cérebro e tarefas delegadas ao Qwen:** aparecem tracejadas, com
-    "sem sinal ao vivo". A central não enxerga essas consultas, então o mapa mostra que o
-    caminho existe sem inventar atividade.
+  - **Consultas ao Cérebro e tarefas delegadas ao Qwen:** vêm do sinal da central
+    (`GET /central/api/cerebro`), contado nos últimos 10 minutos. Com atividade, a linha
+    ganha partículas e a contagem ("2 consultas · 1 registro", "1 tarefa delegada"). Sem
+    nada na janela, ela fica parada ("nada nos últimos 10 min").
+  - **Sem sinal ao vivo:** se a central é antiga (sem a rota) ou não conseguiu ler uma
+    fonte, a ligação fica tracejada. O mapa mostra que o caminho existe sem inventar
+    atividade.
+  - Na aba Fluxo, o app relê a central a cada 10 s (4 s com resposta em andamento).
   - A animação pausa fora da aba e respeita "Reduzir movimento".
 - **Avisos com ação.** Cada pendência nova vira um aviso com Responder, Aceitar e
   Dispensar; as só leitura têm apenas Dispensar.
@@ -101,6 +106,9 @@ conversas reais):**
 - as abas Presença e Ajustes;
 - a aba Fluxo, parada e com item esperando e resposta em andamento: partículas nas
   ligações com a central, consultas ao Cérebro tracejadas, rótulos sem sobreposição;
+- a aba Fluxo com o sinal do Cérebro: partículas e contagem nas consultas do Claude Code
+  e do Noah e na delegação ao Qwen; com a leitura do Codex em falha, a ligação dele
+  tracejada e a legenda "sem sinal ao vivo";
 - um item novo aparecendo nos dois;
 - "Aceitar" no iPhone chegou à central, e o Mac moveu o item para Respostas e registrou
   no feed.
@@ -111,8 +119,9 @@ conversas reais):**
 - o pedido de permissão de avisos no Mac;
 - o refresh em segundo plano do iOS.
 
-**Não existe:** um sinal ao vivo das consultas ao Cérebro. Para isso a central precisaria
-de uma fonte nova (por exemplo, a CLI do Cérebro registrando cada consulta).
+**Limite do sinal do Cérebro:** ele conta só chamadas de ferramenta que executam
+`cerebro.py buscar|contexto|gravar` e `auxiliares.py`. O hook de início de sessão roda fora
+das ferramentas e não entra.
 
 ## Problema conhecido
 

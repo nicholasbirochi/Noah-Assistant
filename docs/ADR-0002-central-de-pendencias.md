@@ -90,6 +90,19 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
    As duas abas se atualizam juntas, e a falha de uma não apaga a outra. O ícone da tela
    de início vem em PNG (180 e 512 px), gerado do `icone.svg` com o `qlmanage`/`sips` do
    macOS, porque o iOS não aceita SVG ali.
+7. **Sinal do Cérebro para a aba Fluxo do app nativo.** `GET /central/api/cerebro`
+   (`central/sinal_cerebro.py`) devolve `{janela_s, cerebro: {claude, codex, noah},
+   auxiliares: {claude, codex}, falhas, gerado_em}`, com consultas, registros e
+   delegações dos últimos 600 s:
+   - só leitura, com o mesmo token e as mesmas travas de `Host` e `Origin`;
+   - conta só chamadas de ferramenta: `tool_use` do Claude Code (conversas e subagentes)
+     e `function_call`, `custom_tool_call` e `local_shell_call` do Codex. Um texto que só
+     cita `cerebro.py` não conta;
+   - `cerebro.py buscar|contexto` é consulta, `gravar` é registro e cada `auxiliares.py`
+     é uma delegação;
+   - o Noah anota só o horário de cada consulta (nunca os termos) em
+     `LOCAL_STATE_DIR/central/atividade_cerebro.jsonl`, limitado às últimas 200;
+   - uma fonte que falha sai em `falhas` e fica zerada; o resultado fica em cache por 5 s.
 
 ## Consequências
 
