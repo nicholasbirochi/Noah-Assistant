@@ -1,0 +1,3 @@
+// Comum aos dois apps. O time de assinatura não entra no repositório (público):
+// copie Local.xcconfig.example para Local.xcconfig e ponha o seu.
+#include? "Local.xcconfig"

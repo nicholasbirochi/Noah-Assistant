@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+DerivedData/
+build/
+xcuserdata/
+*.xcuserstate
+*.xcworkspace/xcuserdata/
+*.xcresult/
+*.p12
+*.mobileprovision
+*.cer
+# Time de assinatura (Apple ID) fica só neste Mac: veja Config/Local.xcconfig.example.
+Config/Local.xcconfig
