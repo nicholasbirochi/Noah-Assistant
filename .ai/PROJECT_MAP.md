@@ -29,6 +29,11 @@ Verifique o codigo antes de confiar em um detalhe.
   Noah) e Presenca (`GET /central/api/presenca`, so leitura, desligada por padrao)
   em servidor proprio na 8769, so leitura dos transcripts locais e resposta por
   retomada sem edicao; decisao em `docs/ADR-0002`.
+- `apple/`: app Noah nativo (SwiftUI, iPhone e Mac) sobre a mesma central; tela
+  inicial so com tarefas (geradas pelo Noah marcadas), detalhe ao tocar, painel
+  "Ao vivo", avisos com acao e aba Fluxo (mapa animado: ligacoes com a central
+  ao vivo, consultas ao Cerebro tracejadas sem sinal); logica testavel em
+  `apple/Packages/NoahCore` (`swift test`); decisao em `docs/ADR-0003`.
 - `src/indexing/` e `src/resume/`: documentos de curriculo, propostas e revisao;
   nao equivalem a integracao com a memoria de projetos do Obsidian.
 - `src/sites/`, `src/job_search.py` e `src/job_portal/`: vagas e candidaturas.
