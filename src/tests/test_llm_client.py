@@ -187,3 +187,119 @@ def test_send_turn_uses_a_fresh_system_prompt_each_call(monkeypatch):
     llm_client.send_turn([{"role": "user", "content": "oi"}])
 
     assert provider.calls[0][0] == {"role": "system", "content": "PROMPT DE TESTE"}
+
+
+# --- Claimed action without a tool (observed live on qwen2.5:7b, 2026-10-19:
+# "Adicionei na sua lista de lembretes..." with no tool_call -- nothing done).
+
+
+def _fake_add_reminder(monkeypatch):
+    feitos = []
+
+    def add_reminder(text: str) -> str:
+        feitos.append(text)
+        return "Lembrete salvo."
+
+    monkeypatch.setitem(llm_client._functions_by_name, "add_reminder", add_reminder)
+    return feitos
+
+
+def test_claim_without_tool_gets_feedback_and_retry_with_real_tool(monkeypatch):
+    feitos = _fake_add_reminder(monkeypatch)
+    provider = ScriptedProvider(
+        [
+            ProviderResponse(content="Adicionei na sua lista de lembretes: comprar pão."),
+            ProviderResponse(
+                content="",
+                tool_calls=[ToolCallRequest(name="add_reminder", arguments={"text": "comprar pão"})],
+            ),
+            ProviderResponse(content="Adicionei o lembrete: comprar pão."),
+        ]
+    )
+    llm_client._provider = provider
+
+    messages = [{"role": "user", "content": "anote um lembrete: comprar pão"}]
+    reply = llm_client.send_turn(messages)
+
+    assert reply == "Adicionei o lembrete: comprar pão."
+    assert feitos == ["comprar pão"]
+    aviso = provider.calls[1][-1]
+    assert aviso["role"] == "system"
+    assert "nada foi feito" in aviso["content"]
+    # The note is a system turn, never a fake user turn.
+    assert [m["content"] for m in messages if m["role"] == "user"] == ["anote um lembrete: comprar pão"]
+
+
+def test_repeated_claim_without_tool_returns_honest_message(monkeypatch):
+    feitos = _fake_add_reminder(monkeypatch)
+    provider = ScriptedProvider(
+        [
+            ProviderResponse(content="Adicionei na sua lista de lembretes."),
+            ProviderResponse(content="Pronto, já anotei."),
+        ]
+    )
+    llm_client._provider = provider
+
+    reply = llm_client.send_turn([{"role": "user", "content": "anote um lembrete: comprar pão"}])
+
+    assert "nada foi feito" in reply
+    assert "anotei" not in reply.lower()
+    assert feitos == []  # never executed on the model's behalf
+    assert len(provider.calls) == 2
+
+
+def test_negated_claim_is_not_flagged():
+    provider = ScriptedProvider([ProviderResponse(content="Ainda não adicionei; quer que eu adicione?")])
+    llm_client._provider = provider
+
+    reply = llm_client.send_turn([{"role": "user", "content": "lembra de comprar pão"}])
+
+    assert reply == "Ainda não adicionei; quer que eu adicione?"
+    assert len(provider.calls) == 1
+
+
+def test_action_claim_after_read_only_tool_is_still_flagged():
+    provider = ScriptedProvider(
+        [
+            ProviderResponse(content="", tool_calls=[ToolCallRequest(name="list_supported_sites", arguments={})]),
+            ProviderResponse(content="Atualizei seu currículo na Gupy."),
+            ProviderResponse(content="Não atualizei nada; só listei os sites suportados."),
+        ]
+    )
+    llm_client._provider = provider
+
+    reply = llm_client.send_turn([{"role": "user", "content": "atualize meu currículo na gupy"}])
+
+    assert reply == "Não atualizei nada; só listei os sites suportados."
+    assert len(provider.calls) == 3
+
+
+def test_lookup_claim_after_automatic_cerebro_consult_is_fine(monkeypatch):
+    def consulta_falsa(messages):
+        messages.append(
+            {
+                "role": "assistant",
+                "content": "",
+                "tool_calls": [{"function": {"name": "consult_cerebro", "arguments": {"assunto": "x"}}}],
+            }
+        )
+        messages.append({"role": "tool", "content": "[CONSULTA AO CÉREBRO OK] nada", "tool_name": "consult_cerebro"})
+
+    monkeypatch.setattr(llm_client, "_forcar_consulta_cerebro", consulta_falsa)
+    provider = ScriptedProvider([ProviderResponse(content="Consultei o Cérebro e não achei essa decisão.")])
+    llm_client._provider = provider
+
+    reply = llm_client.send_turn([{"role": "user", "content": "o que o cérebro diz do roadmap?"}])
+
+    assert reply == "Consultei o Cérebro e não achei essa decisão."
+    assert len(provider.calls) == 1
+
+
+def test_fake_cerebro_label_without_consult_is_flagged():
+    assert llm_client._alegacao_sem_ferramenta("[CONSULTA AO CÉREBRO OK] Sim, existe.", set()) is not None
+    assert llm_client._alegacao_sem_ferramenta("[CONSULTA AO CÉREBRO OK] Sim.", {"consult_cerebro"}) is None
+
+
+def test_plain_answers_are_not_claims():
+    for texto in ("2 + 2 = 4.", "Posso adicionar esse lembrete, se quiser.", "Bom dia, Senhor Nicholas."):
+        assert llm_client._alegacao_sem_ferramenta(texto, set()) is None
