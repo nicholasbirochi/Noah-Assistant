@@ -32,10 +32,16 @@ não inspecionado.
 Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` é
 `src/assistant/providers.py`).
 
-- **`assistant/providers.py`** — abstração `LocalLLMProvider`; hoje só existe
-  `OllamaProvider`, mas qualquer chamador (conversa, importação, indexador) passa por essa
-  interface, não por `ollama` diretamente — trocar para MLX no futuro não deve exigir
-  tocar em nenhum desses chamadores. Manda `keep_alive` em toda chamada (`OLLAMA_KEEP_ALIVE`,
+- **`assistant/providers.py`** — abstração `LocalLLMProvider`, com `OllamaProvider`
+  (padrão) e `MLXProvider` (opt-in, `NOAH_LLM_PROVIDER=mlx`); qualquer chamador (conversa,
+  importação, indexador) passa por essa interface, não por `ollama`/`mlx_lm` diretamente.
+  O `MLXProvider` roda o modelo no próprio processo com o pacote opcional `mlx-lm` (Apple
+  Silicon, fora do `requirements.txt`; import só quando escolhido), pesos em
+  `NOAH_MLX_MODEL` (padrão `mlx-community/Qwen2.5-7B-Instruct-4bit`, que o `mlx_lm` baixa no
+  primeiro uso). Decodificação gulosa, chamadas de ferramenta lidas dos blocos `<tool_call>`
+  do Qwen (só ferramentas declaradas) e JSON estruturado via schema no prompt, sem a
+  decodificação restrita do `format=` do Ollama. Coberto por testes com backend simulado;
+  ainda não rodado com o `mlx-lm` real nem medido contra o Ollama. Manda `keep_alive` em toda chamada (`OLLAMA_KEEP_ALIVE`,
   padrão 30min) -- o padrão do próprio Ollama (5min) foi a causa real de respostas lentas
   medida na prática: qualquer intervalo maior entre ativações do Noah forçava um recarregamento
   frio do modelo (~30s) na resposta seguinte.
@@ -47,11 +53,22 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   um workspace específico com proteção real contra sair da pasta (`WorkspaceViolation`).
   Ainda não edita nem executa nada -- primeira versão é propositalmente de
   auditoria/consulta, não de escrita.
+- **`assistant/cerebro.py`** / **`assistant/cerebro_busca.py`** — integração com o
+  segundo cérebro (cofre Obsidian). A ferramenta `consult_cerebro` ranqueia as notas
+  localmente com BM25 (radical leve em português, stopwords, alguns grupos de sinônimos,
+  título e "estado atual" com peso maior) e devolve trechos de até 8 linhas pertinentes por
+  nota, com contexto, dividindo o orçamento de caracteres entre as notas. Só lê `.md`, só
+  biblioteca padrão, sem modelo de embedding, e espelha os filtros da CLI do cofre.
+  `NOAH_CEREBRO_BUSCA=cli` volta ao `buscar --trechos` da CLI, que também é o fallback
+  quando o cofre não tem o protocolo e o único caminho de escrita.
 - **`resume/schema.py`** — currículo canônico com procedência: cada item
   (experiência, certificação, projeto...) carrega uma lista de `Evidence` (arquivo de
   origem, tipo, data de leitura, trecho, confiança, status de revisão). Conflitos entre
   fontes viram um registro em `conflicts`, nunca uma sobrescrita silenciosa. Toda mudança
   aplicada gera uma entrada em `change_log` (auditoria).
+- **`api_local.py`** — API local HTTP + JSON (F7) sobre o mesmo `send_turn` do modo
+  texto: só biblioteca padrão, só loopback (ou token), um turno por vez e histórico só em
+  memória. Ver "API local" abaixo.
 - **`indexing/`** — escaneia apenas diretórios autorizados (`config.py` →
   `AUTHORIZED_INDEX_ROOTS`), ignora o próprio repositório do Noah e ruído de
   dependências (`node_modules`, `.git`, `obj/`, etc.), calcula hash de cada arquivo para
@@ -233,6 +250,10 @@ Digital, nenhum dado seu enviado a lugar nenhum) continua existindo em `--text-o
 O Noah também conhece as habilidades e certificações reais do currículo (Python, R, SQL,
 Power BI, estatística, etc.) e comenta sobre dados com entusiasmo quando o assunto surge --
 grounded no `src/data/resume.json`, não inventado (`assistant/llm_client.py`).
+Se o modelo responder que fez algo ("Adicionei...", "Preparei...", "Consultei...") sem
+nenhuma ferramenta correspondente ter rodado no turno, o `send_turn` devolve um aviso ao
+modelo e dá mais uma tentativa; se ele insistir, o Noah diz que nada foi feito, em vez de
+repetir a afirmação falsa. A ação nunca é executada no lugar do modelo.
 
 Se as palmas não estiverem sendo detectadas (ou disparando à toa), meça o pico real do
 seu microfone/ambiente antes de ajustar `CLAP_PEAK_THRESHOLD` no `.env`:
@@ -294,6 +315,35 @@ simplesmente **não faz nada visível, sem erro nenhum** (`spctl --assess` mostr
 `rejected`). Depois desse primeiro "Abrir" confirmado, duplo-clique normal funciona
 para sempre. `spctl --add` (que permitiria liberar isso via terminal, sem esse passo
 manual) foi descontinuado pelo próprio macOS -- não tem como pular essa etapa.
+
+`codesign --verify` passa no app instalado, mas `codesign --verify --strict` falha
+("No such file or directory") e isso é esperado: o modo alias monta o bundle com links
+para o `.venv` e o `src/` do projeto (fora do bundle, o que o `--strict` recusa), e dois
+desses links (`lib/python3.12/config` e `site.pyc`) apontam para arquivos que não
+existem. Só um app congelado passaria no `--strict`; detalhes em
+`docs/RENOMEACAO_NOAH.md`.
+
+## API local (F7, primeira versão)
+
+O mesmo turno de conversa do modo texto (`send_turn`, com as mesmas ferramentas e
+travas), exposto por HTTP + JSON em `src/api_local.py` -- só biblioteca padrão, sem
+FastAPI/uvicorn:
+
+```bash
+python src/api_local.py                      # http://127.0.0.1:8768
+curl -s http://127.0.0.1:8768/saude
+curl -s -X POST http://127.0.0.1:8768/conversa -H 'Content-Type: application/json' \
+  -d '{"mensagem": "oi, Noah"}'               # devolve {"sessao", "resposta"}
+```
+
+Mande o `sessao` devolvido nos próximos pedidos para manter o histórico;
+`DELETE /sessoes/<id>` o apaga. O histórico fica só em memória (até 32 sessões, 200
+mensagens cada). Escuta só no `127.0.0.1`; um endereço fora do loopback é recusado sem
+token (`NOAH_API_TOKEN` ou `--token`, enviado como `Authorization: Bearer ...`). O POST
+exige `Content-Type: application/json` e um `Host` local, o que barra formulários de
+outras páginas e DNS rebinding. Um turno roda por vez. Porta: `NOAH_API_PORT` ou
+`--porta` (8765 é o HUD, 8766 o XTTS e 8767 o portal). Sem streaming nem WebSocket
+nesta versão: a resposta chega inteira no fim do turno.
 
 ## Pedir uma mudança de código por voz
 
@@ -407,6 +457,24 @@ pytest src/tests/
 Roda de qualquer diretório -- `src/conftest.py` garante que `src/` está no `sys.path`
 antes da coleta, independente de onde `pytest` foi chamado.
 
+### Benchmark de latência dos modelos (F14)
+
+```bash
+python src/scripts/benchmark_llm.py --plano   # só confere instalação e memória, não carrega nada
+python src/scripts/benchmark_llm.py           # qwen2.5-coder:7b/14b e qwen3-coder:30b
+```
+
+Mede TTFT, tokens/s de geração e de leitura do prompt (números do próprio Ollama) e tempo de
+carga, com prompts fixos, `temperature=0`, `seed`, `num_predict` e `num_ctx` fixos; o JSON
+(padrão `src/data/llm_benchmarks/`, ou `--saida`) guarda a configuração inteira e as
+medianas. Nunca baixa modelo (ausente = `nao_instalado`). Guarda de memória: se o modelo
+(com folga) não cabe na memória disponível do `vm_stat`, nem carrega (`pulado_memoria`); se o
+swap cresce mais que `--swap-max-mb` (512) durante a geração, interrompe e descarrega
+(`abortado_swap`). Numa rodada de 2026-10-18 neste Mac (M5, 24 GB, swap já em 2,6 GB), o
+7B deu mediana de ~22 tok/s e TTFT ~0,12 s com o modelo quente; o 14B e o 30B foram pulados
+pela guarda (precisariam de ~11 e ~21 GB, havia ~8 GB livres). Com `seed` e `temperature=0`
+a contagem de tokens ainda variou um pouco entre tentativas (142 vs. 147 num prompt).
+
 ## Roadmap
 
 - E-mail na Gupy: testar ao vivo, supervisionado, se mudar o e-mail dispara algum fluxo
@@ -453,7 +521,10 @@ antes da coleta, independente de onde `pytest` foi chamado.
 - Academia do Universitário -- ainda não investigado; precisa da mesma verificação ao vivo
   (domínios, seletores reais, e depois o envio real) feita para os outros sites, não dá pra
   generalizar sem repetir esse processo por site.
-- MLXProvider como opção de menor latência.
+- MLXProvider: instalar `mlx-lm`, rodar de verdade e medir latência contra o Ollama antes
+  de pensar em torná-lo padrão (o código e os testes simulados já existem).
+- API local (F7), próximo passo: FastAPI + WebSocket para resposta em streaming, depois
+  de autorizar a dependência; acesso pelo iPhone só via VPN privada e com token.
 - Itens extras no menu bar (abrir logs/perfil, revisar propostas pendentes direto do
   menu -- hoje só tem liga/desliga).
 
