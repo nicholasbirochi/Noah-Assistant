@@ -498,9 +498,7 @@ struct AjustesView: View {
                 } header: {
                     Text("Central")
                 } footer: {
-                    // Com --host <IP> a central só atende naquele IP: o Mac também
-                    // precisa do endereço da rede, senão os dois não se falam.
-                    Text("Só no Mac: \(Ajustes.enderecoPadrao), sem token. Com o iPhone junto, abra a central no Mac com `python src/cli.py central --host \"$(ipconfig getifaddr en0)\" --token SEU_TOKEN` e ponha http://IP-DO-MAC:8769 e o mesmo token nos dois aparelhos, inclusive no Mac. Os dois leem a mesma central: o que você responde ou dispensa num some do outro.")
+                    Text("Conecte o Mac e o iPhone à mesma rede Wi-Fi. Informe o endereço do Mac e use o mesmo token nos dois aparelhos. As respostas e dispensas aparecem nos dois.")
                 }
 
                 Section {
@@ -531,7 +529,11 @@ struct AjustesView: View {
                 } header: {
                     Text("Ilha dinâmica")
                 } footer: {
+                    #if NOAH_SEM_APP_GROUP
+                    Text("Azul trabalhando, âmbar esperando você, verde tudo pronto. Some quando nada espera nem roda. Sem push, muda enquanto o app está aberto ou quando o iOS o acorda. A atividade aparece na tela bloqueada e na Ilha Dinâmica quando disponíveis.")
+                    #else
                     Text("Azul trabalhando, âmbar esperando você, verde tudo pronto. Some quando nada espera nem roda. Sem push, muda enquanto o app está aberto ou quando o iOS o acorda. Os widgets da tela inicial e da tela bloqueada se adicionam pelo próprio iOS (segure a tela, +, Noah).")
+                    #endif
                 }
                 #endif
 
