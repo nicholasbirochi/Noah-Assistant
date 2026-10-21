@@ -35,9 +35,10 @@ this runs synchronously inside a tool call, see that module's docstring
 for why Indeed/LinkedIn are excluded from this automatic path).
 
 evaluate_investments() drives finance.py -- reads the user's own
-manually-maintained net-worth spreadsheet (Patrimônio.xlsx) as a local
-stand-in for real bank integration, which is still pending the user
-creating a Meu Pluggy account themselves.
+manually-maintained net-worth spreadsheet (Patrimônio.xlsx, path in
+config.PATRIMONIO_PATH). With NOAH_FINANCE_SOURCE=pluggy it also replaces
+the per-bank balances with a fresh, read-only Meu Pluggy read
+(finance_pluggy.py), falling back to the spreadsheet on any failure.
 
 check_job_application() drives GupyAdapter.preview_application()
 (sites/gupy.py) -- two real, live, human-supervised pilots
@@ -315,22 +316,35 @@ def list_recent_job_matches() -> str:
 
 def evaluate_investments() -> str:
     """Avalia o patrimônio e os investimentos do usuário, lendo a planilha
-    Patrimônio.xlsx que ele mesmo mantém (enquanto não há integração direta
-    com os bancos).
+    Patrimônio.xlsx que ele mesmo mantém e, se ele ligou o Meu Pluggy
+    (NOAH_FINANCE_SOURCE=pluggy), os saldos atuais dos bancos, só leitura.
 
     Use quando ele perguntar sobre patrimônio, investimentos, quanto tem
     guardado, quanto gastou, ou pedir uma avaliação financeira geral.
     """
+    import config
     from finance import load_snapshot, summarize_finances
 
+    missing_message = "Não encontrei a planilha de patrimônio no caminho configurado (NOAH_PATRIMONIO_PATH)."
+    snapshot = None
     try:
         snapshot = load_snapshot()
     except FileNotFoundError:
-        return "Não encontrei a planilha Patrimônio.xlsx no caminho esperado."
+        if config.FINANCE_SOURCE != "pluggy":
+            return missing_message
     except Exception as exc:
         return f"Não consegui ler a planilha: {exc}"
+
+    source_note = ""
+    if config.FINANCE_SOURCE == "pluggy":
+        from finance_pluggy import with_live_balances
+
+        snapshot, source_note = with_live_balances(snapshot)
+        if snapshot is None:
+            return f"{missing_message} {source_note}"
     _publish_finance_chart(snapshot)
-    return summarize_finances(snapshot)
+    summary = summarize_finances(snapshot)
+    return f"{summary} {source_note}" if source_note else summary
 
 
 def _adapter_for_apply_url(url: str):
