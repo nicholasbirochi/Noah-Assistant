@@ -47,9 +47,15 @@ REVIEW_DIR = DATA_DIR / "review"
 
 # Local LLM served by Ollama (https://ollama.com) -- no cloud API, no API key.
 # `ollama pull` the model once via CLI before first use; see readme.md.
-# LLM_PROVIDER selects the LocalLLMProvider implementation (assistant/providers.py);
-# only "ollama" exists today, kept configurable so a future MLXProvider slots in cleanly.
-LLM_PROVIDER = os.environ.get("NOAH_LLM_PROVIDER", "ollama")
+# LLM_PROVIDER selects the LocalLLMProvider implementation (assistant/providers.py):
+# "ollama" (default) or "mlx" (opt-in; needs the optional `mlx-lm` package,
+# Apple Silicon only, and runs the model in-process).
+LLM_PROVIDER = os.environ.get("NOAH_LLM_PROVIDER", "ollama").strip().lower()
+# Only used when LLM_PROVIDER=mlx: a Hugging Face repo or local path with MLX
+# weights. mlx_lm downloads a repo on first load -- nothing downloads unless
+# the user switches the provider. The default mirrors LOCAL_MODEL (qwen2.5 7B).
+MLX_MODEL = os.environ.get("NOAH_MLX_MODEL", "mlx-community/Qwen2.5-7B-Instruct-4bit")
+MLX_MAX_TOKENS = int(os.environ.get("NOAH_MLX_MAX_TOKENS", "1024"))
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 # qwen2.5:7b, not 14b -- measured live: once warm, the 7b model answered the
 # same simple prompt in 1.1s vs 14b's 4.7s (roughly 4x), and still correctly
@@ -219,6 +225,21 @@ AUTHORIZED_INDEX_ROOTS = [
     Path(f"{_ONEDRIVE_ROOT}/Estudos/Completed courses"),
     Path(f"{_ONEDRIVE_ROOT}/Estudos/Projetos"),
 ]
+# Planilha de patrimônio que o próprio usuário mantém (finance.py, ferramenta
+# evaluate_investments). Só leitura; fica fora de AUTHORIZED_INDEX_ROOTS de
+# propósito, para os números nunca irem para o índice de documentos.
+PATRIMONIO_PATH = Path(
+    os.environ.get("NOAH_PATRIMONIO_PATH", f"{_ONEDRIVE_ROOT}/Extras/Finanças/Patrimônio.xlsx")
+)
+# Origem dos saldos por banco em evaluate_investments: "planilha" (padrão,
+# nunca usa a rede) ou "pluggy" (finance_pluggy.py, só leitura pelo Meu
+# Pluggy, com a planilha como reserva). Credenciais e o mapa banco -> Item
+# ficam no Keychain do macOS (serviço abaixo) ou em NOAH_PLUGGY_* -- nunca
+# no repositório.
+FINANCE_SOURCE = os.environ.get("NOAH_FINANCE_SOURCE", "planilha").strip().lower()
+PLUGGY_API_URL = "https://api.pluggy.ai"
+PLUGGY_KEYCHAIN_SERVICE = os.environ.get("NOAH_PLUGGY_KEYCHAIN_SERVICE", "noah-pluggy")
+PLUGGY_TIMEOUT_SECONDS = 15
 EXCLUDED_INDEX_PATHS = [
     PROJECT_ROOT,
 ]
@@ -325,3 +346,9 @@ CEREBRO_DIR = Path(
 CEREBRO_SCRIPT = Path(
     os.environ.get("NOAH_CEREBRO_SCRIPT", str(CEREBRO_DIR / ".cerebro" / "cerebro.py"))
 ).expanduser()
+# Read-side ranking for consult_cerebro. "bm25" (default) ranks the vault's
+# notes locally in assistant/cerebro_busca.py (BM25 + light Portuguese
+# stemming + small synonym groups, longer excerpts) -- read-only, stdlib-only,
+# no embedding model. "cli" uses the vault CLI's own `buscar --trechos`. The
+# CLI stays the fallback (and the only path for writes) in either mode.
+CEREBRO_BUSCA = os.environ.get("NOAH_CEREBRO_BUSCA", "bm25").strip().lower()

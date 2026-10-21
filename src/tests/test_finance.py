@@ -3,6 +3,8 @@ from datetime import datetime
 import openpyxl
 import pytest
 
+import config
+
 from finance import expenses_by_category, format_month, load_snapshot, salary_by_month, summarize_finances
 
 
@@ -41,6 +43,8 @@ def _build_workbook(path):
     contas = wb.create_sheet("Contas")
     contas.append(["Valor Bruto", "Despesas", "→", "Valor Previsto", "Luxos", "→", "Grana Final"])
     contas.append([2100.0, -200.0, None, 1900.0, 700.0, None, 2600.0])
+    # The real sheet has a third, older-looking row (seen 2026-10-19) -- must be ignored.
+    contas.append([1000.0, -100.0, None, 900.0, 50.0, None, 950.0])
 
     wb.save(path)
 
@@ -124,3 +128,31 @@ def test_salary_by_month_excludes_non_salary_income_and_sorts_chronologically(wo
 
     assert [amount for _when, amount in result] == [1000.0, 1100.0]  # not the Reembolso entry
     assert result[0][0] < result[1][0]  # chronological order
+
+
+def test_load_snapshot_without_path_reads_configured_spreadsheet(workbook_path, monkeypatch):
+    # The real Patrimônio.xlsx is never the default in tests: the path comes
+    # from config at call time (NOAH_PATRIMONIO_PATH), so this fake one wins.
+    monkeypatch.setattr(config, "PATRIMONIO_PATH", workbook_path)
+
+    assert load_snapshot().final_money == 2600.0
+
+
+def test_load_snapshot_never_writes_the_spreadsheet(workbook_path):
+    before = workbook_path.read_bytes(), workbook_path.stat().st_mtime_ns
+
+    load_snapshot(workbook_path)
+
+    assert (workbook_path.read_bytes(), workbook_path.stat().st_mtime_ns) == before
+    assert list(workbook_path.parent.iterdir()) == [workbook_path]  # no lock/temp file left behind
+
+
+def test_evaluate_investments_reads_configured_path_and_reports_missing_file(workbook_path, tmp_path, monkeypatch):
+    from assistant import tools
+
+    monkeypatch.setattr(tools, "_publish_finance_chart", lambda snapshot: None)
+    monkeypatch.setattr(config, "PATRIMONIO_PATH", workbook_path)
+    assert "2.600,00" in tools.evaluate_investments()
+
+    monkeypatch.setattr(config, "PATRIMONIO_PATH", tmp_path / "nao-existe.xlsx")
+    assert "NOAH_PATRIMONIO_PATH" in tools.evaluate_investments()
