@@ -11,8 +11,10 @@ dado nenhum; a lista e as ações sempre exigem o token, quando ele existe.
   GET  /central/api/pendencias           -> {itens, respondendo, falhas, gerado_em}
   GET  /central/api/presenca             -> {ligada, variavel, itens, falhas, gerado_em}
   GET  /central/api/cerebro              -> {janela_s, cerebro, auxiliares, falhas, gerado_em}
+  GET  /central/api/atividade            -> {ollama, modelos, rotas, cerebro, eventos, noah, falhas, gerado_em}
   POST /central/api/responder            {fonte, id, texto} -> 202 {job}
   POST /central/api/dispensar            {fonte, id} -> 200 (guarda a versão atual)
+  POST /central/api/conversa             {mensagem, sessao?} -> {sessao, resposta, ferramentas, modelo}
 """
 
 from __future__ import annotations
@@ -31,6 +33,8 @@ from typing import Callable
 from urllib.parse import urlsplit
 
 from central import fontes, sinal_cerebro
+from central import atividade as atividade_mod
+from central.conversa import ConversaRecusada, Conversas
 from central.resposta import MAX_TEXTO, RespostaRecusada, Respostas
 
 PORTA_PADRAO = 8769
@@ -61,6 +65,7 @@ CABECALHOS_ESTATICOS = {
 Listar = Callable[[], tuple[list[fontes.Pendencia], list[str]]]
 Presenca = Callable[[], dict]
 Sinal = Callable[[], dict]
+Atividade = Callable[[], dict]
 
 
 def ler_presenca() -> dict:
@@ -94,7 +99,8 @@ class ServidorCentral(ThreadingHTTPServer):
 
     def __init__(self, endereco, *, token: str | None = None, listar: Listar | None = None,
                  respostas: Respostas | None = None, dispensadas: fontes.Dispensadas | None = None,
-                 presenca: Presenca | None = None, sinal: Sinal | None = None):
+                 presenca: Presenca | None = None, sinal: Sinal | None = None,
+                 atividade: Atividade | None = None, conversas: Conversas | None = None):
         host = endereco[0]
         if not e_loopback(host) and not token:
             raise ValueError(f"recusado: escutar em {host} (fora do loopback) exige token")
@@ -105,6 +111,8 @@ class ServidorCentral(ThreadingHTTPServer):
         self.respostas = respostas or Respostas()
         self.presenca = presenca or ler_presenca
         self.sinal = sinal or sinal_cerebro.ler_sinal
+        self.atividade = atividade or atividade_mod.ler_atividade
+        self.conversas = conversas or Conversas()
 
     def hosts_aceitos(self) -> set[str]:
         host, porta = self.server_address[:2]
@@ -147,6 +155,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(200, {**self.server.presenca(), "gerado_em": time.time()})
         elif caminho == "/central/api/cerebro":
             self._json(200, {**self.server.sinal(), "gerado_em": time.time()})
+        elif caminho == "/central/api/atividade":
+            self._atividade()
         else:
             self._erro(404, "rota inexistente")
 
@@ -158,6 +168,8 @@ class _Handler(BaseHTTPRequestHandler):
             self._responder()
         elif caminho == "/central/api/dispensar":
             self._dispensar()
+        elif caminho == "/central/api/conversa":
+            self._conversa()
         else:
             self._erro(404, "rota inexistente")
 
@@ -258,6 +270,36 @@ class _Handler(BaseHTTPRequestHandler):
             return
         self.server.dispensadas.marcar(alvo.chave, alvo.versao)
         self._json(200, {"dispensada": alvo.chave})
+
+    def _atividade(self) -> None:
+        """Modelos, Cérebro e o feed: o que veio dos arquivos (atividade.py) mais
+        o que só a central sabe -- respostas enviadas aos agentes e turnos do
+        Noah nesta execução."""
+        dados = self.server.atividade()
+        noah = self.server.conversas.estado()
+        eventos = list(dados.get("eventos", []))
+        for job in self.server.respostas.lista():
+            eventos.append({"quando": job["inicio"], "tipo": "resposta", "de": "central", "para": job["fonte"],
+                            "texto": f"resposta para {job['titulo']} ({job['estado']})"})
+        for turno in noah["turnos"]:
+            usou = ", ".join(turno["ferramentas"])
+            eventos.append({"quando": turno["quando"], "tipo": "noah", "de": "noah",
+                            "para": "cerebro" if "consult_cerebro" in turno["ferramentas"] else "noah",
+                            "texto": "Noah respondeu" + (f" usando {usou}" if usou else "")})
+        eventos.sort(key=lambda e: e["quando"], reverse=True)
+        self._json(200, {**dados, "eventos": eventos[:atividade_mod.MAX_EVENTOS], "noah": noah,
+                         "gerado_em": time.time()})
+
+    def _conversa(self) -> None:
+        dados = self._ler_json()
+        if dados is None:
+            return
+        try:
+            corpo = self.server.conversas.conversar(dados.get("mensagem"), dados.get("sessao"))
+        except ConversaRecusada as exc:
+            self._erro(exc.status, exc.mensagem)
+            return
+        self._json(200, corpo)
 
     # -- respostas ----------------------------------------------------------
 

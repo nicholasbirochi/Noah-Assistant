@@ -50,6 +50,8 @@ final class SincroniaTests: XCTestCase {
         XCTAssertEqual(Sincronia.proximoIntervalo([recente]), 20)
         XCTAssertEqual(Sincronia.proximoIntervalo([recente], vendoFluxo: true), 10)
         XCTAssertEqual(Sincronia.proximoIntervalo([rodando], vendoFluxo: true), 4)
+        XCTAssertEqual(Sincronia.proximoIntervalo([recente], aoVivo: true), 2)
+        XCTAssertEqual(Sincronia.proximoIntervalo([rodando], aoVivo: true), 2)
         XCTAssertEqual(Sincronia.jobsVisiveis([rodando, recente, velho], agora: 1300).map(\.id), ["1", "2"])
         XCTAssertEqual(recente.rotuloEstado, "respondeu")
         XCTAssertEqual(velho.rotuloEstado, "falhou")
@@ -67,6 +69,8 @@ final class SincroniaTests: XCTestCase {
         XCTAssertEqual(ha(4 * 86400), "há 4 dias")
         XCTAssertEqual(Sincronia.haQuanto("", agora: base), "")
         XCTAssertEqual(Sincronia.haQuanto("lixo", agora: base), "")
+        // A aba Central passa a data direto (o feed vem em segundos Unix).
+        XCTAssertEqual(Sincronia.haQuanto(base.addingTimeInterval(-90), agora: base), "há 1 min")
     }
 
     func testHaQuantoSemFusoEhHoraLocal() {

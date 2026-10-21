@@ -6,11 +6,14 @@ import WidgetKit
 @main
 struct NoahWidgets: WidgetBundle {
     var body: some Widget {
+        #if !NOAH_SEM_APP_GROUP
         PainelWidget()
+        #endif
         IlhaAoVivo()
     }
 }
 
+#if !NOAH_SEM_APP_GROUP
 // MARK: - Widgets (tela inicial e tela bloqueada)
 
 struct Entrada: TimelineEntry {
@@ -120,6 +123,8 @@ struct Contadores: View {
         .labelStyle(.titleAndIcon)
     }
 }
+
+#endif
 
 // MARK: - Live Activity (ilha dinâmica e tela bloqueada)
 

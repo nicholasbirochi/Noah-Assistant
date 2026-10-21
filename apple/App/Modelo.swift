@@ -3,7 +3,17 @@ import NoahCore
 import Observation
 import UserNotifications
 
-enum Aba: Hashable { case pendencias, fluxo, presenca, ajustes }
+enum Aba: Hashable { case pendencias, fluxo, central, presenca, ajustes }
+
+/// Uma fala da conversa com o Noah na aba Central.
+struct MensagemChat: Identifiable, Equatable {
+    enum Autor { case eu, noah, erro }
+    let id = UUID()
+    let autor: Autor
+    let texto: String
+    var ferramentas: [String] = []
+    let quando = Date()
+}
 
 /// Estado do app. Atualiza sozinho no mesmo ritmo do PWA (20 s; 4 s enquanto
 /// alguém responde; 10 s com a aba Fluxo aberta) e repassa a lista aos avisos.
@@ -15,12 +25,20 @@ final class Modelo {
     var erro: String?
     var presenca: EstadoPresenca?
     var erroPresenca: String?
-    /// Sinal ao vivo do Cérebro para a aba Fluxo; nil numa central sem a rota.
+    /// Sinal por agente e por parte do Cérebro; nil quando a rota não existe ou falha.
     var cerebro: SinalCerebro?
+    /// Modelos, pastas do Cérebro e feed da central (abas Fluxo e Central).
+    var painel: PainelCentral?
+    var erroPainel: String?
+    /// Conversa com o Noah na aba Central; a sessão segue entre mensagens.
+    var mensagens: [MensagemChat] = []
+    var sessaoNoah: String?
+    var conversando = false
     var aviso: String?
     var rascunhos: [String: String] = [:]
     var enviando: Set<String> = []
-    var aba: Aba = .pendencias
+    /// Ao entrar no Fluxo ou na Central, acorda o laço para já passar a ler a cada 2 s.
+    var aba: Aba = .pendencias { didSet { if aba != oldValue { cutucar() } } }
     var atualizadoEm: Date?
     var permissao: UNAuthorizationStatusTexto = .desconhecida
     /// Feed do painel "Ao vivo": o que mudou desde que o app abriu.
@@ -50,7 +68,7 @@ final class Modelo {
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.atualizar()
-                await self.esperar(Sincronia.proximoIntervalo(self.jobs, vendoFluxo: self.aba == .fluxo))
+                await self.esperar(Sincronia.proximoIntervalo(self.jobs, aoVivo: self.aba == .fluxo || self.aba == .central))
             }
         }
     }
@@ -91,7 +109,10 @@ final class Modelo {
         // A permissão pode mudar fora do app (Ajustes do sistema): relê a cada ciclo.
         await lerPermissao()
         if aba == .presenca { await atualizarPresenca() }
-        if aba == .fluxo { await atualizarCerebro() }
+        if aba == .fluxo || aba == .central {
+            await atualizarCerebro()
+            await atualizarPainel()
+        }
     }
 
     func lerPermissao() async {
@@ -115,6 +136,41 @@ final class Modelo {
     /// Falha de rede deixa o mapa sem sinal (nil) em vez de mostrar contagem velha.
     func atualizarCerebro() async {
         cerebro = try? await Ajustes.cliente().cerebro()
+    }
+
+    func atualizarPainel() async {
+        do {
+            painel = try await Ajustes.cliente().atividade()
+            erroPainel = nil
+        } catch {
+            erroPainel = error.localizedDescription
+        }
+    }
+
+    /// Manda uma mensagem ao Noah pela central e espera a resposta. Uma de cada
+    /// vez: a central devolve 409 se o Noah já estiver respondendo.
+    func conversar(_ texto: String) async {
+        let texto = texto.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !texto.isEmpty, !conversando else { return }
+        mensagens.append(MensagemChat(autor: .eu, texto: texto))
+        conversando = true
+        defer { conversando = false }
+        // Lê o painel logo, para o Fluxo e o feed mostrarem o Noah pensando.
+        let leitura = Task { try? await Task.sleep(for: .seconds(1)); await atualizarPainel() }
+        do {
+            let r = try await Ajustes.cliente().conversar(texto: texto, sessao: sessaoNoah)
+            sessaoNoah = r.sessao
+            mensagens.append(MensagemChat(autor: .noah, texto: r.resposta, ferramentas: r.ferramentas))
+        } catch {
+            mensagens.append(MensagemChat(autor: .erro, texto: error.localizedDescription))
+        }
+        leitura.cancel()
+        await atualizarPainel()
+    }
+
+    func novaConversa() {
+        mensagens = []
+        sessaoNoah = nil
     }
 
     func responder(_ p: Pendencia, texto: String) async {

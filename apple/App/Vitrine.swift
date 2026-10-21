@@ -2,7 +2,9 @@ import Foundation
 import NoahCore
 #if os(iOS)
 import ActivityKit
+#if !NOAH_SEM_APP_GROUP
 import WidgetKit
+#endif
 #endif
 
 /// Leva o resumo da central para fora do app: widgets (via App Group) e a
@@ -15,10 +17,12 @@ enum Vitrine {
         #if os(iOS)
         let mudou = !(ultimo?.mesmoConteudo(r) ?? false)
         ultimo = r
+        #if !NOAH_SEM_APP_GROUP
         if mudou, let grupo = UserDefaults(suiteName: Ilha.grupo) {
             Ilha.gravar(r, em: grupo)
             WidgetCenter.shared.reloadAllTimelines()
         }
+        #endif
         await atividade(r, mudou: mudou)
         #endif
     }

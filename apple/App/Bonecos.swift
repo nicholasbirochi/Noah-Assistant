@@ -19,15 +19,15 @@ enum Boneco {
         }
     }
 
-    static func rgb(_ no: Fluxo.No) -> RGB {
+    static func rgb(_ no: Fluxo.Ator) -> RGB {
         switch no {
         case .claude: RGB(r: 0xe2 / 255, g: 0x72 / 255, b: 0x5b / 255)
         case .codex: RGB(r: 0x2a / 255, g: 0x9d / 255, b: 0x8f / 255)
-        default: RGB(r: 0.7, g: 0.52, b: 1)
+        case .noah: RGB(r: 0.7, g: 0.52, b: 1)
         }
     }
 
-    static func desenhar(_ no: Fluxo.No, em g: GraphicsContext, pe: CGPoint, altura: CGFloat,
+    static func desenhar(_ no: Fluxo.Ator, em g: GraphicsContext, pe: CGPoint, altura: CGFloat,
                          tempo: Double, andando: Bool, esquerda: Bool) {
         var c = g
         let escala = altura / 150
@@ -43,7 +43,7 @@ enum Boneco {
         switch no {
         case .claude: maestro(c, cor, olho)
         case .codex: escriba(c, cor, olho)
-        default: noah(c, cor, olho)
+        case .noah: noah(c, cor, olho)
         }
     }
 

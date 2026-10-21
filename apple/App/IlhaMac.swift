@@ -102,7 +102,11 @@ final class IlhaMac {
         let alcove = faixaDoAlcove(em: tela)
         // O Alcove cobre o notch: ao lado dele, a pílula é da altura da barra de menus.
         if alcove != nil { notch = .zero }
-        let pos = IlhaNotch.posicao(tela: f.minX...f.maxX, largura: largura, alcove: alcove)
+        // Sem notch (monitor externo), a ilha fica à direita do Alcove, mas sem
+        // chegar nos ícones da barra de menus (os do Thaw, o relógio).
+        let limite = tela.safeAreaInsets.top == 0 ? f.maxX - IlhaNotch.reservaIcones : nil
+        let pos = IlhaNotch.posicao(tela: f.minX...f.maxX, largura: largura, alcove: alcove,
+                                    limiteDireita: limite)
         if alinhamento != pos.alinhamento { alinhamento = pos.alinhamento }
         let quadro = NSRect(x: pos.x, y: f.maxY - IlhaMac.alturaMaxima, width: largura, height: IlhaMac.alturaMaxima)
         if painel.frame != quadro { painel.setFrame(quadro, display: true) }

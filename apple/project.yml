@@ -39,6 +39,9 @@ targets:
         # Ilha dinâmica e tela bloqueada (Live Activity) e aprovação com Face ID.
         NSSupportsLiveActivities: true
         NSFaceIDUsageDescription: "O Noah pede o Face ID antes de aceitar, responder ou dispensar uma pendência."
+        # Central por voz: o reconhecimento roda só no aparelho.
+        NSMicrophoneUsageDescription: "O Noah ouve o microfone na aba Central para você conversar por voz. Dá para deixar mudo."
+        NSSpeechRecognitionUsageDescription: "O Noah transforma sua fala em texto no próprio aparelho, sem mandar o áudio para fora."
         CFBundleURLTypes:
           - CFBundleURLName: com.nicholasbirochi.noah
             CFBundleURLSchemes: [noah]
@@ -55,6 +58,62 @@ targets:
     dependencies:
       - package: NoahCore
       - target: NoahWidgets
+  # Variante de instalação com conta pessoal: mantém a Live Activity, sem widgets/App Group.
+  Noah-iOS-Pessoal:
+    type: application
+    platform: iOS
+    sources: [App, Compartilhado]
+    info:
+      path: Config/Noah-iOS-Info.plist
+      properties:
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UIBackgroundModes: [fetch]
+        BGTaskSchedulerPermittedIdentifiers: [com.nicholasbirochi.noah.atualizar]
+        NSSupportsLiveActivities: true
+        NSFaceIDUsageDescription: "O Noah pede o Face ID antes de aceitar, responder ou dispensar uma pendência."
+        NSMicrophoneUsageDescription: "O Noah ouve o microfone na aba Central para você conversar por voz. Dá para deixar mudo."
+        NSSpeechRecognitionUsageDescription: "O Noah transforma sua fala em texto no próprio aparelho, sem mandar o áudio para fora."
+        CFBundleURLTypes:
+          - CFBundleURLName: com.nicholasbirochi.noah
+            CFBundleURLSchemes: [noah]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nicholasbirochi.noah.ios
+        PRODUCT_NAME: Noah
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        CODE_SIGN_ENTITLEMENTS: Config/Noah-iOS-Pessoal.entitlements
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NOAH_SEM_APP_GROUP"
+    dependencies:
+      - package: NoahCore
+      - target: NoahWidgets-Pessoal
+  # Extensão pessoal: só IlhaAoVivo, sem widget de resumo/App Group.
+  NoahWidgets-Pessoal:
+    type: app-extension
+    platform: iOS
+    sources: [Widgets, Compartilhado]
+    info:
+      path: Config/NoahWidgets-Info.plist
+      properties:
+        CFBundleDisplayName: Noah
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.nicholasbirochi.noah.ios.widgets
+        PRODUCT_NAME: NoahWidgets
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+        CODE_SIGN_ENTITLEMENTS: Config/Noah-iOS-Pessoal.entitlements
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) NOAH_SEM_APP_GROUP"
+        ASSETCATALOG_COMPILER_APPICON_NAME: ""
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: ""
+    dependencies:
+      - package: NoahCore
   # Widgets da tela inicial e da tela bloqueada, mais a Live Activity da ilha.
   # Lê o resumo que o app grava no App Group (Ilha.grupo).
   NoahWidgets:
@@ -81,12 +140,24 @@ targets:
   Noah-macOS:
     type: application
     platform: macOS
-    sources: [App, Compartilhado]
+    sources:
+      - App
+      - Compartilhado
+      # Ícone do Icon Composer: no macOS 26+ um PNG do catálogo vai parar dentro
+      # de um segundo squircle cinza; o .icon recebe a máscara do sistema.
+      - path: IconeMac/NoahIcon.icon
+        type: file
+        buildPhase: resources
     info:
       path: Config/Noah-macOS-Info.plist
       properties:
+        # Sem ícone no Dock: o Noah mora na barra de menus e na ilha do notch.
+        LSUIElement: true
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        # Central por voz: o reconhecimento roda só no aparelho.
+        NSMicrophoneUsageDescription: "O Noah ouve o microfone na aba Central para você conversar por voz. Dá para deixar mudo."
+        NSSpeechRecognitionUsageDescription: "O Noah transforma sua fala em texto no próprio aparelho, sem mandar o áudio para fora."
         CFBundleURLTypes:
           - CFBundleURLName: com.nicholasbirochi.noah
             CFBundleURLSchemes: [noah]
@@ -100,6 +171,7 @@ targets:
         ENABLE_APP_SANDBOX: YES
         CODE_SIGN_ENTITLEMENTS: Config/Noah-macOS.entitlements
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        ASSETCATALOG_COMPILER_APPICON_NAME: NoahIcon
     dependencies:
       - package: NoahCore
 schemes:
@@ -113,5 +185,12 @@ schemes:
     build:
       targets:
         Noah-macOS: all
+    run:
+      config: Debug
+
+  Noah-iOS-Pessoal:
+    build:
+      targets:
+        Noah-iOS-Pessoal: all
     run:
       config: Debug

@@ -1,5 +1,6 @@
 import Foundation
 import NoahCore
+import SwiftUI
 
 /// Endereço da central e resposta do "Aceitar" ficam em UserDefaults; o token,
 /// no Keychain. Leitura estática porque os avisos agem até com o app fechado.
@@ -43,6 +44,24 @@ enum Ajustes {
         get { UserDefaults.standard.object(forKey: "ilhaAoLadoDoAlcove") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "ilhaAoLadoDoAlcove") }
     }
+
+    /// Aparência do app. No iPhone começa escuro; no Mac segue o sistema.
+    enum Tema: String, CaseIterable, Identifiable {
+        case escuro, claro, sistema
+        var id: String { rawValue }
+        var nome: String {
+            switch self { case .escuro: "Escuro"; case .claro: "Claro"; case .sistema: "Sistema" }
+        }
+        var esquema: ColorScheme? {
+            switch self { case .escuro: .dark; case .claro: .light; case .sistema: nil }
+        }
+        #if os(iOS)
+        static let padrao = Tema.escuro
+        #else
+        static let padrao = Tema.sistema
+        #endif
+    }
+    static let chaveTema = "tema"
 
     static func cliente() throws -> ClienteCentral {
         guard let base = ClienteCentral.endereco(endereco) else { throw ErroCentral.enderecoInvalido }
