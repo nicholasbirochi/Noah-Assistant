@@ -1,10 +1,10 @@
 """Reads the user's own manually-maintained net-worth spreadsheet
-(Patrimônio.xlsx) and produces a local financial summary -- a stand-in
-for real bank integration (Meu Pluggy, still pending the user creating
-that account themselves) that doesn't need one: this file already lives
-on the user's own machine, no credentials, no external API, same
-"100% local" principle as everything else in . Never transmits
-anything -- load_snapshot() just reads a local file with openpyxl.
+(Patrimônio.xlsx) and produces a local financial summary. This file
+already lives on the user's own machine: no credentials, no external
+API, same "100% local" principle as everything else here. Never
+transmits anything -- load_snapshot() just reads a local file with
+openpyxl. Live per-bank balances (Meu Pluggy, opt-in, read-only) are a
+separate module, finance_pluggy.py, layered on top of this snapshot.
 
 Real spreadsheet shape (found live 2026-08-11 by reading the actual
 file, not guessed -- and cross-checked: every derived total below was
@@ -34,7 +34,14 @@ label, row 4 is the real column header, data starts row 5:
   Investido + Rendimento, is the trustworthy BRL figure to sum across
   banks for a net-worth total.
 
-"Contas" -- a tiny 2-row aggregate (header row + one values row):
+Re-checked 2026-10-19 (only sheet names, header text and cell types, plus
+true/false checks of the relations below -- no values printed): same two
+sheets, same headers and columns ("Mês/Ano" in C4), and every relation
+still holds for Contas row 2.
+
+"Contas" -- a tiny aggregate (header row + the current values row; the
+real sheet also has a third row whose figures don't match the current
+entries -- not read, only row 2 is):
 Valor Bruto (= sum of real income entries), Despesas (= -sum(Dinheiro *
 Quantidade) across expense entries), Valor Previsto (= Valor Bruto +
 Despesas), Luxos (= Grana Final - Valor Previsto -- the gap between the
@@ -52,9 +59,6 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-DEFAULT_PATH = Path(
-    "/Users/nicholasbirochi/Library/CloudStorage/OneDrive-FundaçãoSalvadorArena/Extras/Finanças/Patrimônio.xlsx"
-)
 
 BANKS = ["Inter BR", "Inter US", "Itaú", "Mercado Pago"]
 
@@ -103,13 +107,25 @@ class FinanceSnapshot:
     final_money: float | None = None  # "Grana Final" -- the net-worth total
 
 
-def load_snapshot(path: Path | str = DEFAULT_PATH) -> FinanceSnapshot:
+def load_snapshot(path: Path | str | None = None) -> FinanceSnapshot:
+    """Reads the spreadsheet without ever writing to it. The path comes from
+    config.PATRIMONIO_PATH (NOAH_PATRIMONIO_PATH) unless one is passed --
+    looked up at call time, so tests and a second user never touch the real
+    file. read_only=True opens it as a stream (no save path at all), and the
+    handle is closed even when a sheet is missing."""
     import openpyxl
 
-    wb = openpyxl.load_workbook(str(path), data_only=True)
-    snapshot = FinanceSnapshot()
-    _parse_variaveis(wb["Variáveis"], snapshot)
-    _parse_contas(wb["Contas"], snapshot)
+    if path is None:
+        import config
+
+        path = config.PATRIMONIO_PATH
+    wb = openpyxl.load_workbook(str(path), read_only=True, data_only=True)
+    try:
+        snapshot = FinanceSnapshot()
+        _parse_variaveis(wb["Variáveis"], snapshot)
+        _parse_contas(wb["Contas"], snapshot)
+    finally:
+        wb.close()
     return snapshot
 
 
@@ -143,7 +159,7 @@ def _parse_contas(ws, snapshot: FinanceSnapshot) -> None:
     rows = list(ws.iter_rows(values_only=True))
     if len(rows) < 2:
         return
-    values = rows[1]
+    values = tuple(rows[1]) + (None,) * 7  # read_only may trim trailing empty cells
     snapshot.gross_value = values[0]
     snapshot.total_expenses = values[1]
     snapshot.projected_value = values[3]

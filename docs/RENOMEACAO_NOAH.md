@@ -74,8 +74,21 @@ Para reconstruir, na raiz do repo:
 - Novo LaunchAgent carregado, ultimo exit code 0; processo Noah confirmado vivo.
 - `codesign --verify --verbose=4` passou para o bundle instalado.
   A verificacao `--deep --strict` falhou com "No such file or directory"
-  no novo bundle e tambem no app antigo antes de arquiva-lo. A causa nao foi
-  resolvida; a assinatura basica e a abertura pelo LaunchAgent passaram.
+  no novo bundle e tambem no app antigo antes de arquiva-lo; a assinatura
+  basica e a abertura pelo LaunchAgent passaram.
+  Causa (investigada em 2026-10-18, sem reassinar o app instalado): quem falha
+  e o `--strict`, nao o `--deep` (`--deep` sozinho passa). O modo alias do
+  py2app monta o bundle com links simbolicos: `MacOS/python` e
+  `Resources/AppIcon.icns` apontam com caminho absoluto para o `.venv` e o
+  `src/` do projeto, e `Resources/lib/python3.12/config` (para
+  `.venv/lib/python3.12/config`, que um venv nao tem) e `site.pyc` (para
+  `../../site.pyc`, que o py2app nao gera) apontam para lugar nenhum. O
+  `--strict` recusa link quebrado ("No such file or directory") e, numa copia
+  sem esses dois links e reassinada, recusa tambem link para fora do bundle
+  ("invalid destination for symbolic link in bundle"). Ou seja, e limite do
+  modo alias, nao defeito da assinatura: so um bundle congelado (sem links
+  para fora) passaria no `--strict`, e o congelamento foi evitado de proposito
+  (ver `src/scripts/build_app.py`). Nada foi mudado na assinatura.
 - Inspecao visual indisponivel por timeout da automacao de interface.
 - Nao foram testados microfone, voz, modelos, sites reais ou reinicio do Mac.
 

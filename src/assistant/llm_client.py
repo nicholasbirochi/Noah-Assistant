@@ -303,6 +303,43 @@ def _forcar_consulta_cerebro(messages: list[dict]) -> None:
     messages.append({"role": "tool", "content": conteudo, "tool_name": "consult_cerebro"})
 
 
+# First-person past-tense verbs the model uses to CLAIM it did something. The
+# installed 7b was measured (2026-10-19) answering "Adicionei na sua lista de
+# lembretes..." / "Preparei o prompt..." with no tool_call at all -- nothing was
+# done. Accent-stripped. Action verbs need an executed tool that is not
+# read-only; lookup verbs are satisfied by any executed tool (the automatic
+# Cérebro consult included).
+_VERBOS_ACAO = {
+    "adicionei", "anotei", "salvei", "registrei", "guardei", "preparei", "copiei",
+    "atualizei", "alterei", "mudei", "editei", "troquei", "agendei", "enviei",
+    "publiquei", "criei", "removi", "apaguei", "deletei", "cadastrei", "marquei",
+    "fechei", "encerrei", "candidatei", "inscrevi", "abri", "executei", "rodei",
+}
+_VERBOS_CONSULTA = {"consultei", "busquei", "procurei", "pesquisei", "verifiquei", "chequei"}
+_NEGACOES = {"nao", "nunca", "nem"}
+
+
+def _alegacao_sem_ferramenta(texto: str, executadas: set[str]) -> str | None:
+    """The claimed verb when `texto` asserts an action/lookup that no executed
+    tool backs, else None. A negation up to 3 words before the verb ("ainda não
+    adicionei") is not a claim. Also catches a copied "[CONSULTA AO CÉREBRO"
+    label when no consult ran (observed: the 7b faking the consult's output)."""
+    acao_real = any(nome not in READ_ONLY_TOOL_NAMES for nome in executadas)
+    toks = _tokens(texto)
+    for i, tok in enumerate(toks):
+        if tok not in _VERBOS_ACAO and tok not in _VERBOS_CONSULTA:
+            continue
+        if _NEGACOES & set(toks[max(0, i - 3) : i]):
+            continue
+        if tok in _VERBOS_ACAO and not acao_real:
+            return tok
+        if tok in _VERBOS_CONSULTA and not executadas:
+            return tok
+    if "consult_cerebro" not in executadas and "[consulta ao cerebro" in _sem_acento(texto):
+        return "[CONSULTA AO CÉREBRO]"
+    return None
+
+
 def send_turn(messages: list[dict]) -> str:
     """Runs the tool loop for the conversation so far (last entry must be the
     new user turn already appended by the caller). Mutates `messages` in
@@ -313,7 +350,12 @@ def send_turn(messages: list[dict]) -> str:
 
     # An explicit "consult the Cérebro" request must never be answered without a
     # real consultation actually running first -- see _forcar_consulta_cerebro.
+    tamanho_antes = len(messages)
     _forcar_consulta_cerebro(messages)
+    # Tools that really ran during THIS call -- what a claim like "Adicionei..."
+    # is checked against (see _alegacao_sem_ferramenta).
+    executadas: set[str] = {"consult_cerebro"} if len(messages) > tamanho_antes else set()
+    alegacao_avisada = False
 
     # A pure greeting / small-talk turn needs no tools. Offering them led the
     # 14b to gratuitously call read_resume (which dumps the whole résumé) and
@@ -368,7 +410,35 @@ def send_turn(messages: list[dict]) -> str:
         messages.append(assistant_message)
 
         if not tool_calls and intento_vazado is None:
-            return response.content
+            alegacao = None if social else _alegacao_sem_ferramenta(response.content, executadas)
+            if alegacao is None:
+                return response.content
+            if alegacao_avisada:
+                # Second false claim in a row: tell the user plainly instead
+                # of speaking a claim nothing backs. The action is never run
+                # on the model's behalf.
+                from config import USER_HONORIFIC
+
+                return (
+                    f"Desculpe, {USER_HONORIFIC}, não consegui executar essa ação agora; "
+                    "nada foi feito. Pode repetir o pedido?"
+                )
+            # Same pattern as the leaked intent: surface the failure to the
+            # model and give it one more iteration to call the real tool or
+            # answer honestly. A system note, not a user turn, so it doesn't
+            # shift _ultima_fala_usuario / the Cérebro topic continuity.
+            alegacao_avisada = True
+            messages.append(
+                {
+                    "role": "system",
+                    "content": (
+                        f"Sua resposta afirma uma ação ou consulta (\"{alegacao}\"), mas nenhuma ferramenta "
+                        "correspondente foi executada neste turno, então nada foi feito. Se o pedido exige "
+                        "ação ou consulta, chame agora a ferramenta certa; senão, responda sem afirmar que fez."
+                    ),
+                }
+            )
+            continue
 
         if intento_vazado is not None:
             messages.append(
@@ -400,6 +470,7 @@ def send_turn(messages: list[dict]) -> str:
                 # see and correct, not a reason to blow up the whole turn.
                 try:
                     output = function(**call.arguments)
+                    executadas.add(call.name)
                 except Exception as exc:
                     output = f"Erro ao executar {call.name}: {exc}"
             messages.append({"role": "tool", "content": str(output), "tool_name": call.name})
