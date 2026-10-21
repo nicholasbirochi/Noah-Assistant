@@ -99,6 +99,26 @@ final class IlhaNotchTests: XCTestCase {
         XCTAssertFalse(z.contains(CGPoint(x: 1280, y: 1400)), "não abre do meio da tela")
     }
 
+    func testThawMantemDireitaComRecuoDeDoisIcones() {
+        let p = IlhaNotch.posicao(tela: 0...2560, largura: 480, alcove: 968...1592,
+                                  limiteDireita: 2160, recuoDireita: 56)
+        XCTAssertEqual(p, IlhaNotch.Posicao(x: 1544, alinhamento: .esquerda))
+        XCTAssertLessThanOrEqual(p.x + 480, 2160)
+    }
+
+    func testRecuoNaoUltrapassaBordaDaTela() {
+        let p = IlhaNotch.posicao(tela: 0...2560, largura: 480, alcove: 100...500,
+                                  recuoDireita: 1000)
+        XCTAssertEqual(p, IlhaNotch.Posicao(x: 0, alinhamento: .esquerda))
+    }
+
+    func testPainelAbertoCobreIconesEFechadoDevolvePrioridadeAoThaw() {
+        XCTAssertEqual(IlhaNotch.deslocamentoDaCamada(aberta: true, thawEmExecucao: true), 1)
+        XCTAssertEqual(IlhaNotch.deslocamentoDaCamada(aberta: true, thawEmExecucao: false), 1)
+        XCTAssertEqual(IlhaNotch.deslocamentoDaCamada(aberta: false, thawEmExecucao: true), -2)
+        XCTAssertEqual(IlhaNotch.deslocamentoDaCamada(aberta: false, thawEmExecucao: false), 0)
+    }
+
     func testSemAlcoveFicaNoMeio() {
         let p = IlhaNotch.posicao(tela: 0...2560, largura: 480, alcove: nil)
         XCTAssertEqual(p, IlhaNotch.Posicao(x: 1040, alinhamento: .centro))

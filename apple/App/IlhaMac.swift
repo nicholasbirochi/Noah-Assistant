@@ -41,6 +41,7 @@ final class IlhaMac {
     static let alturaLista: CGFloat = 380
     /// Folga dos lados do painel para a sombra do cartão aberto.
     static let margemSombra: CGFloat = 20
+    static let thaw = "com.stonerl.Thaw"
     static let alcove = "com.henrikruscon.Alcove"
 
     @ObservationIgnored var modelo: Modelo?
@@ -105,11 +106,21 @@ final class IlhaMac {
         // Sem notch (monitor externo), a ilha fica à direita do Alcove, mas sem
         // chegar nos ícones da barra de menus (os do Thaw, o relógio).
         let limite = tela.safeAreaInsets.top == 0 ? f.maxX - IlhaNotch.reservaIcones : nil
+        let thaw = NSRunningApplication.runningApplications(withBundleIdentifier: IlhaMac.thaw).first
+        // Preferência do usuário: à direita, dois ícones (~56 pt) mais perto do centro.
         let pos = IlhaNotch.posicao(tela: f.minX...f.maxX, largura: largura, alcove: alcove,
-                                    limiteDireita: limite)
+                                    limiteDireita: limite, recuoDireita: thaw == nil ? 0 : 56)
         if alinhamento != pos.alinhamento { alinhamento = pos.alinhamento }
+        atualizarCamada(thawEmExecucao: thaw != nil)
         let quadro = NSRect(x: pos.x, y: f.maxY - IlhaMac.alturaMaxima, width: largura, height: IlhaMac.alturaMaxima)
         if painel.frame != quadro { painel.setFrame(quadro, display: true) }
+    }
+
+    /// O painel aberto cobre os ícones vizinhos; fechado deixa o Thaw acessível.
+    private func atualizarCamada(thawEmExecucao: Bool? = nil) {
+        let thaw = thawEmExecucao ?? !NSRunningApplication.runningApplications(withBundleIdentifier: IlhaMac.thaw).isEmpty
+        let deslocamento = IlhaNotch.deslocamentoDaCamada(aberta: aberta, thawEmExecucao: thaw)
+        painel?.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + deslocamento)
     }
 
     /// Faixa horizontal das janelas do Alcove no alto desta tela, se ele estiver aberto.
@@ -191,6 +202,7 @@ final class IlhaMac {
         case .nada:
             break
         }
+        if acao != .nada { atualizarCamada() }
         painel?.ignoresMouseEvents = !aberta
     }
 
@@ -207,7 +219,7 @@ final class IlhaMac {
     }
 }
 
-/// Painel sem borda, por cima da barra de menus, em todos os espaços e em tela cheia.
+/// Painel sem borda em todos os espaços e em tela cheia; sua camada acompanha aberto/fechado.
 final class PainelIlha: NSPanel {
     init() {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],

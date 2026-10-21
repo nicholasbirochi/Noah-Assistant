@@ -122,6 +122,10 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
     aberto, a ilha do Noah encosta à direita da área dele (ou à esquerda, se não couber).
     Em tela sem notch (monitor externo) ela fica à direita do Alcove, mas reserva os
     últimos 400 pt da barra para os ícones (Thaw, relógio); se não couber, vai para a esquerda.
+    Com o **Thaw em execução**, a ilha continua colada ao topo, à direita do Alcove,
+    com recuo de 56 pt (cerca de dois ícones) em direção ao centro. Sua camada fica
+    abaixo da do Thaw quando fechada. Ao abrir, o painel sobe acima dos ícones
+    vizinhos; ao fechar, devolve a prioridade ao Thaw.
     Desligue em **Ajustes > Encostar ao lado do Alcove**. O Alcove é fechado e licenciado,
     sem API de integração: mexer no app dele quebraria a assinatura e a licença, por isso o
     Noah só detecta onde ele está.
