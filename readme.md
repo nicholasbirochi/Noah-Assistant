@@ -4,8 +4,7 @@
 
 *Prévia da interface real do HUD, renderizada com estado “Falando” e uma frase de demonstração.*
 
-Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md) e
-[o mapa do projeto](.ai/PROJECT_MAP.md).
+Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md).
 
 Noah e o unico nome do produto. A ativacao padrao usa duas palmas.
 Ativacao falada exige um detector Noah local, treinado e validado.
