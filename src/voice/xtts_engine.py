@@ -104,10 +104,22 @@ def preload_in_background() -> None:
 def _build_model():
     """Split out from _load() purely so tests can make this step fail
     without needing to fight a real (or really-absent) TTS import."""
-    os.environ.setdefault("COQUI_TOS_AGREED", "1")  # personal, local, non-commercial use
-    from TTS.api import TTS
+    # Explicit paths bypass ModelManager's automatic model download.
+    from pathlib import Path
 
-    return TTS("tts_models/multilingual/multi-dataset/xtts_v2").to("cpu")
+    pasta = Path(os.environ.get(
+        "NOAH_XTTS_MODEL_DIR",
+        str(Path.home() / "Library/Application Support/tts/tts_models--multilingual--multi-dataset--xtts_v2"),
+    ))
+    if not all((pasta / nome).is_file() for nome in ("model.pth", "config.json", "vocab.json", "speakers_xtts.pth")):
+        raise RuntimeError("Voz clonada não instalada localmente; nenhum download foi iniciado")
+    from TTS.api import TTS
+    from TTS.utils.synthesizer import Synthesizer
+
+    model = TTS()
+    model.synthesizer = Synthesizer(model_dir=str(pasta), use_cuda=False)
+    model.config = model.synthesizer.tts_config
+    return model.to("cpu")
 
 
 def _load() -> None:

@@ -35,7 +35,7 @@ def test_send_turn_no_tool_calls_returns_content_directly():
     provider = ScriptedProvider([ProviderResponse(content="Olá, Senhor Nicholas.")])
     llm_client._provider = provider
 
-    messages = [{"role": "user", "content": "oi"}]
+    messages = [{"role": "user", "content": "Explique a fotossíntese."}]
     reply = llm_client.send_turn(messages)
 
     assert reply == "Olá, Senhor Nicholas."
@@ -184,9 +184,50 @@ def test_send_turn_uses_a_fresh_system_prompt_each_call(monkeypatch):
     provider = ScriptedProvider([ProviderResponse(content="ok")])
     llm_client._provider = provider
 
-    llm_client.send_turn([{"role": "user", "content": "oi"}])
+    llm_client.send_turn([{"role": "user", "content": "analise este exemplo"}])
 
     assert provider.calls[0][0] == {"role": "system", "content": "PROMPT DE TESTE"}
+
+
+@pytest.mark.parametrize("texto,esperado", [
+    ("Boa tarde, Noah! Tudo bem?", "Boa tarde! Tudo bem!"),
+    ("Olá, Noah, tudo bem?", "Tudo bem! E por aí?"),
+    ("Obrigado!", "Por nada!"),
+    ("Opa, beleza?", "Opa! Beleza, e você?"),
+    ("Opa, Noah, beleza?", "Opa! Beleza, e você?"),
+    ("E aí, beleza?", "Opa! Beleza, e você?"),
+])
+def test_fastpath_responde_frase_exata_sem_carregar_provider(monkeypatch, texto, esperado):
+    monkeypatch.setattr(llm_client, "_get_provider", lambda: pytest.fail("não deve chamar modelo"))
+    messages = [{"role": "user", "content": texto}]
+
+    resposta = llm_client.send_turn(messages)
+
+    assert resposta == esperado
+    assert messages[-1] == {"role": "assistant", "content": resposta}
+
+
+def test_fastpath_nao_classifica_pergunta_factual_ou_de_identidade():
+    assert llm_client._resposta_fastpath("Quem é você?") is None
+    assert llm_client._resposta_fastpath("Como está o projeto Noah?") is None
+    assert llm_client._resposta_fastpath("Quanto é 2 + 2?") is None
+
+
+def test_cancelamento_apos_resposta_do_modelo_impede_execucao_de_ferramenta(monkeypatch):
+    provider = ScriptedProvider([
+        ProviderResponse(content="", tool_calls=[ToolCallRequest(name="cancel_test", arguments={})])
+    ])
+    llm_client._provider = provider
+    executou = []
+    monkeypatch.setitem(llm_client._functions_by_name, "cancel_test", lambda: executou.append(True))
+    verificacoes = iter([False, False, False, False, True])
+
+    with pytest.raises(RuntimeError, match="cancelado"):
+        llm_client.send_turn(
+            [{"role": "user", "content": "execute uma tarefa"}],
+            should_cancel=lambda: next(verificacoes),
+        )
+    assert executou == []
 
 
 # --- Claimed action without a tool (observed live on qwen2.5:7b, 2026-10-19:
@@ -275,7 +316,7 @@ def test_action_claim_after_read_only_tool_is_still_flagged():
 
 
 def test_lookup_claim_after_automatic_cerebro_consult_is_fine(monkeypatch):
-    def consulta_falsa(messages):
+    def consulta_falsa(messages, cancelado=None):
         messages.append(
             {
                 "role": "assistant",

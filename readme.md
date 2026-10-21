@@ -456,7 +456,12 @@ num some do outro.
 - A Central reúne a conversa com o Noah, os modelos locais e a atividade do Cérebro.
   Voz e digitação usam a mesma conversa, mantida em memória no Mac. O reconhecimento
   de voz exige português disponível no aparelho; sem ele, a digitação continua disponível.
-  O microfone fecha enquanto o Noah pensa ou fala.
+  O microfone continua aberto enquanto ele pensa ou fala: ao reconhecer uma fala nova,
+  interrompe a leitura e cancela o turno anterior. Atividade de voz e texto reconhecido
+  filtram ruídos; o processamento de voz do sistema reduz eco. Cumprimentos e
+  agradecimentos exatos têm resposta imediata, sem carregar o modelo.
+  A voz clonada já instalada no Mac é transmitida aos dois aparelhos; sem ela pronta,
+  o app avisa e usa a voz do sistema.
 - Pendências mostra Para fazer, Geradas automaticamente pelo Noah (marcadas) e Respostas.
   Tocar numa tarefa abre o detalhe com o porquê e as ações.
 - Central e Fluxo atualizam a cada 2 s enquanto visíveis. As outras abas atualizam a

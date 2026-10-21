@@ -45,6 +45,7 @@ MAX_NOTAS_RECENTES = 8
 # Itens por nível na árvore de cada pasta (os mexidos por último primeiro).
 MAX_ITENS_POR_PASTA = 40
 TIMEOUT_OLLAMA_S = 1.5
+MAX_CONVERSAS_CLAUDE_SUBAGENTES = 20
 
 LerJson = Callable[[str], dict]
 
@@ -187,7 +188,7 @@ def _modelos(ollama: dict | None, uso: list[dict], habilitados: dict[str, bool],
 
 
 def ler_atividade(*, cerebro_dir: Path | None = None, ler: LerJson = _ler_url,
-                  agora: float | None = None) -> dict:
+                  agora: float | None = None, conversas_claude: list[dict] | None = None) -> dict:
     agora = time.time() if agora is None else agora
     raiz = Path(cerebro_dir or config.CEREBRO_DIR)
     falhas = []
@@ -215,11 +216,21 @@ def ler_atividade(*, cerebro_dir: Path | None = None, ler: LerJson = _ler_url,
     ]
     eventos.sort(key=lambda e: e["quando"], reverse=True)
 
+    if conversas_claude is None:
+        try:
+            from central.fontes import conversas_claude_com_subagentes
+
+            conversas_claude = conversas_claude_com_subagentes(
+                limite=MAX_CONVERSAS_CLAUDE_SUBAGENTES, agora=agora)
+        except OSError:
+            conversas_claude = []
+
     return {
         "ollama": ollama is not None,
         "modelos": _modelos(ollama, uso, habilitados, agora),
         "rotas": {tipo: list(rota) for tipo, rota in ROTAS.items()},
         "cerebro": {"pastas": pastas},
         "eventos": eventos[:MAX_EVENTOS],
+        "conversas_claude": conversas_claude[:MAX_CONVERSAS_CLAUDE_SUBAGENTES],
         "falhas": falhas,
     }

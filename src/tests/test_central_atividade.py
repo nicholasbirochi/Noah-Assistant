@@ -51,7 +51,8 @@ def _cofre(tmp_path):
 def test_modelos_cruzam_ollama_rotas_e_uso(tmp_path):
     dados = atividade.ler_atividade(
         cerebro_dir=_cofre(tmp_path), agora=AGORA,
-        ler=_ollama(["qwen2.5:7b", "qwen2.5-coder:7b"], ["qwen2.5-coder:7b"]))
+        ler=_ollama(["qwen2.5:7b", "qwen2.5-coder:7b"], ["qwen2.5-coder:7b"]),
+        conversas_claude=[])
     modelos = {m["id"]: m for m in dados["modelos"]}
     assert set(modelos) == {"qwen2.5:7b", "qwen2.5-coder:7b", "qwen2.5-coder:14b", "qwen3-coder:30b",
                             "nemotron", "copilot"}
@@ -68,7 +69,7 @@ def test_modelos_cruzam_ollama_rotas_e_uso(tmp_path):
 
 
 def test_cerebro_conta_por_pasta_sem_ocultas(tmp_path):
-    dados = atividade.ler_atividade(cerebro_dir=_cofre(tmp_path), agora=AGORA, ler=_sem_ollama)
+    dados = atividade.ler_atividade(cerebro_dir=_cofre(tmp_path), agora=AGORA, ler=_sem_ollama, conversas_claude=[])
     pastas = {p["numero"]: p for p in dados["cerebro"]["pastas"]}
     assert set(pastas) == {"00", "02", "06"}
     assert pastas["02"]["notas"] == 2 and pastas["02"]["nome"] == "Projetos"
@@ -82,7 +83,7 @@ def test_cerebro_manda_arvore_da_pasta_sem_conteudo(tmp_path):
     (raiz / "02 - Projetos" / ".oculta").mkdir()
     (raiz / "02 - Projetos" / ".oculta" / "x.md").write_text("x")
     (raiz / "02 - Projetos" / "imagem.png").write_text("x")
-    dados = atividade.ler_atividade(cerebro_dir=raiz, agora=AGORA, ler=_sem_ollama)
+    dados = atividade.ler_atividade(cerebro_dir=raiz, agora=AGORA, ler=_sem_ollama, conversas_claude=[])
     projetos = next(p for p in dados["cerebro"]["pastas"] if p["numero"] == "02")
     itens = {i["nome"]: i for i in projetos["itens"]}
     assert set(itens) == {"Projeto - Noah", "sub"}  # sem pasta vazia, oculta ou não-nota
@@ -94,7 +95,7 @@ def test_cerebro_manda_arvore_da_pasta_sem_conteudo(tmp_path):
 
 
 def test_sem_ollama_vira_falha_e_nao_inventa(tmp_path):
-    dados = atividade.ler_atividade(cerebro_dir=_cofre(tmp_path), agora=AGORA, ler=_sem_ollama)
+    dados = atividade.ler_atividade(cerebro_dir=_cofre(tmp_path), agora=AGORA, ler=_sem_ollama, conversas_claude=[])
     assert dados["ollama"] is False and dados["falhas"] == ["Ollama"]
     modelos = {m["id"]: m for m in dados["modelos"]}
     assert modelos["qwen2.5-coder:7b"]["disponivel"] is None
@@ -102,7 +103,7 @@ def test_sem_ollama_vira_falha_e_nao_inventa(tmp_path):
 
 
 def test_feed_em_ordem_e_sem_quem_chamou(tmp_path):
-    dados = atividade.ler_atividade(cerebro_dir=_cofre(tmp_path), agora=AGORA, ler=_sem_ollama)
+    dados = atividade.ler_atividade(cerebro_dir=_cofre(tmp_path), agora=AGORA, ler=_sem_ollama, conversas_claude=[])
     quando = [e["quando"] for e in dados["eventos"]]
     assert quando == sorted(quando, reverse=True)
     aux = [e for e in dados["eventos"] if e["tipo"] == "auxiliar"]
@@ -112,5 +113,16 @@ def test_feed_em_ordem_e_sem_quem_chamou(tmp_path):
 
 
 def test_cofre_inexistente_vira_falha(tmp_path):
-    dados = atividade.ler_atividade(cerebro_dir=tmp_path / "nao-existe", agora=AGORA, ler=_sem_ollama)
+    dados = atividade.ler_atividade(cerebro_dir=tmp_path / "nao-existe", agora=AGORA,
+                                    ler=_sem_ollama, conversas_claude=[])
     assert "Cérebro" in dados["falhas"] and dados["cerebro"]["pastas"] == []
+
+
+def test_atividade_inclui_snapshot_minimo_de_conversas_claude(tmp_path):
+    conversas = [{"id": f"sessao-{i}", "quando": float(i),
+                  "subagentes": [{"id": f"agente-{i}"}]} for i in range(25)]
+    dados = atividade.ler_atividade(cerebro_dir=_cofre(tmp_path), agora=AGORA,
+                                    ler=_sem_ollama, conversas_claude=conversas)
+    assert len(dados["conversas_claude"]) == atividade.MAX_CONVERSAS_CLAUDE_SUBAGENTES
+    assert set(dados["conversas_claude"][0]) == {"id", "quando", "subagentes"}
+    assert "mensagem" not in json.dumps(dados["conversas_claude"])

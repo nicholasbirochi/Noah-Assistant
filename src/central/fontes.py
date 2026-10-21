@@ -6,7 +6,9 @@ fonte inteira) é pulada -- falha fechada, nunca uma pendência chutada.
 
 - Claude Code: ``~/.claude/projects/<pasta>/<sessão>.jsonl``. Pendente quando a
   última mensagem (fora de subagente) é do assistente, tem texto e terminou o
-  turno (sem ``tool_use`` em aberto).
+  turno (sem ``tool_use`` em aberto). Os arquivos ``<sessão>/subagents/agent-*.jsonl``
+  só acrescentam IDs quando ``sessionId``, ``agentId`` e ``isSidechain`` confirmam
+  a relação; o conteúdo desses arquivos não entra no payload.
 - Codex: ``~/.codex/sessions/AAAA/MM/DD/rollout-*.jsonl`` + títulos em
   ``~/.codex/session_index.jsonl``. Pendente quando o último evento de turno é
   ``task_complete`` com ``last_agent_message``. O Codex Desktop grava ``source``
@@ -40,7 +42,7 @@ import re
 import tempfile
 import threading
 import time
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
 DIAS_PADRAO = 3
@@ -48,6 +50,7 @@ MAX_ITENS = 40
 BYTES_FIM = 512 * 1024  # só o fim do transcript é lido para achar a última mensagem
 LIMITE_TEXTO = 8000
 MAX_DISPENSADAS = 500
+MAX_SUBAGENTES_SNAPSHOT = 20
 
 RAIZ_CLAUDE = Path.home() / ".claude" / "projects"
 RAIZ_CODEX = Path.home() / ".codex"
@@ -97,6 +100,7 @@ class Pendencia:
     pergunta: bool = True  # False: resposta pronta, sem nada pedido a você
     simples: bool = False  # pergunta de sim ou não: o app mostra o botão Aceitar
     cwd: str = ""  # usado só para retomar a conversa; não vai para a página
+    subagentes: list[dict[str, str]] = field(default_factory=list)  # IDs, nunca o conteúdo das conversas
 
     @property
     def chave(self) -> str:
@@ -196,6 +200,130 @@ _cache_meta_claude: dict[Path, tuple[int, int, dict]] = {}
 _trava_cache = threading.Lock()
 
 
+def _subagentes_claude(caminho: Path) -> list[dict[str, str]]:
+    """Retorna só IDs verificados pela sessão pai, pasta e metadados do sidechain."""
+    pasta = caminho.parent / caminho.stem / "subagents"
+    saida = []
+    for arquivo in sorted(pasta.glob("agent-*.jsonl")):
+        try:
+            with arquivo.open("rb") as f:
+                primeira = None
+                for _ in range(8):
+                    linha = f.readline(65537)
+                    if not linha:
+                        break
+                    if linha.strip():
+                        primeira = linha
+                        break
+            if primeira is not None and len(primeira) > 65536:
+                continue
+            metadados = _campos_sidechain(primeira) if primeira else {}
+        except (OSError, ValueError, UnicodeDecodeError):
+            continue
+        agent_id = arquivo.stem.removeprefix("agent-")
+        if (metadados.get("sessionId") != caminho.stem
+                or metadados.get("agentId") != agent_id
+                or metadados.get("isSidechain") is not True):
+            continue
+        saida.append({"id": agent_id})
+    return saida
+
+
+def _fim_string_json(linha: bytes, inicio: int) -> int:
+    """Índice após string JSON, sem decodificar seu conteúdo."""
+    i = inicio + 1
+    while i < len(linha):
+        if linha[i] == 0x5C:  # barra invertida
+            i += 2
+        elif linha[i] == 0x22:
+            return i + 1
+        else:
+            i += 1
+    raise ValueError("string JSON incompleta")
+
+
+def _campos_sidechain(linha: bytes) -> dict:
+    """Extrai só três campos escalares do objeto raiz; ignora message e demais valores."""
+    campos = {b"sessionId", b"agentId", b"isSidechain"}
+    extraidos = {}
+    i = 0
+    while i < len(linha) and linha[i] in b" \t\r\n":
+        i += 1
+    if i >= len(linha) or linha[i] != 0x7B:
+        return extraidos
+    i += 1
+    fechado = False
+    while i < len(linha):
+        while i < len(linha) and linha[i] in b" \t\r\n,":
+            i += 1
+        if i >= len(linha):
+            break
+        if linha[i] == 0x7D:
+            fechado = True
+            i += 1
+            break
+        if linha[i] != 0x22:
+            return {}
+        fim_chave = _fim_string_json(linha, i)
+        chave = json.loads(linha[i:fim_chave])
+        i = fim_chave
+        while i < len(linha) and linha[i] in b" \t\r\n": i += 1
+        if i >= len(linha) or linha[i] != 0x3A:
+            return {}
+        i += 1
+        while i < len(linha) and linha[i] in b" \t\r\n": i += 1
+        inicio_valor = i
+        if i < len(linha) and linha[i] == 0x22:
+            i = _fim_string_json(linha, i)
+        else:
+            pilha = []
+            em_string = False
+            while i < len(linha):
+                byte = linha[i]
+                if em_string:
+                    if byte == 0x5C: i += 1
+                    elif byte == 0x22: em_string = False
+                elif byte == 0x22: em_string = True
+                elif byte in (0x7B, 0x5B): pilha.append(byte)
+                elif byte in (0x7D, 0x5D):
+                    if not pilha: break
+                    pilha.pop()
+                elif byte == 0x2C and not pilha: break
+                i += 1
+        if chave.encode("utf-8") in campos:
+            try:
+                extraidos[chave] = json.loads(linha[inicio_valor:i])
+            except (ValueError, UnicodeDecodeError):
+                return {}
+        while i < len(linha) and linha[i] in b" \t\r\n": i += 1
+        if i < len(linha) and linha[i] == 0x2C:
+            i += 1
+    return extraidos if fechado and not linha[i:].strip() else {}
+
+
+def conversas_claude_com_subagentes(raiz: Path = RAIZ_CLAUDE, *, limite: int = 20,
+                                    agora: float | None = None, janela_s: float = 600) -> list[dict]:
+    """Sessões tocadas nos últimos 10 min com sidechains confirmados; só IDs/timestamps."""
+    if not raiz.is_dir() or limite <= 0:
+        return []
+    candidatos = []
+    corte = (time.time() if agora is None else agora) - janela_s
+    for caminho in raiz.glob("*/*.jsonl"):
+        try:
+            quando = caminho.stat().st_mtime
+            if quando < corte:
+                continue
+            agentes = _subagentes_claude(caminho)
+            if not agentes:
+                continue
+        except OSError:
+            continue
+        candidatos.append((quando, caminho.stem, agentes[:MAX_SUBAGENTES_SNAPSHOT]))
+    candidatos.sort(reverse=True)
+    return [{"id": ident, "quando": quando, "subagentes": agentes}
+            for quando, ident, agentes in candidatos[:limite]]
+
+
 def _meta_claude(caminho: Path) -> dict:
     info = caminho.stat()
     with _trava_cache:
@@ -287,6 +415,7 @@ def pendencias_claude(raiz: Path = RAIZ_CLAUDE, *, dias: float = DIAS_PADRAO, ag
             pergunta=e_pergunta(resposta["texto"]),
             simples=e_simples(resposta["texto"]),
             cwd=resposta["cwd"],
+            subagentes=_subagentes_claude(caminho),
         ))
     return saida
 

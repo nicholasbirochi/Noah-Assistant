@@ -20,6 +20,7 @@ final class Ouvido {
     /// Volume do microfone, de 0 a 1, para o rosto pulsar.
     private(set) var nivel: Double = 0
     private(set) var falando = false
+    private(set) var avisoVoz: String?
 
     var mudo: Bool {
         didSet { UserDefaults.standard.set(mudo, forKey: "noah.voz.mudo") }
@@ -30,11 +31,14 @@ final class Ouvido {
 
     /// Recebe cada frase pronta.
     var aoFechar: (String) -> Void = { _ in }
+    /// Chamado quando reconhecimento local confirma o início de uma fala.
+    /// A tela usa isso para interromper a resposta sem descartar a fala nova.
+    var aoIniciarFala: () -> Void = {}
 
     private let reconhecedor = SFSpeechRecognizer(locale: Locale(identifier: "pt-BR"))
-    private let motor = AVAudioEngine()
+    private let motor: AVAudioEngine
     private let caixa = Caixa()
-    private let falador = Falador()
+    private let falador: Falador
     private var tarefa: SFSpeechRecognitionTask?
     private var turno = TurnoDeVoz()
     private var relogio: Task<Void, Never>?
@@ -42,8 +46,13 @@ final class Ouvido {
     private var geracao = 0
     /// O que a tela quer agora; `ligar` confere de novo depois de cada espera.
     private var querOuvir = false
+    private var acionouBargeIn = false
+    private var geracaoDeFala = UUID()
 
     init() {
+        let motor = AVAudioEngine()
+        self.motor = motor
+        falador = Falador(motor: motor)
         let d = UserDefaults.standard
         mudo = d.bool(forKey: "noah.voz.mudo")
         falarRespostas = d.object(forKey: "noah.voz.falar") as? Bool ?? true
@@ -61,14 +70,20 @@ final class Ouvido {
 
     func falar(_ texto: String) {
         guard !texto.isEmpty else { return }
+        geracaoDeFala = UUID()
+        let minhaFala = geracaoDeFala
         falando = true
         Task {
-            await falador.falar(texto)
+            let clonada = await falador.falar(texto)
+            guard geracaoDeFala == minhaFala else { return }
+            avisoVoz = clonada ? nil : "Voz clonada indisponível no Mac; usando a voz do aparelho."
             falando = false
         }
     }
 
     func calar() {
+        geracaoDeFala = UUID()
+        falando = false
         falador.parar()
     }
 
@@ -89,12 +104,16 @@ final class Ouvido {
         guard querOuvir, estado != .ouvindo else { return }
 
         do {
+            _ = falador
             #if os(iOS)
             let sessao = AVAudioSession.sharedInstance()
-            try sessao.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker, .duckOthers])
+            try sessao.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .duckOthers])
             try sessao.setActive(true, options: .notifyOthersOnDeactivation)
             #endif
             let entrada = motor.inputNode
+            // O modo de voz do AVAudioEngine reduz o retorno do alto-falante
+            // ao microfone durante a leitura, permitindo interrompê-la falando.
+            try? entrada.setVoiceProcessingEnabled(true)
             let formato = entrada.outputFormat(forBus: 0)
             let caixa = caixa
             entrada.removeTap(onBus: 0)
@@ -131,6 +150,7 @@ final class Ouvido {
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         #endif
         turno.descartar()
+        acionouBargeIn = false
         parcial = ""
         nivel = 0
         if estado == .ouvindo { estado = .desligado }
@@ -144,6 +164,12 @@ final class Ouvido {
         let pedido = SFSpeechAudioBufferRecognitionRequest()
         pedido.requiresOnDeviceRecognition = true
         pedido.shouldReportPartialResults = true
+        // Vocabulário recorrente ajuda o reconhecedor local sem reescrever
+        // o que foi ouvido ("o pai" também pode ser uma frase legítima).
+        pedido.contextualStrings = [
+            "Noah", "Nicolas", "Nicholas", "Jarvis", "Cérebro",
+            "opa", "opa, beleza?", "opa, tudo bem?", "e aí, beleza?", "beleza"
+        ]
         pedido.addsPunctuation = true
         caixa.trocar(pedido)
         tarefa = reconhecedor?.recognitionTask(with: pedido) { [weak self] resultado, erro in
@@ -157,15 +183,20 @@ final class Ouvido {
 
     private func recebeu(_ texto: String?, acabou: Bool, geracao dele: Int) {
         guard dele == geracao, estado == .ouvindo else { return }
-        if let texto {
+        if let texto, caixa.ouveVozRecentemente, TurnoDeVoz.pareceFala(texto) {
             turno.ouviu(texto, em: .now)
             parcial = turno.parcial
+            if !acionouBargeIn {
+                acionouBargeIn = true
+                aoIniciarFala()
+            }
         }
         // Erro ou fim do pedido (silêncio longo, limite do sistema): fecha o
         // que já foi ouvido e segue escutando com um pedido novo.
         if acabou {
             if let frase = turno.fechar(em: .distantFuture) { aoFechar(frase) }
             parcial = ""
+            acionouBargeIn = false
             novoPedido()
         }
     }
@@ -175,8 +206,11 @@ final class Ouvido {
         nivel = nivel * 0.5 + caixa.nivel * 0.5
         if let frase = turno.fechar(em: .now) {
             parcial = ""
+            acionouBargeIn = false
             novoPedido()
             aoFechar(frase)
+        } else if turno.parcial.isEmpty {
+            acionouBargeIn = false
         }
     }
 
@@ -206,8 +240,13 @@ private final class Caixa: @unchecked Sendable {
     private let trava = NSLock()
     private var pedido: SFSpeechAudioBufferRecognitionRequest?
     private var _nivel: Double = 0
+    private var detector = DetectorDeVoz()
+    private var ultimaVoz: Date?
 
     var nivel: Double { trava.withLock { _nivel } }
+    var ouveVozRecentemente: Bool {
+        trava.withLock { ultimaVoz.map { Date.now.timeIntervalSince($0) < 1.5 } ?? false }
+    }
 
     func trocar(_ novo: SFSpeechAudioBufferRecognitionRequest?) {
         trava.withLock {
@@ -225,34 +264,53 @@ private final class Caixa: @unchecked Sendable {
         }
         trava.withLock {
             pedido?.append(buffer)
-            // Fala normal fica perto de 0,05–0,1 de RMS.
+            if detector.atualizar(rms: rms) { ultimaVoz = .now }
             _nivel = min(1, rms * 12)
         }
     }
 }
 
-/// Voz do sistema em português para ler a resposta do Noah.
-private final class Falador: NSObject, AVSpeechSynthesizerDelegate, @unchecked Sendable {
+/// Prioriza a voz clonada da Central; a voz do aparelho cobre indisponibilidade.
+@MainActor private final class Falador: NSObject, @preconcurrency AVSpeechSynthesizerDelegate {
     private let sintetizador = AVSpeechSynthesizer()
+    private let central: VozDaCentral
+    private var geracao = UUID()
     private var fim: CheckedContinuation<Void, Never>?
+    private var utteranceAtiva: AVSpeechUtterance?
 
-    override init() {
+    init(motor: AVAudioEngine) {
+        central = VozDaCentral(motor: motor)
         super.init()
         sintetizador.delegate = self
     }
 
     @MainActor
-    func falar(_ texto: String) async {
+    func falar(_ texto: String) async -> Bool {
         parar()
+        let id = geracao
+        do {
+            try await central.falar(texto)
+            return true
+        } catch {
+            guard id == geracao, !Task.isCancelled else { return true }
+        }
         let fala = AVSpeechUtterance(string: texto)
-        fala.voice = AVSpeechSynthesisVoice(language: "pt-BR")
+        fala.voice = AVSpeechSynthesisVoice(identifier: "com.apple.voice.enhanced.pt-BR.Felipe")
+            ?? AVSpeechSynthesisVoice(language: "pt-BR")
         await withCheckedContinuation { c in
             fim = c
+            utteranceAtiva = fala
             sintetizador.speak(fala)
         }
+        return false
     }
 
     func parar() {
+        geracao = UUID()
+        central.parar()
+        // Invalida antes do stop: o callback didCancel pode chegar depois que
+        // uma fala nova já instalou outra continuation.
+        utteranceAtiva = nil
         if sintetizador.isSpeaking { sintetizador.stopSpeaking(at: .immediate) }
         terminar()
     }
@@ -262,6 +320,15 @@ private final class Falador: NSObject, AVSpeechSynthesizerDelegate, @unchecked S
         fim = nil
     }
 
-    func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) { terminar() }
-    func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel u: AVSpeechUtterance) { terminar() }
+    func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) {
+        guard u === utteranceAtiva else { return }
+        utteranceAtiva = nil
+        terminar()
+    }
+
+    func speechSynthesizer(_ s: AVSpeechSynthesizer, didCancel u: AVSpeechUtterance) {
+        guard u === utteranceAtiva else { return }
+        utteranceAtiva = nil
+        terminar()
+    }
 }

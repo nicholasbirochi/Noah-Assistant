@@ -69,6 +69,13 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
    resposta sempre exigem o token, quando ele existe. A central ficou fora da 8768 porque
    aquele servidor ainda está sendo construído por outra frente de trabalho. A junção fica
    para quando os dois estiverem estáveis.
+   A conversa do Noah aceita `request_id` opcional em `POST /central/api/conversa`; o
+   `POST /central/api/conversa/cancelar` marca um pedido como cancelado e é idempotente.
+   Pedidos repetidos são recusados antes de executar ferramentas. Cancelar descarta a
+   resposta e bloqueia novas ferramentas; o próximo pedido aguarda a liberação do
+   provedor, com limite de espera. O cliente Ollama usa um stream cancelável para
+   encerrar a geração em curso; provedores sem esse suporte liberam ao terminar.
+   `GET` e `POST /central/api/voz` ficam autenticados pelas mesmas regras.
 4. **Noah como fonte.** Os itens da presença (ADR-0001) entram na mesma lista, mas só
    para leitura. Eles aparecem só com `NOAH_PRESENCE_ENABLED=true`, como no HUD.
 5. **Dispensar é local e por versão.** "Dispensar" guarda a versão atual do item (o

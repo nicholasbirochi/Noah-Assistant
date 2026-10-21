@@ -12,9 +12,12 @@ dado nenhum; a lista e as ações sempre exigem o token, quando ele existe.
   GET  /central/api/presenca             -> {ligada, variavel, itens, falhas, gerado_em}
   GET  /central/api/cerebro              -> {janela_s, cerebro, auxiliares, falhas, gerado_em}
   GET  /central/api/atividade            -> {ollama, modelos, rotas, cerebro, eventos, noah, falhas, gerado_em}
+  GET  /central/api/voz                  -> estado da voz clonada
+  POST /central/api/voz                  {texto} -> PCM em blocos
   POST /central/api/responder            {fonte, id, texto} -> 202 {job}
   POST /central/api/dispensar            {fonte, id} -> 200 (guarda a versão atual)
-  POST /central/api/conversa             {mensagem, sessao?} -> {sessao, resposta, ferramentas, modelo}
+  POST /central/api/conversa             {mensagem, sessao?, request_id?} -> {sessao, resposta, ferramentas, modelo}
+  POST /central/api/conversa/cancelar    {request_id} -> {ok}
 """
 
 from __future__ import annotations
@@ -157,6 +160,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._json(200, {**self.server.sinal(), "gerado_em": time.time()})
         elif caminho == "/central/api/atividade":
             self._atividade()
+        elif caminho == "/central/api/voz":
+            from central import voz
+
+            self._json(200, voz.estado())
         else:
             self._erro(404, "rota inexistente")
 
@@ -170,6 +177,10 @@ class _Handler(BaseHTTPRequestHandler):
             self._dispensar()
         elif caminho == "/central/api/conversa":
             self._conversa()
+        elif caminho == "/central/api/conversa/cancelar":
+            self._cancelar_conversa()
+        elif caminho == "/central/api/voz":
+            self._voz()
         else:
             self._erro(404, "rota inexistente")
 
@@ -295,11 +306,29 @@ class _Handler(BaseHTTPRequestHandler):
         if dados is None:
             return
         try:
-            corpo = self.server.conversas.conversar(dados.get("mensagem"), dados.get("sessao"))
+            corpo = self.server.conversas.conversar(
+                dados.get("mensagem"), dados.get("sessao"), dados.get("request_id")
+            )
         except ConversaRecusada as exc:
             self._erro(exc.status, exc.mensagem)
             return
         self._json(200, corpo)
+
+    def _cancelar_conversa(self) -> None:
+        dados = self._ler_json()
+        if dados is None:
+            return
+        try:
+            corpo = self.server.conversas.cancelar(dados.get("request_id"))
+        except ConversaRecusada as exc:
+            self._erro(exc.status, exc.mensagem)
+            return
+        self._json(200, corpo)
+
+    def _voz(self) -> None:
+        from central import voz
+
+        voz.transmitir(self)
 
     # -- respostas ----------------------------------------------------------
 
@@ -331,6 +360,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--porta", type=int, default=int(os.environ.get("NOAH_CENTRAL_PORT", PORTA_PADRAO)))
     parser.add_argument("--token", default=os.environ.get("NOAH_CENTRAL_TOKEN") or None)
     args = parser.parse_args(argv)
+    if os.environ.get("NOAH_CENTRAL_VOZ") == "1":
+        from voice import xtts_client
+
+        xtts_client.ensure_worker_started()
     try:
         servidor = ServidorCentral((args.host, args.porta), token=args.token)
     except ValueError as exc:

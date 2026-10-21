@@ -5,13 +5,15 @@ on `ollama` or `mlx_lm` directly, so switching backends never touches them."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from dataclasses import dataclass, field
 from types import SimpleNamespace
-from typing import Any, Protocol
+from typing import Any, Callable, Protocol
 
-from ollama import Client
+import httpx
+from ollama import Client, ResponseError
 
 from assistant.tool_schema import ToolSpec, tool_spec_to_openai_dict
 
@@ -70,6 +72,20 @@ class LocalLLMProvider(Protocol):
     def structured_chat(self, messages: list[dict], json_schema: dict) -> dict: ...
 
 
+def chat_with_cancel(provider: LocalLLMProvider, messages: list[dict], tool_specs: list[ToolSpec],
+                     should_cancel: Callable[[], bool]) -> ProviderResponse:
+    """Check cancellation around one provider call and use a cancellable stream
+    when the provider supports it."""
+    if should_cancel():
+        raise RuntimeError("pedido cancelado")
+    cancellable = getattr(provider, "chat_with_cancel", None)
+    response = (cancellable(messages, tool_specs, should_cancel) if callable(cancellable)
+                else provider.chat(messages, tool_specs))
+    if should_cancel():
+        raise RuntimeError("pedido cancelado")
+    return response
+
+
 class OllamaProvider:
     def __init__(self, model: str, host: str, client: Client | None = None, keep_alive: str | None = None) -> None:
         self._model = model
@@ -94,6 +110,126 @@ class OllamaProvider:
             for call in (message.tool_calls or [])
         ]
         return ProviderResponse(content=message.content or "", tool_calls=calls)
+
+    def chat_with_cancel(self, messages: list[dict], tool_specs: list[ToolSpec],
+                         should_cancel: Callable[[], bool]) -> ProviderResponse:
+        """Stream one chat and cancel its HTTP request, including while Ollama
+        is still preparing response headers. The ordinary `chat()` path stays
+        unchanged for every other caller.
+        """
+        if should_cancel():
+            raise RuntimeError("pedido cancelado")
+
+        sync_http = getattr(self._client, "_client", None)
+        if sync_http is None:
+            return self._chat_with_cancel_test_double(messages, tool_specs, should_cancel)
+
+        # Ollama's normal Client owns a sync httpx.Client. Clone only its
+        # connection-facing settings into a dedicated async client so task
+        # cancellation can abort a connect/read without closing the shared
+        # sync pool used by other provider calls.
+        if hasattr(sync_http, "base_url") and hasattr(sync_http, "headers"):
+            async_http: Any = httpx.AsyncClient(
+                base_url=sync_http.base_url,
+                headers=sync_http.headers,
+                timeout=sync_http.timeout,
+                follow_redirects=sync_http.follow_redirects,
+                auth=sync_http.auth,
+                cookies=sync_http.cookies,
+            )
+            owns_http = True
+        else:
+            # Small injected test transports can expose an async stream
+            # directly, without requiring an Ollama or network process.
+            async_http = sync_http
+            owns_http = False
+        if not callable(getattr(async_http, "stream", None)):
+            return self._chat_with_cancel_test_double(messages, tool_specs, should_cancel)
+
+        body = {
+            "model": self._model,
+            "messages": messages,
+            "tools": [tool_spec_to_openai_dict(spec) for spec in tool_specs],
+            "stream": True,
+        }
+        if self._keep_alive is not None:
+            body["keep_alive"] = self._keep_alive
+
+        async def consumir() -> ProviderResponse:
+            content: list[str] = []
+            calls: list[ToolCallRequest] = []
+            ended = False
+            async with async_http.stream("POST", "/api/chat", json=body) as response:
+                try:
+                    response.raise_for_status()
+                except httpx.HTTPStatusError as exc:
+                    raise ResponseError(exc.response.text, exc.response.status_code) from None
+
+                async for line in response.aiter_lines():
+                    if should_cancel():
+                        raise asyncio.CancelledError()
+                    if not line:
+                        continue
+                    event = json.loads(line)
+                    if error := event.get("error"):
+                        raise ResponseError(str(error))
+                    message = event.get("message") or {}
+                    if text := message.get("content"):
+                        content.append(text)
+                    for call in message.get("tool_calls") or []:
+                        function = call.get("function") or {}
+                        name = function.get("name")
+                        if name:
+                            calls.append(ToolCallRequest(
+                                name=name,
+                                arguments=dict(function.get("arguments") or {}),
+                            ))
+                    if event.get("done"):
+                        ended = True
+                        break
+            if not ended:
+                raise RuntimeError("Ollama encerrou o stream antes de concluir a resposta")
+            return ProviderResponse(content="".join(content), tool_calls=calls)
+
+        async def aguardar_ou_cancelar() -> ProviderResponse:
+            request = asyncio.create_task(consumir())
+            try:
+                while not request.done():
+                    done, _ = await asyncio.wait((request,), timeout=0.05)
+                    if not done and should_cancel():
+                        request.cancel()
+                        break
+                try:
+                    response = await request
+                except asyncio.CancelledError:
+                    if should_cancel():
+                        raise RuntimeError("pedido cancelado") from None
+                    raise
+                if should_cancel():
+                    raise RuntimeError("pedido cancelado")
+                return response
+            finally:
+                if not request.done():
+                    request.cancel()
+                await asyncio.gather(request, return_exceptions=True)
+                if owns_http:
+                    await async_http.aclose()
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:
+            return asyncio.run(aguardar_ou_cancelar())
+        raise RuntimeError("chat_with_cancel deve ser chamado fora de um event loop")
+
+    def _chat_with_cancel_test_double(self, messages: list[dict], tool_specs: list[ToolSpec],
+                                      should_cancel: Callable[[], bool]) -> ProviderResponse:
+        """Compatibility path for legacy fake clients used by provider tests."""
+        if should_cancel():
+            raise RuntimeError("pedido cancelado")
+        response = self.chat(messages, tool_specs)
+        if should_cancel():
+            raise RuntimeError("pedido cancelado")
+        return response
 
     def structured_chat(self, messages: list[dict], json_schema: dict) -> dict:
         response = self._client.chat(

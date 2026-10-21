@@ -27,6 +27,9 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - **iPhone:** uma folha que sobe de baixo.
 - **Fluxo.** Um mapa animado do caminho da informação entre Claude Code, Codex, Noah,
   Cérebro, Qwen local, a central e os aparelhos.
+  - Conversas Claude com subagentes aparecem como nós ligados à sessão de origem,
+    inclusive enquanto a conversa pai segue ativa; a central envia apenas IDs
+    confirmados pelos metadados sidechain, sem texto das conversas.
   - **Ligações com a central:** têm sinal ao vivo. Quando há pendência esperando ou
     resposta em andamento, partículas correm pela linha com a contagem ("1 para fazer").
   - **Consultas ao Cérebro e tarefas delegadas ao Qwen:** vêm do sinal da central
@@ -53,11 +56,21 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
     voz; o alto-falante liga ou desliga a leitura das respostas. Mudo e leitura ficam
     guardados entre aberturas.
   - **Mesmo histórico:** voz e digitação mandam para a mesma conversa. O app mantém o mesmo identificador de sessão ao trocar de aba.
-  - **Não se ouve a si mesmo:** o microfone fecha enquanto você digita, enquanto o Noah
-    pensa e enquanto ele fala.
+  - **Pode interromper:** no modo voz, o microfone continua aberto enquanto o Noah pensa
+    ou fala. Ao reconhecer uma frase nova, para a leitura e cancela só o turno anterior;
+    a nova fala continua até a pausa e vira a próxima mensagem. O iPhone usa o
+    processamento de voz do sistema para reduzir o retorno do alto-falante.
+  - **Voz do Jarvis:** a Central transmite a voz clonada já instalada no Mac, em blocos
+    de áudio, para começar a tocar sem esperar a frase inteira. Ative o pré-carregamento
+    com `NOAH_CENTRAL_VOZ=1`; `NOAH_VOICE_PYTHON` pode apontar para um runtime local
+    separado. Os arquivos XTTS e a referência ficam fora do repositório. A inicialização
+    exige os pesos já presentes e não inicia download. Se a voz não estiver pronta,
+    o app avisa e usa a voz em português do aparelho.
   - **Só no aparelho:** o reconhecimento usa o português offline do sistema
     (`requiresOnDeviceRecognition`), e o áudio não sai do aparelho. Se o aparelho não tiver
     português offline, a tela avisa em laranja e a setinha continua servindo para digitar.
+  - **Ruído:** a transcrição só entra na conversa quando há atividade de voz no microfone
+    e texto reconhecido suficiente; fragmentos curtos de ruído são descartados.
   - **Leitura curta:** blocos de código, links e marcações de Markdown não são lidos, e a
     resposta longa para na última frase que cabe, com "O resto está no chat."
     (`FalaDoNoah`, em NoahCore).
@@ -125,8 +138,16 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
 **Limites do iOS:** o app não consegue fechar nem apagar outros apps, e não existem widgets
 do Mac por enquanto.
 
-O token fica no Keychain. O endereço da central e o texto do "Aceitar" (padrão "Pode
-seguir.") ficam em UserDefaults.
+O reconhecimento em português recebe contexto com nomes e expressões curtas, como
+"opa, beleza?". Isso favorece a transcrição, mas não substitui automaticamente frases
+legítimas como "o pai". Saudações exatas como "opa, beleza?" recebem resposta local curta
+sem esperar a inferência do modelo.
+
+O token fica no Keychain privado do app, sem grupo compartilhado. O endereço da central e
+o texto do "Aceitar" (padrão "Pode seguir.") ficam em UserDefaults. Em Ajustes, **Salvar e
+testar** só tenta conectar depois que o Keychain confirmou a gravação; se a assinatura não
+autorizar o acesso, a tela mostra um erro sem revelar o token. As variantes iOS declaram um
+grupo Keychain derivado do prefixo e do identificador de assinatura selecionados pelo Xcode.
 
 ## Gerar e abrir
 
@@ -237,15 +258,17 @@ conversas reais):**
 - a Central por voz no Simulador: o rosto grande com os três botões, o aviso laranja
   quando falta português offline, e a setinha subindo o chat, com uma mensagem digitada
   chegando à central falsa e a resposta aparecendo;
-- as regras de fechar a frase e de limpar a resposta antes de ler (`VozTests`).
+- detecção de voz/ruído, regras de fechar a frase, cancelamento por request e limpeza da
+  resposta antes de ler (`VozTests`, `ClienteCentralTests`).
 
-**Atualização de 21/10/2026:** 82 testes Swift e 129 testes Python da Central, presença e
+**Atualização de 21/10/2026:** 88 testes Swift e 247 testes Python da Central, presença e
 visualizador passaram. O esquema pessoal foi assinado e instalado num iPhone real. A
-primeira abertura exige confiar no perfil nas configurações do próprio aparelho; a
-instalação não comprova a conversa por voz nem a comunicação pela rede.
+primeira abertura e a conexão pelo Wi-Fi foram confirmadas pelo usuário após confiar
+no perfil. Um turno HTTP real retornou 200 e a voz clonada gerou PCM local. Isso não
+comprova a interrupção acústica nem a reprodução da voz no iPhone.
 
 **Ainda não verificado:**
-- a primeira abertura e a conversa num iPhone real após confiar na assinatura;
+- a conversa por voz atualizada, redução de eco e interrupção acústica no iPhone real;
 - o toque no aviso abrindo o detalhe;
 - o pedido de permissão de avisos no Mac;
 - o refresh em segundo plano do iOS;
@@ -256,7 +279,8 @@ instalação não comprova a conversa por voz nem a comunicação pela rede.
   adicioná-los pede edição manual da tela);
 - o painel da barra de menus aberto na tela, o Touch ID no Mac e o botão que abre o app
   do agente.
-- a voz de verdade: falar e ver a frase sair sozinha, e a resposta lida em voz alta. O
+- a voz de verdade: falar e ver a frase sair sozinha, interromper uma resposta com uma
+  nova fala, e ouvir a resposta. O
   Simulador não tem português offline, então isso pede o Mac ou um iPhone.
 
 **Limite do sinal do Cérebro:** ele conta só chamadas de ferramenta que executam

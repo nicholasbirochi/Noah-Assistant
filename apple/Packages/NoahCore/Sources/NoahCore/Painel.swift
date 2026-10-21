@@ -11,6 +11,8 @@ public struct PainelCentral: Decodable, Sendable, Equatable {
     public var falhas: [String]
     public var noah: EstadoNoah?
     public var geradoEm: Double?
+    /// Conversas Claude ativas com sidechains verificados; payload legado pode omitir.
+    public var conversasClaude: [ConversaClaudeAtiva]
 
     public struct Cerebro: Decodable, Sendable, Equatable {
         public var pastas: [PastaCerebro]
@@ -19,12 +21,13 @@ public struct PainelCentral: Decodable, Sendable, Equatable {
 
     enum CodingKeys: String, CodingKey {
         case ollama, modelos, cerebro, eventos, falhas, noah
+        case conversasClaude = "conversas_claude"
         case geradoEm = "gerado_em"
     }
 
     public init(ollama: Bool = true, modelos: [ModeloAuxiliar] = [], pastas: [PastaCerebro] = [],
                 eventos: [EventoCentral] = [], falhas: [String] = [], noah: EstadoNoah? = nil,
-                geradoEm: Double? = nil) {
+                geradoEm: Double? = nil, conversasClaude: [ConversaClaudeAtiva] = []) {
         self.ollama = ollama
         self.modelos = modelos
         self.cerebro = Cerebro(pastas: pastas)
@@ -32,6 +35,31 @@ public struct PainelCentral: Decodable, Sendable, Equatable {
         self.falhas = falhas
         self.noah = noah
         self.geradoEm = geradoEm
+        self.conversasClaude = conversasClaude
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        ollama = try c.decodeIfPresent(Bool.self, forKey: .ollama) ?? false
+        modelos = try c.decodeIfPresent([ModeloAuxiliar].self, forKey: .modelos) ?? []
+        cerebro = (try? c.decode(Cerebro.self, forKey: .cerebro)) ?? Cerebro(pastas: [])
+        eventos = try c.decodeIfPresent([EventoCentral].self, forKey: .eventos) ?? []
+        falhas = try c.decodeIfPresent([String].self, forKey: .falhas) ?? []
+        noah = try c.decodeIfPresent(EstadoNoah.self, forKey: .noah)
+        geradoEm = try c.decodeIfPresent(Double.self, forKey: .geradoEm)
+        conversasClaude = try c.decodeIfPresent([ConversaClaudeAtiva].self, forKey: .conversasClaude) ?? []
+    }
+}
+
+public struct ConversaClaudeAtiva: Decodable, Sendable, Equatable, Identifiable {
+    public var id: String
+    public var quando: Double
+    public var subagentes: [Subagente]
+
+    public init(id: String, quando: Double, subagentes: [Subagente]) {
+        self.id = id
+        self.quando = quando
+        self.subagentes = subagentes
     }
 }
 

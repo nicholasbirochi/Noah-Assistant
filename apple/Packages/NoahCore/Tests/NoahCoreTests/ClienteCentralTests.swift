@@ -218,6 +218,21 @@ final class ClienteCentralTests: XCTestCase {
         XCTAssertEqual(semSessao, ["mensagem": "de novo"])
     }
 
+    func testConversaECancelamentoCompartilhamIdentificadorDeRequest() async throws {
+        Stub.resposta = (200, #"{"sessao":"abc","resposta":"Oi!","ferramentas":[],"provedor":"ollama","modelo":"qwen2.5:7b"}"#)
+        let requestID = UUID(uuidString: "4C47B4B7-603A-4B0B-BE9A-D4E886103BBE")!
+        _ = try await cliente.conversar(texto: "oi", sessao: nil, requestID: requestID)
+        let corpoConversa = try JSONDecoder().decode([String: String].self, from: Stub.corpos[0])
+        XCTAssertEqual(corpoConversa, ["mensagem": "oi", "request_id": requestID.uuidString])
+
+        Stub.resposta = (200, #"{"ok":true}"#)
+        try await cliente.cancelarConversa(requestID: requestID)
+        let corpoCancelamento = try JSONDecoder().decode([String: String].self, from: Stub.corpos[1])
+        XCTAssertEqual(corpoCancelamento, ["request_id": requestID.uuidString])
+        XCTAssertEqual(Stub.pedidos[1].url?.path, "/central/api/conversa/cancelar")
+        XCTAssertEqual(Stub.pedidos[1].httpMethod, "POST")
+    }
+
     func testConversarOcupadoViraMensagem() async {
         Stub.resposta = (409, #"{"erro":"o Noah ainda está respondendo"}"#)
         do {

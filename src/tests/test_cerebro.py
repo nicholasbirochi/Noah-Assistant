@@ -564,7 +564,8 @@ def test_send_turn_nao_consulta_em_cumprimento(monkeypatch, cerebro_leitura):
 
     assert not _tool_msgs(msgs, "consult_cerebro"), "cumprimento não pode disparar consulta"
     assert cerebro_leitura == []
-    assert reply == "Oi! Tudo ótimo por aqui."
+    assert reply == "Boa tarde! Tudo bem!"
+    assert provider.calls == [], "saudação exata deve desviar do modelo"
 
 
 def test_send_turn_nao_consulta_em_trivia(monkeypatch, cerebro_leitura):

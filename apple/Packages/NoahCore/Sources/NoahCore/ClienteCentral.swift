@@ -84,13 +84,22 @@ public struct ClienteCentral: Sendable {
     }
 
     /// Um turno com o Noah no modelo local; pode levar minutos, daí o prazo longo.
-    public func conversar(texto: String, sessao: String?) async throws -> RespostaConversa {
+    public func conversar(texto: String, sessao: String?, requestID: UUID? = nil) async throws -> RespostaConversa {
         let limpo = texto.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !limpo.isEmpty else { throw ErroCentral.textoVazio }
         guard limpo.count <= Self.maxTexto else { throw ErroCentral.textoLongo }
         var corpo = ["mensagem": limpo]
         if let sessao { corpo["sessao"] = sessao }
+        if let requestID { corpo["request_id"] = requestID.uuidString }
         return try await pedir("POST", "conversa", corpo, prazo: 200)
+    }
+
+    /// Pede à central que pare somente o turno identificado. A rota é
+    /// idempotente para cobrir o caso em que a resposta acabou no mesmo instante.
+    public func cancelarConversa(requestID: UUID) async throws {
+        let _: [String: Bool] = try await pedir("POST", "conversa/cancelar", [
+            "request_id": requestID.uuidString
+        ], prazo: 5)
     }
 
     public func dispensar(_ p: Pendencia) async throws {

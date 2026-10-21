@@ -49,6 +49,10 @@ final class Modelo {
     private var lido = false
     private var laco: Task<Void, Never>?
     private var sono: Task<Void, Never>?
+    /// Só a conversa mais recente pode atualizar a tela. Guardamos a Task da
+    /// rede para que uma fala nova cancele também a espera HTTP local.
+    private var requestConversa: UUID?
+    private var tarefaConversa: Task<RespostaConversa, Error>?
 
     var jobsVisiveis: [Job] { Sincronia.jobsVisiveis(jobs) }
     /// O que a ilha, os widgets e a barra de menus mostram.
@@ -147,25 +151,57 @@ final class Modelo {
         }
     }
 
-    /// Manda uma mensagem ao Noah pela central e espera a resposta. Uma de cada
-    /// vez: a central devolve 409 se o Noah já estiver respondendo.
+    /// Manda uma mensagem ao Noah pela central. Uma fala nova substitui o
+    /// turno em andamento e cancela só o request anterior.
     func conversar(_ texto: String) async {
         let texto = texto.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !texto.isEmpty, !conversando else { return }
+        guard !texto.isEmpty else { return }
+        if let anterior = requestConversa {
+            tarefaConversa?.cancel()
+            let cliente = try? Ajustes.cliente()
+            Task { try? await cliente?.cancelarConversa(requestID: anterior) }
+        }
+        let requestID = UUID()
         mensagens.append(MensagemChat(autor: .eu, texto: texto))
+        requestConversa = requestID
         conversando = true
-        defer { conversando = false }
         // Lê o painel logo, para o Fluxo e o feed mostrarem o Noah pensando.
-        let leitura = Task { try? await Task.sleep(for: .seconds(1)); await atualizarPainel() }
+        let leitura = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            await self?.atualizarPainel()
+        }
         do {
-            let r = try await Ajustes.cliente().conversar(texto: texto, sessao: sessaoNoah)
+            let cliente = try Ajustes.cliente()
+            let chamada = Task { try await cliente.conversar(texto: texto, sessao: sessaoNoah, requestID: requestID) }
+            tarefaConversa = chamada
+            let r = try await chamada.value
+            guard requestConversa == requestID else { leitura.cancel(); return }
             sessaoNoah = r.sessao
             mensagens.append(MensagemChat(autor: .noah, texto: r.resposta, ferramentas: r.ferramentas))
         } catch {
+            guard requestConversa == requestID else { leitura.cancel(); return }
             mensagens.append(MensagemChat(autor: .erro, texto: error.localizedDescription))
         }
         leitura.cancel()
+        guard requestConversa == requestID else { return }
+        requestConversa = nil
+        tarefaConversa = nil
+        conversando = false
         await atualizarPainel()
+    }
+
+    /// Interrompe ao reconhecer o começo de uma fala nova, sem apagar o
+    /// histórico nem a sessão da conversa.
+    func interromperConversa() {
+        guard let requestID = requestConversa else { return }
+        requestConversa = nil
+        tarefaConversa?.cancel()
+        tarefaConversa = nil
+        conversando = false
+        let cliente = try? Ajustes.cliente()
+        Task { try? await cliente?.cancelarConversa(requestID: requestID) }
+        Task { await atualizarPainel() }
     }
 
     func novaConversa() {

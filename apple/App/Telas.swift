@@ -594,8 +594,19 @@ struct AjustesView: View {
     private func salvar() async {
         testando = true
         defer { testando = false }
+        do {
+            try Cofre.gravar(token)
+            let tokenSalvo = token.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard Cofre.ler() == (tokenSalvo.isEmpty ? nil : tokenSalvo) else {
+                resultado = "O Keychain não confirmou o token salvo."
+                return
+            }
+        } catch {
+            resultado = "Não foi possível salvar o token no Keychain: \(error.localizedDescription)"
+            return
+        }
+
         Ajustes.endereco = endereco.trimmingCharacters(in: .whitespacesAndNewlines)
-        Cofre.gravar(token.trimmingCharacters(in: .whitespacesAndNewlines))
         Ajustes.respostaAceitar = aceitar
         await modelo.atualizar()
         resultado = modelo.erro.map { "Não conectou: \($0)" } ?? "Conectado. \(modelo.itens.count) pendência(s)."

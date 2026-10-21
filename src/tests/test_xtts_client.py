@@ -28,6 +28,8 @@ def _reset(monkeypatch, tmp_path):
     monkeypatch.setattr(xtts_client, "_process", None)
     monkeypatch.setattr(xtts_client, "_log_file", None)
     monkeypatch.setattr(config, "LOCAL_STATE_DIR", tmp_path)
+    monkeypatch.setattr(xtts_client, "is_running", lambda: False)
+    monkeypatch.delenv("NOAH_VOICE_PYTHON", raising=False)
 
 
 def test_has_reference_audio_delegates_to_engine(monkeypatch):
@@ -46,6 +48,20 @@ def test_ensure_worker_started_noop_without_reference_audio(monkeypatch):
     xtts_client.ensure_worker_started()
 
     assert calls == []
+
+
+def test_ensure_worker_does_not_duplicate_external_worker_still_loading(monkeypatch):
+    monkeypatch.setattr(xtts_engine, "has_reference_audio", lambda: True)
+    monkeypatch.setattr(xtts_client, "is_running", lambda: True)
+    monkeypatch.setattr(xtts_client.subprocess, "Popen", lambda *a, **kw: pytest.fail("duplicate worker"))
+    xtts_client.ensure_worker_started()
+
+
+def test_external_worker_loading_counts_as_running(fake_worker, monkeypatch):
+    monkeypatch.setattr(xtts_client, "is_running", lambda: xtts_client._health() is not None)
+    _FakeWorkerHandler.ready = False
+    assert xtts_client.is_running()
+    assert not xtts_client.is_ready()
 
 
 def test_ensure_worker_started_spawns_subprocess(monkeypatch):

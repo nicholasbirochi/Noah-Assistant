@@ -4,4 +4,7 @@
     <!-- App Group: o app grava o resumo e os widgets leem. -->
     <key>com.apple.security.application-groups</key>
     <array><string>group.com.nicholasbirochi.noah</string></array>
+    <!-- O token fica no Keychain privado deste app. -->
+    <key>keychain-access-groups</key>
+    <array><string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string></array>
 </dict></plist>
