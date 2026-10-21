@@ -220,6 +220,7 @@ def test_consultar_anota_a_consulta(monkeypatch, tmp_path):
 
     anotadas = []
     monkeypatch.setattr(cerebro, "registrar_consulta_noah", lambda **k: anotadas.append(list(k["partes"])))
+    monkeypatch.setattr(cerebro, "_consultar_bm25", lambda *a, **k: None)  # caminho da CLI, sem ler o cofre
     monkeypatch.setattr(cerebro, "_run", lambda *a, **k: subprocess.CompletedProcess(a, 0, SAIDA_BUSCAR, ""))
     assert cerebro.consultar("noah").startswith("== 02 - Projetos")
     assert cerebro.consultar("   ") .startswith("Preciso")  # sem termos não chega ao Cérebro
@@ -265,3 +266,17 @@ def test_ler_sinal_usa_cache_curto(tmp_path, monkeypatch):
     sinal_cerebro.ler_sinal(agora=AGORA + 1, **kw)
     sinal_cerebro.ler_sinal(agora=AGORA + sinal_cerebro.CACHE_S + 1, **kw)
     assert len(chamadas) == 2
+
+
+def test_consultar_bm25_anota_a_consulta(monkeypatch):
+    from assistant import cerebro
+
+    anotadas = []
+    saida_bm25 = "  2.50  03 - Graphify e Mapas de Projeto/Mapas/Mapa - Exemplo.md  [indice/ativo]\n    > L1 trecho falso"
+    monkeypatch.setattr(cerebro, "registrar_consulta_noah", lambda **k: anotadas.append(list(k["partes"])))
+    monkeypatch.setattr(cerebro, "_consultar_bm25", lambda *a, **k: saida_bm25)
+    monkeypatch.setattr(cerebro, "_run", lambda *a, **k: pytest.fail("a CLI não deveria rodar"))
+    assert cerebro.consultar("noah") == saida_bm25
+    monkeypatch.setattr(cerebro, "_consultar_bm25", lambda *a, **k: "Nenhuma nota pertinente encontrada no Cérebro.")
+    cerebro.consultar("noah")
+    assert anotadas == [["03"], []]

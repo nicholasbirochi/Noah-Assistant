@@ -128,6 +128,8 @@ def consultar(
         return "Preciso de ao menos um termo para consultar o Cérebro."
     local = _consultar_bm25(query, projeto=projeto, max_notas=max_notas, orcamento=orcamento)
     if local is not None:
+        # O ranking local também conta para o sinal ao vivo do app Noah.
+        registrar_consulta_noah(partes=pastas_citadas(local))
         return local
     args = ["buscar", *termos, "--trechos", "--max", str(max_notas), "--orcamento", str(orcamento)]
     if projeto:
