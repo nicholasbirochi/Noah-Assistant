@@ -105,8 +105,11 @@ repositório público (nenhum Team ID ou dado pessoal no git).
   um terminal à parte) não aparece.
 - Em 21/10/2026, o esquema `Noah-iOS-Pessoal` foi assinado e instalado num iPhone real.
   Ele mantém as telas, a biometria e a extensão da Live Activity, sem exigir App Group;
-  o widget de resumo continua no esquema completo. A primeira abertura depende de
-  confiar no perfil no aparelho. Ainda falta validar a conversa real, o toque no aviso,
-  o refresh em segundo plano e o painel do Mac com Touch ID. Instalar o build não
-  comprova esses comportamentos.
+  o widget de resumo continua no esquema completo. O perfil foi confiado no aparelho,
+  o app abriu e o usuário confirmou a conexão autenticada pela rede local. A conversa
+  HTTP real respondeu pelo Qwen local sem ferramentas. Microfone e voz no aparelho,
+  toque no aviso, refresh em segundo plano e aprovação pelo Touch ID seguem como
+  verificações específicas; instalar e conectar não comprova esses comportamentos.
+- No macOS, a cena principal usa `Window` com identificador estável: abrir pelo menu
+  ou por link reutiliza a mesma janela, sem criar uma nova a cada abertura.
 - O iOS não deixa o app fechar nem apagar outros apps, e não há widgets do Mac.

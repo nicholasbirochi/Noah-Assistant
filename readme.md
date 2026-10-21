@@ -474,11 +474,12 @@ num some do outro.
   tocou, e o bonequinho dele anda até elas. A central manda só o código da pasta (`partes`),
   tirado dos caminhos de nota que a resposta da ferramenta trouxe.
 - No iPhone, a ilha dinâmica e a tela bloqueada mostram o estado: azul "Trabalhando",
-  âmbar "Esperando você" com "!" e verde "Tudo pronto". Há widgets para a tela de início
-  e a tela bloqueada.
+  âmbar "Esperando você" com "!" e verde "Tudo pronto". O esquema completo inclui
+  widgets de resumo; o esquema pessoal mantém a Live Activity sem exigir App Group.
 - Responder, Aceitar e Dispensar pedem Face ID no iPhone e Touch ID no Mac. Ilha e widgets
   só abrem o app.
 - No Mac, o painel da barra de menus lista as pendências e abre o app do agente.
+  Abrir Noah pelo menu ou por `noah://` reutiliza uma única janela principal.
 - No Mac, uma ilha no notch mostra o mesmo estado. Ela abre com o mouse, fecha pouco depois
   que ele sai e, com o Alcove aberto, encosta ao lado dele.
 - Na ilha aberta, cada item tem a etiqueta "Pergunta" ou "Resposta pronta". Clicar na

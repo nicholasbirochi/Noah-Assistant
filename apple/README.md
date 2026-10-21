@@ -91,7 +91,8 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - Desligue em **Ajustes > Aprovação**. Sem senha no aparelho não há o que pedir, e a
     ação segue.
 - **Mac.** O app fica na barra de menus mesmo com a janela fechada, para continuar
-  avisando, e não aparece no Dock (`LSUIElement`). O ícone da barra é o rosto do Noah
+  avisando, e não aparece no Dock (`LSUIElement`). Há uma única janela principal; os
+  atalhos **Abrir Noah** e os links `noah://` reutilizam essa janela. O ícone da barra é o rosto do Noah
   em preto e branco, que muda com o estado e mostra quantas pendências esperam você. Se
   um gerenciador de barra (Thaw, Ice, Bartender) esconder ícones novos, mova o do Noah
   para a parte visível nele. O painel da barra mostra o rosto do Noah no estado atual e até 8 pendências.

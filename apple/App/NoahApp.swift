@@ -26,7 +26,7 @@ struct NoahApp: App {
 
     var body: some Scene {
         #if os(macOS)
-        WindowGroup("Noah", id: "principal") {
+        Window("Noah", id: "principal") {
             ContentView()
                 .environment(modelo)
                 // Lista + detalhe + painel "Ao vivo" lado a lado: abaixo disso o
