@@ -139,7 +139,7 @@ struct PainelDaBarra: View {
                 Button { abrirApp(app) } label: { Image(systemName: "arrow.up.forward.app") }
                     .buttonStyle(.borderless).help("Abrir no \(Fonte.nome(p.fonte))")
             }
-            if !p.automatica {
+            if !p.automatica && p.simples && p.podeResponder {
                 Button(ocupado ? "…" : "Aceitar") { Task { await modelo.aceitar(p) } }
                     .controlSize(.small).disabled(ocupado)
                     .help("Pede Touch ID antes de enviar")

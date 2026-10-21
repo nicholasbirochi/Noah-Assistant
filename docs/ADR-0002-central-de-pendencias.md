@@ -109,6 +109,35 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
      Só o código sai da central, nunca termos, trechos ou nomes de nota;
    - o Noah anota também os códigos das pastas que a resposta da consulta citou;
    - uma fonte que falha sai em `falhas` e fica zerada; o resultado fica em cache por 5 s.
+8. **Pergunta ou resposta pronta.** Um turno que terminou nem sempre pede algo: muitas
+   vezes é só o relatório do que foi feito. Cada item ganhou o campo `pergunta`, decidido
+   por `e_pergunta()` em `central/fontes.py`, sem modelo:
+   - olha só os últimos 400 caracteres (`FIM_PERGUNTA`), porque o pedido costuma vir no
+     último parágrafo;
+   - ignora blocos de código e links, para um "?" de regex ou de URL não contar;
+   - é pergunta se houver "?" ou um pedido explícito (me avise/diga/confirme, aguardo,
+     você autoriza/aprova/prefere/quer, posso seguir, let me know, should i, want me
+     to...).
+
+   Itens do Noah são sempre pergunta (ação sugerida). Sem pergunta, o item continua na
+   lista e respondível, mas a ilha, a Live Activity e os widgets o contam como pronto, não
+   como "Esperando você", e o Aceitar some (ver também a decisão 10). Centrais antigas não mandam o campo, então o
+   app assume `true`. A regra erra para os dois lados (um "?" retórico no fim conta como
+   pergunta); na dúvida, o item continua visível.
+9. **Ilha do Mac: detalhe opcional e resposta escrita.** Na ilha aberta, clicar numa
+   linha a expande com a mensagem inteira, um campo de resposta (Return envia, com Touch
+   ID, pelo mesmo caminho do app), "Abrir no Noah" e "Dispensar". Enquanto o campo tem o
+   foco, a ilha não fecha quando o mouse sai (`IlhaNotch.Hover.passo(segurar:)`); ela fecha
+   quando o campo perde o foco.
+10. **Aceitar só em pergunta simples.** "Pode seguir." só responde uma pergunta de sim
+   ou não. A central marca `simples` (`fontes.e_simples`) quando a última pergunta é
+   curta (até 200 caracteres), não é aberta (qual, como, o que, what, how...), o texto
+   não traz lista de 3 ou mais opções nem mais de duas perguntas, e ela pede uma
+   aprovação (posso, quer que, devo, should I, want me to, aguardo seu ok...). Só aí a
+   ilha, a barra de menus, o detalhe e o aviso mostram Aceitar; nos outros casos fica
+   Responder (o aviso usa a categoria `PENDENCIA_ESCRITA`). Centrais antigas não mandam
+   o campo, então o app assume `false` e esconde o Aceitar: errar para o lado da
+   resposta escrita é mais seguro que aprovar algo que não era sim ou não.
 
 ## Consequências
 

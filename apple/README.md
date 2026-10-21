@@ -16,8 +16,9 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   Toque numa tarefa para abrir o detalhe:
   - "O que fazer" e "Por quê", ou a última mensagem do agente;
   - Detalhes: origem (automática ou conversa), fonte, projeto e se dá para responder;
-  - as ações Responder (texto livre), Aceitar e Dispensar. As geradas pelo Noah são só
-    leitura e só têm Dispensar.
+  - as ações Responder (texto livre), Aceitar e Dispensar. Aceitar só aparece quando a
+    pergunta é simples, de sim ou não. As geradas pelo Noah são só leitura e só têm
+    Dispensar.
 - **Painel "Ao vivo".** Mostra a hora da última sincronização, as contagens (para fazer,
   geradas pelo Noah, respondendo), o que está sendo respondido e o feed de atividade
   desde que o app abriu: entrou, saiu da lista, respondeu.
@@ -45,7 +46,7 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - Na aba Fluxo, o app relê a central a cada 10 s (4 s com resposta em andamento).
   - A animação pausa fora da aba e respeita "Reduzir movimento".
 - **Avisos com ação.** Cada pendência nova vira um aviso com Responder, Aceitar e
-  Dispensar; as só leitura têm apenas Dispensar.
+  Dispensar. Pergunta aberta não tem Aceitar; as só leitura têm apenas Dispensar.
   - Tocar no aviso abre o detalhe daquela pendência.
   - O aviso tem a mesma chave nos dois aparelhos.
   - O aviso some quando a pendência sai da lista ou alguém começa a respondê-la.
@@ -73,7 +74,7 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
 - **Mac.** O app fica na barra de menus mesmo com a janela fechada, para continuar
   avisando. O painel da barra mostra o rosto do Noah no estado atual e até 8 pendências.
   Cada uma tem um botão que abre o app do agente (Claude, ou o ChatGPT, onde fica o Codex)
-  e "Aceitar", que pede Touch ID. Há também "Abrir Noah" e "Sair".
+  e "Aceitar" (só em pergunta simples), que pede Touch ID. Há também "Abrir Noah" e "Sair".
 - **Ilha no notch (Mac).** Uma pílula preta no notch, ou no meio da barra de menus se a
   tela não tiver notch, nas mesmas três cores da ilha do iPhone.
   - Passar o mouse ou clicar abre o cartão com as pendências e o que está sendo respondido.

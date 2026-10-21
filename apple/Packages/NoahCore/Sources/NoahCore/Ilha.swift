@@ -27,11 +27,11 @@ public enum EstadoIlha: String, Codable, Hashable, Sendable {
 /// Também é o `ContentState` da Live Activity, então precisa ser pequeno.
 public struct ResumoIlha: Codable, Hashable, Sendable {
     public var estado: EstadoIlha
-    /// Pendências que ainda esperam você (sem quem já está respondendo).
+    /// Pendências que ainda esperam você: perguntas, sem quem já está respondendo.
     public var esperando: Int
     /// Respostas rodando agora.
     public var rodando: Int
-    /// Respostas que terminaram nos últimos 10 min.
+    /// Respostas prontas: na lista sem pergunta, ou que terminaram nos últimos 10 min.
     public var prontas: Int
     /// Linha principal: a pendência mais recente, ou o que está rodando.
     public var linha: String
@@ -82,12 +82,17 @@ public enum Ilha {
     static let chaveResumo = "resumoIlha"
 
     /// Esperando você vence trabalhando, que vence pronto: o que pede ação aparece primeiro.
+    /// Só pergunta espera você; resposta pronta (sem pergunta) conta como pronta.
     public static func resumo(itens: [Pendencia], jobs: [Job],
                               agora: Double = Date().timeIntervalSince1970) -> ResumoIlha {
-        let abertas = itens.filter { !$0.respondendo }
+        let abertas = itens.filter { !$0.respondendo && $0.pergunta }
+        let relatorios = itens.filter { !$0.respondendo && !$0.pergunta }
         let visiveis = Sincronia.jobsVisiveis(jobs, agora: agora)
         let rodando = visiveis.filter(\.rodando)
-        let prontas = visiveis.filter { $0.estado == "concluido" }
+        // O job que terminou e virou resposta pronta na lista conta uma vez só.
+        let chavesRelatorios = Set(relatorios.map(\.chave))
+        let jobsProntos = visiveis.filter { $0.estado == "concluido" && !chavesRelatorios.contains($0.chave) }
+        let nProntas = relatorios.count + jobsProntos.count
         // Quem está respondendo pela lista também conta como trabalho, mesmo antes
         // de o job aparecer na resposta da central.
         let respondendo = itens.filter(\.respondendo)
@@ -96,18 +101,22 @@ public enum Ilha {
 
         if let p = abertas.first {
             return ResumoIlha(estado: .esperando, esperando: abertas.count, rodando: nRodando,
-                              prontas: prontas.count, linha: p.tarefa, agente: Fonte.nome(p.fonte),
+                              prontas: nProntas, linha: p.tarefa, agente: Fonte.nome(p.fonte),
                               chave: p.chave, atualizadoEm: data)
         }
         if nRodando > 0 {
             let linha = rodando.first?.titulo ?? respondendo.first?.tarefa ?? "Respondendo"
             let fonte = rodando.first?.fonte ?? respondendo.first?.fonte ?? ""
-            return ResumoIlha(estado: .trabalhando, rodando: nRodando, prontas: prontas.count,
+            return ResumoIlha(estado: .trabalhando, rodando: nRodando, prontas: nProntas,
                               linha: linha, agente: fonte.isEmpty ? "" : Fonte.nome(fonte),
                               chave: rodando.first?.chave ?? respondendo.first?.chave, atualizadoEm: data)
         }
-        if let j = prontas.first {
-            return ResumoIlha(estado: .pronto, prontas: prontas.count, linha: j.titulo,
+        if let p = relatorios.first {
+            return ResumoIlha(estado: .pronto, prontas: nProntas, linha: p.tarefa,
+                              agente: Fonte.nome(p.fonte), chave: p.chave, atualizadoEm: data)
+        }
+        if let j = jobsProntos.first {
+            return ResumoIlha(estado: .pronto, prontas: nProntas, linha: j.titulo,
                               agente: Fonte.nome(j.fonte), chave: j.chave, atualizadoEm: data)
         }
         return ResumoIlha(estado: .quieto, linha: "Nada esperando você", atualizadoEm: data)

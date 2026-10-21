@@ -402,6 +402,19 @@ máximo duas ao mesmo tempo. Para o agente mudar arquivos, abra a conversa no ap
 "Dispensar" esconde o item até chegar uma resposta nova naquela conversa (marca local em
 `LOCAL_STATE_DIR/central/dispensadas.json`).
 
+Cada item diz também se a última mensagem pede algo a você (`pergunta`). A regra é
+textual, sem modelo: olha os últimos 400 caracteres, sem blocos de código e links, e
+procura um "?" ou um pedido explícito ("me avise", "aguardo", "você autoriza", "let me
+know"...). Sem isso, o item é uma **resposta pronta**: continua na lista e dá para
+responder, mas não conta como "Esperando você" na ilha, na Live Activity e nos widgets
+(conta como pronta). Itens do Noah sempre contam como pergunta.
+
+O botão **Aceitar** só aparece numa pergunta simples (`simples`), que um "sim" responde:
+uma pergunta curta de sim ou não no fim ("Posso fazer o push?", "Quer que eu abra a PR?",
+"Aguardo seu ok"). Pergunta aberta (qual, como, o que...), lista com 3 ou mais opções,
+mais de duas perguntas ou pergunta longa pedem resposta escrita: o app mostra só
+Responder. Vale igual para Claude e Codex; itens do Noah nunca têm Aceitar.
+
 No iPhone, pelo Wi-Fi de casa:
 
 1. No Mac: `python src/cli.py central --host "$(ipconfig getifaddr en0)" --token
@@ -444,7 +457,8 @@ num some do outro.
 - A tela inicial mostra só as tarefas: Para fazer, Geradas automaticamente pelo Noah
   (marcadas) e Respostas. Tocar numa tarefa abre o detalhe com o porquê e as ações.
 - O painel "Ao vivo" mostra a sincronização e o feed do que mudou.
-- Cada pendência nova vira um aviso com Responder, Aceitar e Dispensar.
+- Cada pendência nova vira um aviso com Responder e Dispensar, e Aceitar quando a pergunta
+  é simples (sim ou não).
 - A aba Fluxo anima o caminho da informação: as ligações com a central têm partículas
   ao vivo. As consultas ao Cérebro e as tarefas delegadas ao Qwen também, com a contagem
   dos últimos 10 minutos lida em `GET /central/api/cerebro`. A central conta só chamadas
@@ -462,6 +476,10 @@ num some do outro.
 - No Mac, o painel da barra de menus lista as pendências e abre o app do agente.
 - No Mac, uma ilha no notch mostra o mesmo estado. Ela abre com o mouse, fecha pouco depois
   que ele sai e, com o Alcove aberto, encosta ao lado dele.
+- Na ilha aberta, cada item tem a etiqueta "Pergunta" ou "Resposta pronta". Clicar na
+  linha mostra, de forma opcional, a mensagem inteira e um campo "Sua resposta" (Return
+  envia, com Touch ID), além de "Abrir no Noah" e "Dispensar". Enquanto você escreve, a
+  ilha não fecha quando o mouse sai; fecha quando o campo perde o foco.
 - O ícone é um botzinho preto e branco, gerado por `src/scripts/generate_app_icon.py`.
 
 Como gerar, instalar no iPhone e ligá-lo pela rede de casa está em

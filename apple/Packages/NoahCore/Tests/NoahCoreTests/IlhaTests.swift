@@ -5,8 +5,9 @@ import XCTest
 final class IlhaTests: XCTestCase {
     let agora: Double = 1_000_000
 
-    func p(_ id: String, fonte: String = "claude", respondendo: Bool = false) -> Pendencia {
-        Pendencia(fonte: fonte, ident: id, titulo: "tarefa \(id)", versao: "1", respondendo: respondendo)
+    func p(_ id: String, fonte: String = "claude", respondendo: Bool = false, pergunta: Bool = true) -> Pendencia {
+        Pendencia(fonte: fonte, ident: id, titulo: "tarefa \(id)", versao: "1", pergunta: pergunta,
+                  respondendo: respondendo)
     }
 
     func job(_ id: String, _ estado: String, fim: Double? = nil) -> Job {
@@ -36,6 +37,29 @@ final class IlhaTests: XCTestCase {
         XCTAssertEqual(r.rodando, 1)
         XCTAssertEqual(r.esperando, 0)
         XCTAssertEqual(r.agente, Fonte.nome("claude"))
+    }
+
+    func testRespostaProntaNaoContaComoEsperando() {
+        let r = Ilha.resumo(itens: [p("a", pergunta: false)], jobs: [], agora: agora)
+        XCTAssertEqual(r.estado, .pronto)
+        XCTAssertEqual(r.esperando, 0)
+        XCTAssertEqual(r.prontas, 1)
+        XCTAssertEqual(r.linha, "tarefa a")
+        XCTAssertEqual(r.chave, "claude:a")
+    }
+
+    func testPerguntaVenceRespostaPronta() {
+        let r = Ilha.resumo(itens: [p("a", pergunta: false), p("b")], jobs: [], agora: agora)
+        XCTAssertEqual(r.estado, .esperando)
+        XCTAssertEqual(r.esperando, 1)
+        XCTAssertEqual(r.prontas, 1)
+        XCTAssertEqual(r.chave, "claude:b")
+    }
+
+    func testRespostaProntaEJobDaMesmaConversaContamUmaVez() {
+        let item = p("x", fonte: "codex", pergunta: false)
+        let r = Ilha.resumo(itens: [item], jobs: [job("x", "concluido", fim: agora - 30)], agora: agora)
+        XCTAssertEqual(r.prontas, 1)
     }
 
     func testJobConcluidoHaPoucoFicaPronto() {

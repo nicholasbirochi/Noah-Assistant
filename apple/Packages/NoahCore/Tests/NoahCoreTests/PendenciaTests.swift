@@ -36,4 +36,24 @@ final class PendenciaTests: XCTestCase {
         XCTAssertEqual(conversas.map(\.chave), ["claude:c-1", "codex:x"])
         XCTAssertEqual(automaticas.map(\.chave), ["noah:p-1"])
     }
+
+    func testRespostaProntaNaoPedeNada() {
+        let pronta = Pendencia(fonte: "codex", ident: "r", titulo: "Relatório", mensagem: "Feito.", pergunta: false)
+        XCTAssertEqual(pronta.origem, "Codex terminou. Resposta pronta, sem pergunta para você.")
+        XCTAssertTrue(pronta.podeResponder)
+    }
+
+    func testCentralAntigaSemOCampoContaComoPergunta() throws {
+        let json = #"[{"fonte":"claude","id":"a","titulo":"A"},{"fonte":"claude","id":"b","titulo":"B","pergunta":false}]"#
+        let itens = try JSONDecoder().decode([Pendencia].self, from: Data(json.utf8))
+        XCTAssertEqual(itens.map(\.pergunta), [true, false])
+    }
+
+    func testAceitarSoNaPerguntaSimples() throws {
+        // Central antiga (sem o campo) não mostra Aceitar; a nova diz quando mostrar.
+        let json = #"[{"fonte":"claude","id":"a","titulo":"A"},{"fonte":"claude","id":"b","titulo":"B","simples":true}]"#
+        let itens = try JSONDecoder().decode([Pendencia].self, from: Data(json.utf8))
+        XCTAssertEqual(itens.map(\.simples), [false, true])
+        XCTAssertFalse(Pendencia(fonte: "codex", ident: "c", titulo: "C").simples)
+    }
 }
