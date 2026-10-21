@@ -78,6 +78,21 @@ public struct ClienteCentral: Sendable {
         return r.job
     }
 
+    /// Modelos, pastas do Cérebro e o feed de quem falou com quem.
+    public func atividade() async throws -> PainelCentral {
+        try await pedir("GET", "atividade")
+    }
+
+    /// Um turno com o Noah no modelo local; pode levar minutos, daí o prazo longo.
+    public func conversar(texto: String, sessao: String?) async throws -> RespostaConversa {
+        let limpo = texto.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !limpo.isEmpty else { throw ErroCentral.textoVazio }
+        guard limpo.count <= Self.maxTexto else { throw ErroCentral.textoLongo }
+        var corpo = ["mensagem": limpo]
+        if let sessao { corpo["sessao"] = sessao }
+        return try await pedir("POST", "conversa", corpo, prazo: 200)
+    }
+
     public func dispensar(_ p: Pendencia) async throws {
         let _: [String: String] = try await pedir("POST", "dispensar", ["fonte": p.fonte, "id": p.ident])
     }
@@ -89,10 +104,11 @@ public struct ClienteCentral: Sendable {
         return fonte.isEmpty || ident.isEmpty ? nil : (fonte, ident)
     }
 
-    func requisicao(_ metodo: String, _ rota: String, _ corpo: [String: String]? = nil) throws -> URLRequest {
+    func requisicao(_ metodo: String, _ rota: String, _ corpo: [String: String]? = nil,
+                    prazo: TimeInterval = 15) throws -> URLRequest {
         var r = URLRequest(url: base.appendingPathComponent("central/api/\(rota)"))
         r.httpMethod = metodo
-        r.timeoutInterval = 15
+        r.timeoutInterval = prazo
         r.cachePolicy = .reloadIgnoringLocalCacheData
         r.setValue("application/json", forHTTPHeaderField: "Accept")
         if let token { r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
@@ -103,8 +119,9 @@ public struct ClienteCentral: Sendable {
         return r
     }
 
-    private func pedir<T: Decodable>(_ metodo: String, _ rota: String, _ corpo: [String: String]? = nil) async throws -> T {
-        let r = try requisicao(metodo, rota, corpo)
+    private func pedir<T: Decodable>(_ metodo: String, _ rota: String, _ corpo: [String: String]? = nil,
+                                     prazo: TimeInterval = 15) async throws -> T {
+        let r = try requisicao(metodo, rota, corpo, prazo: prazo)
         let dados: Data, resposta: URLResponse
         do {
             (dados, resposta) = try await sessao.data(for: r)

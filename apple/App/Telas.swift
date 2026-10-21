@@ -7,6 +7,7 @@ import ServiceManagement
 
 struct ContentView: View {
     @Environment(Modelo.self) private var modelo
+    @AppStorage(Ajustes.chaveTema) private var tema = Ajustes.Tema.padrao
 
     var body: some View {
         @Bindable var modelo = modelo
@@ -18,6 +19,9 @@ struct ContentView: View {
             FluxoView()
                 .tabItem { Label("Fluxo", systemImage: "point.3.connected.trianglepath.dotted") }
                 .tag(Aba.fluxo)
+            CentralView()
+                .tabItem { Label("Central", systemImage: "bubble.left.and.text.bubble.right") }
+                .tag(Aba.central)
             PresencaView()
                 .tabItem { Label("Presença", systemImage: "eye") }
                 .tag(Aba.presenca)
@@ -36,9 +40,12 @@ struct ContentView: View {
             }
         }
         .animation(.default, value: modelo.aviso)
+        .preferredColorScheme(tema.esquema)
         .onChange(of: modelo.aba) { _, aba in
             if aba == .presenca { Task { await modelo.atualizarPresenca() } }
-            if aba == .fluxo { Task { await modelo.atualizarCerebro() } }
+            if aba == .fluxo || aba == .central {
+                Task { await modelo.atualizarCerebro(); await modelo.atualizarPainel() }
+            }
         }
     }
 }
@@ -456,6 +463,7 @@ struct AjustesView: View {
     #if os(macOS)
     @State private var aoLadoDoAlcove = Ajustes.ilhaAoLadoDoAlcove
     #endif
+    @AppStorage(Ajustes.chaveTema) private var tema = Ajustes.Tema.padrao
     @State private var resultado: String?
     @State private var testando = false
     #if os(macOS)
@@ -465,6 +473,17 @@ struct AjustesView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("Tema", selection: $tema) {
+                        ForEach(Ajustes.Tema.allCases) { Text($0.nome).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                } header: {
+                    Text("Aparência")
+                } footer: {
+                    Text("Fluxo e Central ficam sempre escuros: o mapa e a conversa foram desenhados assim.")
+                }
+
                 Section {
                     TextField("Endereço", text: $endereco, prompt: Text(Ajustes.enderecoPadrao))
                         .autocorrectionDisabled()

@@ -26,15 +26,16 @@ repositório público (nenhum Team ID ou dado pessoal no git).
 ## Decisão
 
 1. **SwiftUI, um projeto para os dois sistemas** (`apple/project.yml`, gerado com
-   XcodeGen). As abas são Pendências, Presença, Fluxo e Ajustes. A lógica sem tela fica no
+   XcodeGen). As abas são Central, Pendências, Presença, Fluxo e Ajustes. A lógica sem tela fica no
    pacote `NoahCore`, que tem testes (`swift test`): modelos, cliente HTTP da central,
    comparação de avisos, feed de atividade e ligações da aba Fluxo.
-2. **A central é a fonte da verdade.** Os dois apps só leem e escrevem nas rotas que já
-   existem: `GET /central/api/pendencias`, `GET /central/api/presenca`,
-   `POST /central/api/responder` e `POST /central/api/dispensar`. Nenhum dos apps guarda
-   estado próprio das pendências, e a central não precisou mudar. A sincronia é cada app
-   reler a central:
-   - a cada 20 s;
+2. **A central é a fonte da verdade.** Os dois apps leem e escrevem nas rotas `GET /central/api/pendencias`, `GET /central/api/presenca`,
+   `POST /central/api/responder` e `POST /central/api/dispensar`. O painel lê também
+   `GET /central/api/atividade` e conversa por `POST /central/api/conversa`; a conversa
+   fica só em memória no Mac, com um turno por vez. Nenhum dos apps guarda estado
+   próprio das pendências. A sincronia é cada app reler a central:
+   - a cada 2 s com Central ou Fluxo visível;
+   - a cada 20 s nas demais abas;
    - a cada 4 s enquanto há resposta em andamento;
    - logo depois de cada ação.
 3. **Avisos locais com ação.** Não há push (APNs), porque ele exige conta paga. Cada
@@ -45,9 +46,10 @@ repositório público (nenhum Team ID ou dado pessoal no git).
    - **Item que sumiu ou que alguém começou a responder:** o aviso é apagado.
    - **Identificador:** é a chave da pendência, igual nos dois aparelhos.
 
-   O Mac fica na barra de menus para continuar avisando com a janela fechada. O iPhone usa
+   O Mac fica na barra de menus para continuar avisando com a janela fechada, sem ícone no
+   Dock (`LSUIElement`); o ícone da barra é o rosto do Noah como imagem-modelo. O iPhone usa
    `BGAppRefresh`, e o iOS decide quando acordar o app.
-4. **Tela inicial só com tarefas.** São linhas curtas em seções: Para fazer, Geradas
+4. **Pendências só com tarefas.** São linhas curtas em seções: Para fazer, Geradas
    automaticamente (fonte `noah`, marcadas e só leitura) e Respostas. O detalhe abre ao
    tocar e mostra o porquê, a origem, o projeto e as ações.
 5. **Painel "Ao vivo" no mesmo app.** Ele mostra as contagens, a última sincronização e o
@@ -78,7 +80,16 @@ repositório público (nenhum Team ID ou dado pessoal no git).
     e posicionar ficam em `IlhaNotch` (NoahCore, com testes): fecha 0,6 s depois que o
     mouse sai de uma área com 20 pt de margem. O Alcove é fechado e licenciado e não tem
     API; alterar o app dele quebraria a assinatura e a licença. Por isso o Noah lê onde a
-    janela do Alcove está e encosta ao lado dela.
+    janela do Alcove está e encosta ao lado dela. Em tela sem notch a ilha fica à direita
+    do Alcove sem passar de `IlhaNotch.reservaIcones` (400 pt antes da borda), para não
+    tampar os ícones da barra (Thaw, relógio); se não couber, vai para a esquerda.
+11. **Central começa por voz, só no aparelho.** O reconhecimento é o `SFSpeechRecognizer`
+    em português com `requiresOnDeviceRecognition`: o áudio não sai do aparelho e não há
+    API paga. Sem português offline, a escuta fica indisponível em vez de cair para o
+    servidor da Apple, e digitar continua possível. A frase fecha depois de 1,4 s sem
+    mudança (`TurnoDeVoz`), e a resposta é lida pela voz do sistema depois de limpa
+    (`FalaDoNoah`). Ambos ficam em NoahCore, com testes. O microfone fecha enquanto o Noah
+    pensa ou fala, para não ouvir a própria voz.
 
 ## Consequências
 
@@ -92,8 +103,10 @@ repositório público (nenhum Team ID ou dado pessoal no git).
 - O sinal do Cérebro conta só chamadas de ferramenta registradas nos transcripts e as
   consultas do próprio Noah. Uma consulta feita fora disso (o hook de início de sessão,
   um terminal à parte) não aparece.
-- Verificado só no Simulador e no Mac, com uma central falsa. Ainda falta testar num
-  iPhone real, o toque no aviso abrindo o detalhe, o refresh em segundo plano, os widgets
-  colocados nas telas e o painel da barra de menus com Touch ID. O build para aparelho
-  precisa de um Apple ID no Xcode (conta gratuita: perfil de 7 dias).
+- Em 21/10/2026, o esquema `Noah-iOS-Pessoal` foi assinado e instalado num iPhone real.
+  Ele mantém as telas, a biometria e a extensão da Live Activity, sem exigir App Group;
+  o widget de resumo continua no esquema completo. A primeira abertura depende de
+  confiar no perfil no aparelho. Ainda falta validar a conversa real, o toque no aviso,
+  o refresh em segundo plano e o painel do Mac com Touch ID. Instalar o build não
+  comprova esses comportamentos.
 - O iOS não deixa o app fechar nem apagar outros apps, e não há widgets do Mac.

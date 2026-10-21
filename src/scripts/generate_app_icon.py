@@ -10,9 +10,12 @@ It writes every size both apps need, using only AppKit (PyObjC) and
 - `src/assets/AppIcon.icns` for the Python Noah.app (py2app), via an
   .iconset in `src/build/`;
 - the PNGs of `apple/App/Assets.xcassets/AppIcon.appiconset/` for the
-  native iPhone and Mac app (`icone-ios.png` full-bleed and opaque, since
-  iOS masks the corners itself; `mac-*.png` with the macOS margin and
-  shadow already drawn).
+  native iPhone and Mac app.
+
+Every size is a full-bleed opaque square: iOS and macOS 26+ round the
+corners themselves. A Mac icon with its own margin and squircle gets put
+inside a second, lighter squircle by macOS 26+ (the "background behind the
+background" seen in the Dock), so no margin is drawn any more.
 
 Generated once and committed as static assets -- no need to re-render at
 build time. Run it again only when the design changes.
@@ -47,6 +50,9 @@ SRC_DIR = Path(__file__).resolve().parent.parent
 ICONSET_DIR = SRC_DIR / "build" / "Noah.iconset"
 ICNS_OUTPUT = SRC_DIR / "assets" / "AppIcon.icns"
 APPICONSET_DIR = SRC_DIR.parent / "apple" / "App" / "Assets.xcassets" / "AppIcon.appiconset"
+# Ícone do Icon Composer usado pelo app nativo do Mac; o icon.json é fixo e
+# versionado, aqui só se redesenha a camada.
+ICON_COMPOSER_ASSETS = SRC_DIR.parent / "apple" / "IconeMac" / "NoahIcon.icon" / "Assets"
 
 # (filename, pixel size) -- exactly what `iconutil -c icns` expects to find
 # inside an .iconset directory.
@@ -138,7 +144,7 @@ def _draw_bot(x: float, y: float, b: float) -> None:
 
 
 def _draw_background(path: NSBezierPath, x: float, y: float, b: float) -> None:
-    """Black squircle: a touch lighter at the top, with a faint highlight at the top-left."""
+    """Black tile: a touch lighter at the top, with a faint highlight at the top-left."""
     NSGraphicsContext.saveGraphicsState()
     path.addClip()
     _gradient((0x2B2B2B, 1, 0.0), (0x141414, 1, 0.55), (0x050505, 1, 1.0)).drawInRect_angle_(
@@ -151,44 +157,22 @@ def _draw_background(path: NSBezierPath, x: float, y: float, b: float) -> None:
     NSGraphicsContext.restoreGraphicsState()
 
 
-def draw_icon(size: int, output_path: Path, *, full_bleed: bool = False) -> None:
-    """full_bleed: opaque square for iOS (the system rounds it); otherwise the
-    macOS layout -- an 824/1024 squircle centred with a drop shadow."""
+def draw_icon(size: int, output_path: Path) -> None:
+    """Opaque full-bleed square; the system applies the rounded mask."""
     # AppKit only draws into bitmaps with alpha (a 3-sample one comes out all
-    # black), so draw RGBA and flatten afterwards when the icon must be opaque.
+    # black), so draw RGBA and flatten afterwards: the icon must be opaque.
     bitmap = _bitmap(size, alpha=True)
 
     NSGraphicsContext.saveGraphicsState()
     try:
         NSGraphicsContext.setCurrentContext_(NSGraphicsContext.graphicsContextWithBitmapImageRep_(bitmap))
-        if full_bleed:
-            x = y = 0.0
-            b = float(size)
-            tile = NSBezierPath.bezierPathWithRect_(NSMakeRect(0, 0, size, size))
-        else:
-            # Apple's macOS grid: 100/1024 margin, corner radius ~22.5% of the tile.
-            # Tiny sizes get a smaller margin so the bot stays legible.
-            margin = size * (100 / 1024 if size >= 64 else 0.06)
-            x = y = margin
-            b = size - 2 * margin
-            tile = _rounded(x, y, b, b, b * 0.225)
-            NSGraphicsContext.saveGraphicsState()
-            shadow = NSShadow.alloc().init()
-            shadow.setShadowColor_(_rgb(0x000000, 0.3))
-            shadow.setShadowOffset_((0, -size * 0.01))
-            shadow.setShadowBlurRadius_(size * 0.02)
-            shadow.set()
-            _rgb(0x141414).setFill()
-            tile.fill()
-            NSGraphicsContext.restoreGraphicsState()
-        _draw_background(tile, x, y, b)
-        _draw_bot(x, y, b)
+        b = float(size)
+        _draw_background(NSBezierPath.bezierPathWithRect_(NSMakeRect(0, 0, size, size)), 0.0, 0.0, b)
+        _draw_bot(0.0, 0.0, b)
     finally:
         NSGraphicsContext.restoreGraphicsState()
 
-    if full_bleed:
-        bitmap = _sem_alfa(bitmap, size)
-    png_data = bitmap.representationUsingType_properties_(NSBitmapImageFileTypePNG, None)
+    png_data = _sem_alfa(bitmap, size).representationUsingType_properties_(NSBitmapImageFileTypePNG, None)
     png_data.writeToFile_atomically_(str(output_path), True)
 
 
@@ -227,10 +211,14 @@ def main() -> None:
     print(f"-> {ICNS_OUTPUT}")
 
     if APPICONSET_DIR.is_dir():
-        draw_icon(1024, APPICONSET_DIR / "icone-ios.png", full_bleed=True)
+        draw_icon(1024, APPICONSET_DIR / "icone-ios.png")
         for filename, size in MAC_SIZES:
             draw_icon(size, APPICONSET_DIR / filename)
         print(f"-> {APPICONSET_DIR}")
+
+    if ICON_COMPOSER_ASSETS.is_dir():
+        draw_icon(1024, ICON_COMPOSER_ASSETS / "noah.png")
+        print(f"-> {ICON_COMPOSER_ASSETS.parent}")
 
 
 if __name__ == "__main__":

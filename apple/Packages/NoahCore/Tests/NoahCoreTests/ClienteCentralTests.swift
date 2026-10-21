@@ -180,6 +180,54 @@ final class ClienteCentralTests: XCTestCase {
         XCTAssertEqual(Stub.pedidos[0].url?.path, "/central/api/dispensar")
     }
 
+    func testLeAtividadeDaCentral() async throws {
+        Stub.resposta = (200, """
+        {"ollama":true,"modelos":[{"id":"qwen2.5-coder:7b","nome":"qwen2.5-coder:7b","provedor":"Ollama local",
+          "local":true,"disponivel":true,"carregado":false,"rotas":["mecanica","codigo"],"usos_24h":2,
+          "ultimo_uso":1792325555.0},{"id":"nemotron","nome":"Nemotron","provedor":"NVIDIA, gratuito","local":false,
+          "disponivel":null,"carregado":false,"rotas":["mecanica"],"usos_24h":0,"ultimo_uso":null}],
+         "rotas":{"mecanica":["qwen2.5-coder:7b","nemotron"]},
+         "cerebro":{"pastas":[{"numero":"02","nome":"Projetos","notas":30,"atualizada_em":1792549991.4}]},
+         "eventos":[{"quando":1792549991.4,"tipo":"nota","de":"agente","para":"cerebro","texto":"02 · Projeto - Noah"}],
+         "falhas":[],"noah":{"respondendo_desde":null,"turnos":[{"quando":1.0,"ferramentas":["agenda"]}],
+          "provedor":"ollama","modelo":"qwen2.5:7b"},"gerado_em":1792550000.0}
+        """)
+        let painel = try await cliente.atividade()
+        XCTAssertEqual(painel.modelos.map(\.id), ["qwen2.5-coder:7b", "nemotron"])
+        XCTAssertEqual(painel.modelos[0].usos24h, 2)
+        XCTAssertNil(painel.modelos[1].disponivel)
+        XCTAssertEqual(painel.cerebro.pastas.first?.notas, 30)
+        XCTAssertEqual(painel.eventos.first?.texto, "02 · Projeto - Noah")
+        XCTAssertEqual(painel.noah?.turnos.first?.ferramentas, ["agenda"])
+        XCTAssertEqual(painel.geradoEm, 1792550000.0)
+        XCTAssertEqual(Stub.pedidos[0].url?.path, "/central/api/atividade")
+    }
+
+    func testConversarMandaMensagemESessao() async throws {
+        Stub.resposta = (200, #"{"sessao":"abc","resposta":"Oi!","ferramentas":["agenda"],"provedor":"ollama","modelo":"qwen2.5:7b"}"#)
+        let r = try await cliente.conversar(texto: "  oi  ", sessao: "abc")
+        XCTAssertEqual(r.resposta, "Oi!")
+        XCTAssertEqual(r.ferramentas, ["agenda"])
+        let corpo = try JSONDecoder().decode([String: String].self, from: Stub.corpos[0])
+        XCTAssertEqual(corpo, ["mensagem": "oi", "sessao": "abc"])
+        XCTAssertEqual(Stub.pedidos[0].url?.path, "/central/api/conversa")
+        XCTAssertGreaterThanOrEqual(Stub.pedidos[0].timeoutInterval, 120)
+
+        _ = try await cliente.conversar(texto: "de novo", sessao: nil)
+        let semSessao = try JSONDecoder().decode([String: String].self, from: Stub.corpos[1])
+        XCTAssertEqual(semSessao, ["mensagem": "de novo"])
+    }
+
+    func testConversarOcupadoViraMensagem() async {
+        Stub.resposta = (409, #"{"erro":"o Noah ainda está respondendo"}"#)
+        do {
+            _ = try await cliente.conversar(texto: "oi", sessao: nil)
+            XCTFail("deveria falhar")
+        } catch {
+            XCTAssertEqual(error as? ErroCentral, .servidor(status: 409, mensagem: "o Noah ainda está respondendo"))
+        }
+    }
+
     func testPartesDaChave() {
         XCTAssertEqual(ClienteCentral.partes(daChave: "codex:abc:1")?.fonte, "codex")
         XCTAssertEqual(ClienteCentral.partes(daChave: "codex:abc:1")?.ident, "abc:1")

@@ -109,6 +109,16 @@ final class IlhaNotchTests: XCTestCase {
         XCTAssertEqual(p, IlhaNotch.Posicao(x: 1600, alinhamento: .esquerda))
     }
 
+    func testSemNotchFicaADireitaSemChegarNosIcones() {
+        let limite = 2560 - IlhaNotch.reservaIcones
+        let p = IlhaNotch.posicao(tela: 0...2560, largura: 480, alcove: 968...1592, limiteDireita: limite)
+        XCTAssertEqual(p, IlhaNotch.Posicao(x: 1600, alinhamento: .esquerda))
+        XCTAssertLessThanOrEqual(p.x + 480, limite)
+        // Com os ícones mais perto do meio, a direita não cabe: vai para a esquerda.
+        let q = IlhaNotch.posicao(tela: 0...2560, largura: 480, alcove: 968...1592, limiteDireita: 1900)
+        XCTAssertEqual(q, IlhaNotch.Posicao(x: 480, alinhamento: .direita))
+    }
+
     func testAlcoveSemEspacoADireitaVaiParaAEsquerda() {
         let p = IlhaNotch.posicao(tela: 0...1512, largura: 480, alcove: 900...1300)
         XCTAssertEqual(p, IlhaNotch.Posicao(x: 412, alinhamento: .direita))

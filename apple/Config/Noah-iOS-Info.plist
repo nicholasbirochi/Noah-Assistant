@@ -40,6 +40,10 @@
 	</dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>O Noah pede o Face ID antes de aceitar, responder ou dispensar uma pendência.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>O Noah ouve o microfone na aba Central para você conversar por voz. Dá para deixar mudo.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>O Noah transforma sua fala em texto no próprio aparelho, sem mandar o áudio para fora.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>

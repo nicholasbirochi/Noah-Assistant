@@ -35,12 +35,16 @@ public enum Sincronia {
     /// Intervalos do PWA: 20 s parado, 4 s enquanto alguma resposta roda.
     public static let intervalo: TimeInterval = 20
     public static let intervaloRespondendo: TimeInterval = 4
-    /// Com a aba Fluxo aberta o mapa precisa do sinal do Cérebro mais fresco.
+    /// Com o Fluxo aberto, atualiza o sinal das partes do Cérebro a cada 10 s.
     public static let intervaloFluxo: TimeInterval = 10
+    /// Fluxo e Central leem o painel mais rápido para refletir conversas ao vivo.
+    public static let intervaloAoVivo: TimeInterval = 2
     /// Respostas terminadas ficam visíveis por 10 min.
     public static let jobVisivel: TimeInterval = 600
 
-    public static func proximoIntervalo(_ jobs: [Job], vendoFluxo: Bool = false) -> TimeInterval {
+    public static func proximoIntervalo(_ jobs: [Job], vendoFluxo: Bool = false,
+                                        aoVivo: Bool = false) -> TimeInterval {
+        if aoVivo { return intervaloAoVivo }
         if jobs.contains(where: \.rodando) { return intervaloRespondendo }
         return vendoFluxo ? intervaloFluxo : intervalo
     }
@@ -63,6 +67,10 @@ public enum Sincronia {
     /// Mesma escala do PWA: "agora", "há 5 min", "há 3 h", "ontem", "há 4 dias".
     public static func haQuanto(_ iso: String, agora: Date = Date()) -> String {
         guard !iso.isEmpty, let data = lerData(iso) else { return "" }
+        return haQuanto(data, agora: agora)
+    }
+
+    public static func haQuanto(_ data: Date, agora: Date = Date()) -> String {
         let s = max(0, agora.timeIntervalSince(data))
         if s < 60 { return "agora" }
         if s < 3600 { return "há \(Int(s / 60)) min" }

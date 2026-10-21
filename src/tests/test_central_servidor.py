@@ -9,6 +9,7 @@ import pytest
 
 from central import servidor as central_servidor
 from central.fontes import Dispensadas, Pendencia
+from central.conversa import Conversas
 from central.resposta import Respostas
 from central.servidor import ServidorCentral
 
@@ -22,7 +23,7 @@ ITENS = [
 def servidor_factory(tmp_path):
     criados = []
 
-    def criar(*, token=None, presenca=None, sinal=None):
+    def criar(*, token=None, presenca=None, sinal=None, turno=None):
         respondidas = []
 
         def executor(p, texto):
@@ -37,6 +38,11 @@ def servidor_factory(tmp_path):
             presenca=presenca or (lambda: {"ligada": False, "variavel": "NOAH_PRESENCE_ENABLED",
                                            "itens": [], "falhas": []}),
             sinal=sinal or (lambda: {"janela_s": 600, "cerebro": {}, "auxiliares": {}, "falhas": []}),
+            atividade=lambda: {"ollama": True, "modelos": [], "rotas": {}, "cerebro": {"pastas": []},
+                               "eventos": [{"quando": 1.0, "tipo": "auxiliar", "de": "agente",
+                                            "para": "qwen2.5-coder:7b", "texto": "tarefa mecanica"}],
+                               "falhas": []},
+            conversas=Conversas(turno or (lambda h: "oi"), info=lambda: {"provedor": "ollama", "modelo": "m"}),
         )
         srv.respondidas = respondidas
         threading.Thread(target=srv.serve_forever, daemon=True).start()
@@ -242,3 +248,33 @@ def test_sinal_do_cerebro_exige_token_e_traz_gerado_em(servidor_factory):
     assert dados["cerebro"]["claude"]["consultas"] == 2
     assert dados["auxiliares"]["codex"]["delegacoes"] == 1
     assert isinstance(dados["gerado_em"], float)
+
+
+def test_atividade_junta_turnos_do_noah(servidor_factory):
+    def turno(historico):
+        historico.append({"role": "tool", "content": "nota", "tool_name": "consult_cerebro"})
+        return "achei no cofre"
+
+    srv = servidor_factory(turno=turno)
+    status, _, dados = _req(srv, "POST", "/central/api/conversa", {"mensagem": "o que diz o cérebro?"})
+    assert status == 200
+    assert dados["resposta"] == "achei no cofre" and dados["ferramentas"] == ["consult_cerebro"]
+    assert dados["modelo"] == "m" and dados["sessao"]
+
+    status, _, dados = _req(srv, "GET", "/central/api/atividade")
+    assert status == 200
+    assert [e["tipo"] for e in dados["eventos"]] == ["noah", "auxiliar"]
+    assert dados["eventos"][0]["para"] == "cerebro"
+    assert dados["noah"]["respondendo_desde"] is None and len(dados["noah"]["turnos"]) == 1
+
+
+def test_conversa_valida_e_exige_token(servidor_factory):
+    srv = servidor_factory(token="segredo")
+    assert _req(srv, "POST", "/central/api/conversa", {"mensagem": "oi"})[0] == 401
+    assert _req(srv, "GET", "/central/api/atividade")[0] == 401
+    auth = {"Authorization": "Bearer segredo"}
+    assert _req(srv, "POST", "/central/api/conversa", {"mensagem": "  "}, headers=auth)[0] == 400
+    assert _req(srv, "POST", "/central/api/conversa", {"mensagem": "x" * 4001}, headers=auth)[0] == 413
+    assert _req(srv, "POST", "/central/api/conversa", {"mensagem": "oi", "sessao": 3}, headers=auth)[0] == 400
+    status, _, dados = _req(srv, "POST", "/central/api/conversa", {"mensagem": "oi"}, headers=auth)
+    assert status == 200 and dados["resposta"] == "oi"

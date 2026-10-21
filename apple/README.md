@@ -1,6 +1,6 @@
 # App Noah nativo (iPhone e Mac)
 
-App SwiftUI para iPhone e Mac. As abas são **Pendências**, **Presença**, **Fluxo** e
+App SwiftUI para iPhone e Mac. As abas são **Pendências**, **Fluxo**, **Central**, **Presença** e
 **Ajustes**. Os dois aparelhos leem a mesma central (`python src/cli.py central`, porta 8769), e é ela que os
 sincroniza: o que você responde, aceita ou dispensa num aparelho some do outro na
 próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nativo.md).
@@ -33,7 +33,7 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
     (`GET /central/api/cerebro`), contado nos últimos 10 minutos. Com atividade, a linha
     ganha partículas e a contagem ("2 consultas · 1 registro", "1 tarefa delegada"). Sem
     nada na janela, ela fica parada ("nada nos últimos 10 min").
-  - **Cérebro em pedaços:** o Cérebro aparece dividido nas 8 pastas do cofre (00 Regras a
+  - **Cérebro em pedaços:** no Fluxo, o Cérebro aparece dividido nas 8 pastas do cofre (00 Regras a
     07 Templates). Acendem as pastas que algum agente tocou na janela, com um ponto na cor
     de cada um. Os bonequinhos do Claude Code, do Codex e do Noah andam até as pastas que
     consultaram. A contagem por pasta vem do mesmo sinal (`partes`). Com uma central
@@ -43,8 +43,27 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - **Sem sinal ao vivo:** se a central é antiga (sem a rota) ou não conseguiu ler uma
     fonte, a ligação fica tracejada. O mapa mostra que o caminho existe sem inventar
     atividade.
-  - Na aba Fluxo, o app relê a central a cada 10 s (4 s com resposta em andamento).
+  - Nas abas Fluxo e Central, o app relê a central, o painel e o sinal do Cérebro a cada 2 s; fora delas, a cada 20 s, ou 4 s enquanto alguém responde.
   - A animação pausa fora da aba e respeita "Reduzir movimento".
+- **Central por voz.** A conversa com o Noah começa por voz: o rosto dele fica grande no
+  meio, cresce com o volume da sua fala e mostra a legenda do que ele está entendendo.
+  Uma pausa de 1,4 s envia a frase. Ele responde no chat e lê a resposta em voz alta.
+  - **Botões embaixo:** o microfone deixa mudo ou liga de novo; a setinha "digitar" sobe o
+    chat com o campo de texto (⌘Return envia no Mac), e a setinha para baixo volta para a
+    voz; o alto-falante liga ou desliga a leitura das respostas. Mudo e leitura ficam
+    guardados entre aberturas.
+  - **Mesmo histórico:** voz e digitação mandam para a mesma conversa. O app mantém o mesmo identificador de sessão ao trocar de aba.
+  - **Não se ouve a si mesmo:** o microfone fecha enquanto você digita, enquanto o Noah
+    pensa e enquanto ele fala.
+  - **Só no aparelho:** o reconhecimento usa o português offline do sistema
+    (`requiresOnDeviceRecognition`), e o áudio não sai do aparelho. Se o aparelho não tiver
+    português offline, a tela avisa em laranja e a setinha continua servindo para digitar.
+  - **Leitura curta:** blocos de código, links e marcações de Markdown não são lidos, e a
+    resposta longa para na última frase que cabe, com "O resto está no chat."
+    (`FalaDoNoah`, em NoahCore).
+  - **Permissões:** na primeira vez o sistema pede microfone e reconhecimento de fala. O
+    texto do pedido é da Apple e não dá para trocar; o motivo aparece embaixo dele. Se
+    você negar, a tela diz onde liberar.
 - **Avisos com ação.** Cada pendência nova vira um aviso com Responder, Aceitar e
   Dispensar. Pergunta aberta não tem Aceitar; as só leitura têm apenas Dispensar.
   - Tocar no aviso abre o detalhe daquela pendência.
@@ -72,7 +91,10 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - Desligue em **Ajustes > Aprovação**. Sem senha no aparelho não há o que pedir, e a
     ação segue.
 - **Mac.** O app fica na barra de menus mesmo com a janela fechada, para continuar
-  avisando. O painel da barra mostra o rosto do Noah no estado atual e até 8 pendências.
+  avisando, e não aparece no Dock (`LSUIElement`). O ícone da barra é o rosto do Noah
+  em preto e branco, que muda com o estado e mostra quantas pendências esperam você. Se
+  um gerenciador de barra (Thaw, Ice, Bartender) esconder ícones novos, mova o do Noah
+  para a parte visível nele. O painel da barra mostra o rosto do Noah no estado atual e até 8 pendências.
   Cada uma tem um botão que abre o app do agente (Claude, ou o ChatGPT, onde fica o Codex)
   e "Aceitar" (só em pergunta simples), que pede Touch ID. Há também "Abrir Noah" e "Sair".
 - **Ilha no notch (Mac).** Uma pílula preta no notch, ou no meio da barra de menus se a
@@ -84,6 +106,8 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - Quando chega pendência nova, abre sozinha por 4 s.
   - **Alcove.** O Alcove desenha por cima de qualquer janela no meio do topo. Com ele
     aberto, a ilha do Noah encosta à direita da área dele (ou à esquerda, se não couber).
+    Em tela sem notch (monitor externo) ela fica à direita do Alcove, mas reserva os
+    últimos 400 pt da barra para os ícones (Thaw, relógio); se não couber, vai para a esquerda.
     Desligue em **Ajustes > Encostar ao lado do Alcove**. O Alcove é fechado e licenciado,
     sem API de integração: mexer no app dele quebraria a assinatura e a licença, por isso o
     Noah só detecta onde ele está.
@@ -113,6 +137,19 @@ cd apple && xcodegen
 ```
 
 O app do Mac é assinado localmente (`-`) e não precisa de conta.
+
+### Instalar com conta pessoal sem App Groups
+
+Se o perfil de assinatura não permitir App Groups, use o esquema **Noah-iOS-Pessoal**. Ele
+mantém as telas, Face ID e a extensão WidgetKit necessária à Ilha dinâmica (Live Activity),
+mas não inclui o widget de resumo da tela inicial/bloqueada. O esquema completo **Noah-iOS** continua incluindo widgets e exige o App
+Group configurado na conta.
+
+Para instalar a variante pessoal pelo terminal com uma equipe selecionada no Xcode:
+
+```bash
+xcodebuild -project Noah.xcodeproj -scheme Noah-iOS-Pessoal -destination 'platform=iOS,id=SEU-UDID' -allowProvisioningUpdates build
+```
 
 ### Instalar no iPhone
 
@@ -196,10 +233,18 @@ conversas reais):**
 - a ilha no notch do Mac: abre com o mouse, continua aberta com o mouse na borda e fecha
   depois que ele sai; com o Alcove aberto, encosta ao lado dele;
 - o ícone novo no Mac e na tela de início do Simulador.
+- a Central por voz no Simulador: o rosto grande com os três botões, o aviso laranja
+  quando falta português offline, e a setinha subindo o chat, com uma mensagem digitada
+  chegando à central falsa e a resposta aparecendo;
+- as regras de fechar a frase e de limpar a resposta antes de ler (`VozTests`).
+
+**Atualização de 21/10/2026:** 82 testes Swift e 129 testes Python da Central, presença e
+visualizador passaram. O esquema pessoal foi assinado e instalado num iPhone real. A
+primeira abertura exige confiar no perfil nas configurações do próprio aparelho; a
+instalação não comprova a conversa por voz nem a comunicação pela rede.
 
 **Ainda não verificado:**
-- um iPhone de verdade: o build para aparelho para em "No Account for Team" até haver
-  um Apple ID no Xcode;
+- a primeira abertura e a conversa num iPhone real após confiar na assinatura;
 - o toque no aviso abrindo o detalhe;
 - o pedido de permissão de avisos no Mac;
 - o refresh em segundo plano do iOS;
@@ -210,6 +255,8 @@ conversas reais):**
   adicioná-los pede edição manual da tela);
 - o painel da barra de menus aberto na tela, o Touch ID no Mac e o botão que abre o app
   do agente.
+- a voz de verdade: falar e ver a frase sair sozinha, e a resposta lida em voz alta. O
+  Simulador não tem português offline, então isso pede o Mac ou um iPhone.
 
 **Limite do sinal do Cérebro:** ele conta só chamadas de ferramenta que executam
 `cerebro.py buscar|contexto|gravar` e `auxiliares.py`. O hook de início de sessão roda fora

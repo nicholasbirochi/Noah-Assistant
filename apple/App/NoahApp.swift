@@ -45,7 +45,7 @@ struct NoahApp: App {
             PainelDaBarra().environment(modelo)
         } label: {
             let r = modelo.resumo
-            Image(systemName: r.estado.simbolo)
+            Image(nsImage: IconeDaBarra.imagem(r.estado))
             if r.esperando > 0 { Text("\(r.esperando)") }
         }
         .menuBarExtraStyle(.window)
@@ -80,6 +80,62 @@ final class Delegado: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated { IlhaMac.shared.aplicar() }
+    }
+}
+
+/// O rosto do Noah em preto e transparente (imagem-modelo), como os outros
+/// ícones da barra de menus: o sistema pinta claro ou escuro conforme o fundo.
+/// Esperando você ganha um ponto no canto; tudo pronto fecha os olhos em ^^.
+enum IconeDaBarra {
+    @MainActor private static var cache: [EstadoIlha: NSImage] = [:]
+
+    @MainActor
+    static func imagem(_ estado: EstadoIlha) -> NSImage {
+        if let pronta = cache[estado] { return pronta }
+        let img = NSImage(size: NSSize(width: 18, height: 16), flipped: true) { _ in
+            desenhar(estado)
+            return true
+        }
+        img.isTemplate = true
+        img.accessibilityDescription = "Noah: \(estado.titulo)"
+        cache[estado] = img
+        return img
+    }
+
+    private static func desenhar(_ estado: EstadoIlha) {
+        guard let ctx = NSGraphicsContext.current?.cgContext else { return }
+        let corpo = CGRect(x: 1, y: 2.5, width: 15, height: 12.5)
+        NSColor.black.setFill()
+        NSBezierPath(roundedRect: corpo, xRadius: 4.6, yRadius: 4.6).fill()
+
+        // Olhos vazados no corpo.
+        ctx.setBlendMode(.clear)
+        let xs: [CGFloat] = [5.6, 10.2]
+        if estado == .pronto {
+            ctx.setLineWidth(1.6)
+            ctx.setLineCap(.round)
+            for x in xs {
+                ctx.move(to: CGPoint(x: x - 1.3, y: 9.6))
+                ctx.addQuadCurve(to: CGPoint(x: x + 1.3, y: 9.6), control: CGPoint(x: x, y: 6.4))
+            }
+            ctx.strokePath()
+        } else {
+            let altura: CGFloat = estado == .esperando ? 4.6 : 4
+            for x in xs {
+                ctx.addPath(CGPath(roundedRect: CGRect(x: x - 0.9, y: 8.4 - altura / 2, width: 1.8, height: altura),
+                                   cornerWidth: 0.9, cornerHeight: 0.9, transform: nil))
+            }
+            ctx.fillPath()
+        }
+
+        if estado == .esperando {
+            // Recorte em volta do ponto, para ele se destacar do corpo.
+            ctx.fillEllipse(in: CGRect(x: 11.2, y: -0.4, width: 7.2, height: 7.2))
+            ctx.setBlendMode(.normal)
+            ctx.setFillColor(NSColor.black.cgColor)
+            ctx.fillEllipse(in: CGRect(x: 12.6, y: 1, width: 4.6, height: 4.6))
+        }
+        ctx.setBlendMode(.normal)
     }
 }
 
@@ -151,7 +207,10 @@ struct PainelDaBarra: View {
 
     private func abrir() {
         abrirJanela(id: "principal")
-        NSApp.activate()
+        // Sem Dock (LSUIElement) a janela só vem para a frente se o app pedir.
+        NSApp.activate(ignoringOtherApps: true)
+        NSApp.windows.first { $0.identifier?.rawValue.hasPrefix("principal") == true }?
+            .makeKeyAndOrderFront(nil)
     }
 
     /// Só abre o app do agente; fechar ou apagar outro app não cabe aqui.

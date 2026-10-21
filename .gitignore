@@ -26,3 +26,7 @@ src/data/coding_agent_benchmarks/
 Completed courses/
 # scripts/generate_app_icon.py's intermediate .iconset -- the committed output is src/assets/AppIcon.icns
 build/
+
+# Editor settings and archives
+.vscode/
+*.zip

@@ -39,24 +39,34 @@ public enum IlhaNotch {
         return forma.insetBy(dx: -8, dy: -4)
     }
 
+    /// Espaço que fica livre à direita, em tela sem notch, para os ícones da barra
+    /// de menus (relógio, Central de Controle, Wi-Fi e o que o Thaw deixa à mostra).
+    /// Os ícones não aparecem na lista de janelas e lê-los pediria Acessibilidade,
+    /// então a reserva é fixa: no monitor de 2560 pt eles começam por volta de 360 pt
+    /// antes da borda.
+    public static let reservaIcones: CGFloat = 400
+
     /// Onde fica a ilha na horizontal. Sem Alcove, centralizada na tela. Com o
     /// Alcove ocupando o meio do topo (ele desenha por cima de qualquer janela), a
-    /// ilha encosta à direita da área dele e cresce para a direita; se não couber,
-    /// à esquerda, crescendo para a esquerda.
+    /// ilha encosta à direita da área dele e cresce para a direita, sem passar de
+    /// `limiteDireita` (onde começam os ícones da barra); se não couber, à esquerda,
+    /// crescendo para a esquerda.
     /// - Parameters:
     ///   - tela: faixa horizontal da tela (minX...maxX).
     ///   - largura: largura do painel da ilha.
     ///   - alcove: faixa horizontal ocupada pelo Alcove, se ele estiver aberto nesta tela.
+    ///   - limiteDireita: até onde a ilha pode ir à direita; sem ele, a borda da tela.
     public static func posicao(tela: ClosedRange<CGFloat>, largura: CGFloat,
-                               alcove: ClosedRange<CGFloat>?) -> Posicao {
-        guard let a = alcove else {
-            return Posicao(x: (tela.lowerBound + tela.upperBound - largura) / 2, alinhamento: .centro)
-        }
+                               alcove: ClosedRange<CGFloat>?, limiteDireita: CGFloat? = nil) -> Posicao {
+        let centro = Posicao(x: (tela.lowerBound + tela.upperBound - largura) / 2, alinhamento: .centro)
+        guard let a = alcove else { return centro }
         let direita = a.upperBound + vaoAlcove
-        if direita + largura <= tela.upperBound { return Posicao(x: direita, alinhamento: .esquerda) }
+        if direita + largura <= min(limiteDireita ?? tela.upperBound, tela.upperBound) {
+            return Posicao(x: direita, alinhamento: .esquerda)
+        }
         let esquerda = a.lowerBound - vaoAlcove - largura
         if esquerda >= tela.lowerBound { return Posicao(x: esquerda, alinhamento: .direita) }
-        return Posicao(x: (tela.lowerBound + tela.upperBound - largura) / 2, alinhamento: .centro)
+        return centro
     }
 
     public enum Alinhamento: Equatable, Sendable { case centro, esquerda, direita }

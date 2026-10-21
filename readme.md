@@ -4,8 +4,7 @@
 
 *Prévia da interface real do HUD, renderizada com estado “Falando” e uma frase de demonstração.*
 
-Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md) e
-[o mapa do projeto](.ai/PROJECT_MAP.md).
+Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md).
 
 Noah e o unico nome do produto. A ativacao padrao usa duas palmas.
 Ativacao falada exige um detector Noah local, treinado e validado.
@@ -450,12 +449,18 @@ Limites conhecidos:
 
 ### App nativo (iPhone e Mac)
 
-Em `apple/` há um app SwiftUI com as mesmas abas, mais a aba Fluxo, que lê a mesma
-central. A central sincroniza os dois aparelhos: o que você aceita, responde ou dispensa
+Em `apple/` há um app SwiftUI com Central, Pendências, Presença, Fluxo e Ajustes,
+que lê a mesma central. A central sincroniza os dois aparelhos: o que você aceita, responde ou dispensa
 num some do outro.
 
-- A tela inicial mostra só as tarefas: Para fazer, Geradas automaticamente pelo Noah
-  (marcadas) e Respostas. Tocar numa tarefa abre o detalhe com o porquê e as ações.
+- A Central reúne a conversa com o Noah, os modelos locais e a atividade do Cérebro.
+  Voz e digitação usam a mesma conversa, mantida em memória no Mac. O reconhecimento
+  de voz exige português disponível no aparelho; sem ele, a digitação continua disponível.
+  O microfone fecha enquanto o Noah pensa ou fala.
+- Pendências mostra Para fazer, Geradas automaticamente pelo Noah (marcadas) e Respostas.
+  Tocar numa tarefa abre o detalhe com o porquê e as ações.
+- Central e Fluxo atualizam a cada 2 s enquanto visíveis. As outras abas atualizam a
+  cada 20 s, ou 4 s enquanto há resposta em andamento.
 - O painel "Ao vivo" mostra a sincronização e o feed do que mudou.
 - Cada pendência nova vira um aviso com Responder e Dispensar, e Aceitar quando a pergunta
   é simples (sim ou não).
