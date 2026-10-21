@@ -225,6 +225,21 @@ AUTHORIZED_INDEX_ROOTS = [
     Path(f"{_ONEDRIVE_ROOT}/Estudos/Completed courses"),
     Path(f"{_ONEDRIVE_ROOT}/Estudos/Projetos"),
 ]
+# Planilha de patrimônio que o próprio usuário mantém (finance.py, ferramenta
+# evaluate_investments). Só leitura; fica fora de AUTHORIZED_INDEX_ROOTS de
+# propósito, para os números nunca irem para o índice de documentos.
+PATRIMONIO_PATH = Path(
+    os.environ.get("NOAH_PATRIMONIO_PATH", f"{_ONEDRIVE_ROOT}/Extras/Finanças/Patrimônio.xlsx")
+)
+# Origem dos saldos por banco em evaluate_investments: "planilha" (padrão,
+# nunca usa a rede) ou "pluggy" (finance_pluggy.py, só leitura pelo Meu
+# Pluggy, com a planilha como reserva). Credenciais e o mapa banco -> Item
+# ficam no Keychain do macOS (serviço abaixo) ou em NOAH_PLUGGY_* -- nunca
+# no repositório.
+FINANCE_SOURCE = os.environ.get("NOAH_FINANCE_SOURCE", "planilha").strip().lower()
+PLUGGY_API_URL = "https://api.pluggy.ai"
+PLUGGY_KEYCHAIN_SERVICE = os.environ.get("NOAH_PLUGGY_KEYCHAIN_SERVICE", "noah-pluggy")
+PLUGGY_TIMEOUT_SECONDS = 15
 EXCLUDED_INDEX_PATHS = [
     PROJECT_ROOT,
 ]

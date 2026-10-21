@@ -446,6 +446,43 @@ inclua uma mudança de e-mail faz `apply_changes` recusar o pacote inteiro
 certificações também ficam de fora -- vivem num sub-formulário separado da Gupy
 ("Meu currículo") ainda não inspecionado.
 
+## Patrimônio e saldos dos bancos
+
+A ferramenta `evaluate_investments` lê a planilha de patrimônio que você mesmo mantém
+(`NOAH_PATRIMONIO_PATH`; só leitura, nunca grava e nunca entra no índice de documentos).
+
+Opcionalmente, os **saldos por banco** podem vir ao vivo do [Meu Pluggy](https://github.com/pluggyai/meu-pluggy)
+(Open Finance, grátis para pessoa física) em vez da planilha. Está **desligado por padrão**:
+
+```bash
+# no seu .env
+NOAH_FINANCE_SOURCE=pluggy        # padrão: planilha (nunca usa a rede)
+```
+
+Como funciona (`src/finance_pluggy.py`, só biblioteca padrão):
+
+- **Só leitura.** O módulo aceita apenas `POST /auth`, `GET /accounts` e `GET /investments`;
+  qualquer outra chamada (pagamento, Pix, transferência, edição de Item) é recusada antes de
+  sair da máquina.
+- **A senha do banco nunca passa pelo Noah.** Você cria a conta no Meu Pluggy e no painel da
+  Pluggy, e dá o consentimento dentro do próprio banco. O Noah só precisa de três valores,
+  guardados no Keychain do macOS:
+
+  ```bash
+  security add-generic-password -s noah-pluggy -a client_id -w
+  security add-generic-password -s noah-pluggy -a client_secret -w
+  security add-generic-password -s noah-pluggy -a itens -w   # "Inter BR=<itemId>,Itaú=<itemId>"
+  ```
+
+  (`-w` sem valor faz o `security` pedir o segredo sem deixá-lo no histórico do shell.)
+  Sem Keychain, valem `NOAH_PLUGGY_CLIENT_ID`, `NOAH_PLUGGY_CLIENT_SECRET` e
+  `NOAH_PLUGGY_ITEMS` no `.env`, que fica fora do git. Nada disso vai para o repositório.
+- **Leitura na hora, sem cache.** Cada pergunta faz uma leitura nova; nada é gravado em disco.
+- **A planilha é a reserva.** Bancos fora do mapa (como o Inter US, conta em dólar) e bancos
+  cuja leitura falhar mantêm os números da planilha, e a resposta diz quais vieram de onde.
+  Um Item que volta vazio (consentimento expirado) é tratado como "sem dados", nunca como
+  saldo zero. Entradas e despesas continuam vindo só da planilha.
+
 ## Testes
 
 `pytest` já vem no `requirements.txt` base (seção "Dev").
