@@ -12,6 +12,10 @@ import SwiftUI
 /// posição do mouse é lida a cada 0,1 s, o que não pede permissão de
 /// Acessibilidade.
 ///
+/// Aberta, cada item abre o detalhe por baixo (a última mensagem do agente) e um
+/// campo para escrever a resposta. Enquanto você escreve, a ilha não fecha quando
+/// o mouse sai; fecha quando o campo perde o foco (clique em outro app).
+///
 /// O Alcove (outro app de ilha) desenha por cima de qualquer janela no meio do
 /// topo. Com ele aberto, a ilha do Noah encosta ao lado da área dele, em vez de
 /// ficar escondida embaixo (ajuste "Encostar ao lado do Alcove").
@@ -28,9 +32,13 @@ final class IlhaMac {
     private(set) var alinhamento = IlhaNotch.Alinhamento.centro
     /// Tamanho real do conteúdo aberto, medido pela vista, para saber onde o mouse sai.
     var tamanhoAberto = CGSize(width: IlhaMac.larguraAberta, height: 160)
+    /// O campo de resposta da ilha tem o foco: segura a ilha aberta.
+    @ObservationIgnored var escrevendo = false
 
     static let larguraAberta: CGFloat = 440
-    static let alturaMaxima: CGFloat = 340
+    static let alturaMaxima: CGFloat = 560
+    /// Altura máxima da lista de itens; passou disso, ela rola.
+    static let alturaLista: CGFloat = 380
     /// Folga dos lados do painel para a sombra do cartão aberto.
     static let margemSombra: CGFloat = 20
     static let alcove = "com.henrikruscon.Alcove"
@@ -145,7 +153,9 @@ final class IlhaMac {
         let alvo = aberta ? tamanhoAberto : fechada
         let dentro = zona(alvo).map { IlhaNotch.zonaDeHover($0, aberta: aberta) }?
             .contains(NSEvent.mouseLocation) ?? false
-        executar(seguidor.passo(dentro: dentro, agora: Date()))
+        // Clicar em outro app tira a tecla do painel, e a ilha volta a fechar ao sair.
+        let segurar = escrevendo && painel.isKeyWindow
+        executar(seguidor.passo(dentro: dentro, agora: Date(), segurar: segurar))
         painel.ignoresMouseEvents = !aberta
     }
 
@@ -168,6 +178,12 @@ final class IlhaMac {
             withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) { aberta = true }
         case .fechar:
             withAnimation(.spring(response: 0.32, dampingFraction: 0.9)) { aberta = false }
+            escrevendo = false
+            // Devolve o teclado: fechada, a pílula não deve receber o que você digita.
+            if let painel, painel.isKeyWindow {
+                painel.orderOut(nil)
+                painel.orderFrontRegardless()
+            }
         case .nada:
             break
         }
@@ -217,6 +233,10 @@ struct IlhaDoNotch: View {
     @Environment(Modelo.self) private var modelo
     @Environment(IlhaMac.self) private var ilha
     @Environment(\.accessibilityReduceMotion) private var semMovimento
+    /// Itens com o detalhe aberto, pela chave.
+    @State private var expandidas: Set<String> = []
+    @State private var alturaLista: CGFloat = 0
+    @FocusState private var foco: String?
 
     var body: some View {
         let r = modelo.resumo
@@ -256,6 +276,7 @@ struct IlhaDoNotch: View {
         .onChange(of: r.esperando) { antes, depois in
             if IlhaNotch.deveEspiar(antes: antes, depois: depois) { ilha.espiar() }
         }
+        .onChange(of: foco) { _, campo in ilha.escrevendo = campo != nil }
         .environment(\.colorScheme, .dark)
     }
 
@@ -301,7 +322,9 @@ struct IlhaDoNotch: View {
     // MARK: Aberta
 
     private func aberto(_ r: ResumoIlha) -> some View {
-        let abertas = modelo.itens.filter { !$0.respondendo }
+        // Perguntas primeiro; depois as respostas prontas, na ordem da central.
+        let livres = modelo.itens.filter { !$0.respondendo }
+        let abertas = livres.filter(\.pergunta) + livres.filter { !$0.pergunta }
         let rodando = Sincronia.jobsVisiveis(modelo.jobs, agora: Date().timeIntervalSince1970).filter(\.rodando)
         return VStack(alignment: .leading, spacing: 10) {
             // Espaço do notch (ou da barra de menus) para nada ficar escondido atrás dele.
@@ -330,14 +353,19 @@ struct IlhaDoNotch: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, 4)
             } else {
-                VStack(spacing: 6) {
-                    ForEach(abertas.prefix(3)) { p in linha(p) }
-                    if abertas.count > 3 {
-                        Button("Mais \(abertas.count - 3) no Noah") { ilha.mostrarJanela() }
-                            .buttonStyle(.plain).font(.caption.bold()).foregroundStyle(.white.opacity(0.7))
+                ScrollView {
+                    VStack(spacing: 6) {
+                        ForEach(abertas.prefix(6)) { p in linha(p) }
+                        if abertas.count > 6 {
+                            Button("Mais \(abertas.count - 6) no Noah") { ilha.mostrarJanela() }
+                                .buttonStyle(.plain).font(.caption.bold()).foregroundStyle(.white.opacity(0.7))
+                        }
+                        ForEach(rodando.prefix(2)) { j in linhaJob(j) }
                     }
-                    ForEach(rodando.prefix(2)) { j in linhaJob(j) }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { alturaLista = $0 }
                 }
+                .scrollIndicators(.automatic)
+                .frame(height: min(max(alturaLista, 1), IlhaMac.alturaLista))
             }
 
             HStack(spacing: 14) {
@@ -374,32 +402,119 @@ struct IlhaDoNotch: View {
 
     private func linha(_ p: Pendencia) -> some View {
         let ocupado = modelo.enviando.contains(p.chave)
-        return HStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(Fonte.nome(p.fonte) + (p.automatica ? " · gerada pelo Noah" : ""))
-                    .font(.caption2.bold()).foregroundStyle(EstadoIlha.esperando.corClara)
-                Text(p.tarefa).font(.callout).foregroundStyle(.white).lineLimit(2)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onTapGesture { ilha.mostrarJanela(Atalho.pendencia(p.chave)) }
-            .help("Abrir o detalhe no Noah")
-            if let app = Fonte.app(p.fonte) {
-                botaoRedondo("arrow.up.forward.app", ajuda: "Abrir no \(Fonte.nome(p.fonte))") { abrirApp(app) }
-            }
-            if !p.automatica && p.podeResponder {
-                Button { Task { await modelo.aceitar(p) } } label: {
-                    Text(ocupado ? "…" : "Aceitar").font(.caption.bold())
-                        .padding(.horizontal, 10).padding(.vertical, 5)
-                        .background(Capsule().fill(EstadoIlha.pronto.cor))
-                        .foregroundStyle(.white)
+        let aberto = expandidas.contains(p.chave)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 5) {
+                        Text(Fonte.nome(p.fonte) + (p.automatica ? " · gerada pelo Noah" : ""))
+                            .foregroundStyle(EstadoIlha.esperando.corClara)
+                        if !p.automatica { selo(p) }
+                    }
+                    .font(.caption2.bold())
+                    Text(p.tarefa).font(.callout).foregroundStyle(.white).lineLimit(aberto ? 4 : 2)
                 }
-                .buttonStyle(.plain).disabled(ocupado)
-                .help("Pede \(Cadeado.nome) antes de enviar")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .rotationEffect(.degrees(aberto ? 180 : 0))
+                if let app = Fonte.app(p.fonte) {
+                    botaoRedondo("arrow.up.forward.app", ajuda: "Abrir no \(Fonte.nome(p.fonte))") { abrirApp(app) }
+                }
+                if !p.automatica && p.simples && p.podeResponder {
+                    Button { Task { await modelo.aceitar(p) } } label: {
+                        Text(ocupado ? "…" : "Aceitar").font(.caption.bold())
+                            .padding(.horizontal, 10).padding(.vertical, 5)
+                            .background(Capsule().fill(EstadoIlha.pronto.cor))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain).disabled(ocupado)
+                    .help("Responde “\(Ajustes.respostaAceitar)”; pede \(Cadeado.nome) antes de enviar")
+                }
             }
+            .contentShape(Rectangle())
+            .onTapGesture { alternar(p) }
+            .help(aberto ? "Esconder o detalhe" : "Ver o detalhe e responder")
+
+            if aberto { detalhe(p, ocupado: ocupado) }
         }
         .padding(.horizontal, 10).padding(.vertical, 7)
-        .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .background(.white.opacity(aberto ? 0.11 : 0.08), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    /// "Pergunta" quando o agente pede algo; "Resposta pronta" quando só terminou.
+    private func selo(_ p: Pendencia) -> some View {
+        let cor = p.pergunta ? EstadoIlha.esperando.corClara : EstadoIlha.pronto.corClara
+        return Text(p.pergunta ? "Pergunta" : "Resposta pronta")
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .background(cor.opacity(0.16), in: Capsule())
+            .foregroundStyle(cor)
+    }
+
+    private func alternar(_ p: Pendencia) {
+        withAnimation(semMovimento ? nil : .spring(response: 0.3, dampingFraction: 0.85)) {
+            if expandidas.remove(p.chave) == nil {
+                expandidas.insert(p.chave)
+            } else if foco == p.chave {
+                foco = nil
+            }
+        }
+    }
+
+    /// O detalhe por baixo do item: o que fazer, a última mensagem e o campo de resposta.
+    @ViewBuilder
+    private func detalhe(_ p: Pendencia, ocupado: Bool) -> some View {
+        let rascunho = Binding(get: { modelo.rascunhos[p.chave] ?? "" },
+                               set: { modelo.rascunhos[p.chave] = $0 })
+        let vazio = rascunho.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        let enviar = {
+            let texto = rascunho.wrappedValue
+            guard !texto.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            Task { await modelo.responder(p, texto: texto) }
+        }
+        VStack(alignment: .leading, spacing: 8) {
+            Text(p.origem).font(.caption).foregroundStyle(.white.opacity(0.55))
+            if let acao = p.acao {
+                Text(acao).font(.callout.weight(.semibold)).foregroundStyle(.white)
+                    .textSelection(.enabled)
+            }
+            if !p.motivo.isEmpty {
+                TextoRolavel(texto: p.motivo, alturaMaxima: 150)
+            }
+            if p.podeResponder {
+                HStack(alignment: .bottom, spacing: 6) {
+                    TextField("Sua resposta", text: rascunho, axis: .vertical)
+                        .textFieldStyle(.plain)
+                        .lineLimit(1...5)
+                        .focused($foco, equals: p.chave)
+                        .onSubmit(enviar)
+                        .disabled(ocupado)
+                        .padding(.horizontal, 10).padding(.vertical, 7)
+                        .background(.white.opacity(0.1), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    Button(action: enviar) {
+                        Image(systemName: ocupado ? "ellipsis" : "arrow.up")
+                            .font(.system(size: 12, weight: .bold))
+                            .frame(width: 28, height: 28)
+                            .background(Circle().fill(vazio ? Color.white.opacity(0.12) : EstadoIlha.pronto.cor))
+                            .foregroundStyle(.white)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(ocupado || vazio)
+                    .help("Enviar para \(Fonte.nome(p.fonte)); pede \(Cadeado.nome) antes")
+                }
+            }
+            HStack(spacing: 14) {
+                Button("Abrir no Noah") { ilha.mostrarJanela(Atalho.pendencia(p.chave)) }
+                Button("Dispensar") { Task { await modelo.dispensar(p) } }.disabled(ocupado)
+                Spacer()
+                if p.podeResponder { Text("Return envia").foregroundStyle(.white.opacity(0.35)) }
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+            .foregroundStyle(.white.opacity(0.7))
+        }
+        .transition(.opacity)
     }
 
     private func linhaJob(_ j: Job) -> some View {
@@ -452,6 +567,25 @@ struct FormaIlha: Shape {
 }
 
 
+
+/// Texto selecionável que cresce até `alturaMaxima` e, passado isso, rola.
+private struct TextoRolavel: View {
+    var texto: String
+    var alturaMaxima: CGFloat
+    @State private var altura: CGFloat = 0
+
+    var body: some View {
+        ScrollView {
+            Text(texto)
+                .font(.callout)
+                .foregroundStyle(.white.opacity(0.85))
+                .textSelection(.enabled)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { altura = $0 }
+        }
+        .frame(height: min(max(altura, 1), alturaMaxima))
+    }
+}
 
 /// Três pontinhos de "trabalhando", parados se o sistema pede menos movimento.
 private struct Pontos: View {

@@ -64,6 +64,23 @@ final class IlhaNotchTests: XCTestCase {
         XCTAssertFalse(s.aberta)
     }
 
+    func testEscrevendoSeguraAbertaComMouseLonge() {
+        var s = IlhaNotch.Seguidor()
+        _ = s.passo(dentro: true, agora: t0)
+        XCTAssertEqual(s.passo(dentro: false, agora: t0 + 0.2, segurar: true), .nada)
+        XCTAssertEqual(s.passo(dentro: false, agora: t0 + 5, segurar: true), .nada)
+        XCTAssertTrue(s.aberta)
+        // Largou o campo: a folga normal volta a contar a partir daí.
+        XCTAssertEqual(s.passo(dentro: false, agora: t0 + 5.1), .nada)
+        XCTAssertEqual(s.passo(dentro: false, agora: t0 + 5.8), .fechar)
+    }
+
+    func testSegurarComAIlhaFechadaNaoAbre() {
+        var s = IlhaNotch.Seguidor()
+        XCTAssertEqual(s.passo(dentro: false, agora: t0, segurar: true), .nada)
+        XCTAssertFalse(s.aberta)
+    }
+
     func testZonaAbertaCobreBordaESombra() {
         // Cartão de 440×244 colado no topo de uma tela de 1440 de altura.
         let cartao = CGRect(x: 1060, y: 1440 - 244, width: 440, height: 244)

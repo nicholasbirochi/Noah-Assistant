@@ -82,8 +82,10 @@ public enum IlhaNotch {
         public init() {}
 
         /// `dentro`: o mouse está sobre a ilha (com a folga já aplicada).
-        public mutating func passo(dentro: Bool, agora: Date) -> Acao {
-            if dentro {
+        /// `segurar`: você está escrevendo uma resposta; aberta, ela não fecha
+        /// quando o mouse sai, só quando o campo perde o foco.
+        public mutating func passo(dentro: Bool, agora: Date, segurar: Bool = false) -> Acao {
+            if dentro || (segurar && aberta) {
                 saiuEm = nil
                 return aberta ? .nada : abrir()
             }

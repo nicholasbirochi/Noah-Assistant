@@ -44,6 +44,8 @@ def test_claude_pendente_com_titulo(tmp_path):
     p = itens[0]
     assert (p.fonte, p.id, p.titulo, p.projeto) == ("claude", "s1", "Meu título", "proj")
     assert p.mensagem == "Pronto. Posso seguir?"
+    assert p.pergunta is True and p.para_json()["pergunta"] is True
+    assert p.simples is True and p.para_json()["simples"] is True
     assert p.cwd == "/tmp/proj"
     assert "cwd" not in p.para_json() and p.para_json()["chave"] == "claude:s1"
 
@@ -55,6 +57,50 @@ def test_claude_junta_blocos_da_mesma_mensagem(tmp_path):
         _assistant([_texto("parte 2")]),
     ])
     assert fontes.pendencias_claude(tmp_path)[0].mensagem == "parte 1\n\nparte 2"
+
+
+def test_claude_resposta_pronta_nao_e_pergunta(tmp_path):
+    _escrever(tmp_path / "p" / "s.jsonl", [
+        _user("oi"),
+        _assistant([_texto("Feito: testes passaram e o README foi atualizado.")]),
+    ])
+    [p] = fontes.pendencias_claude(tmp_path)
+    assert p.pergunta is False and p.pode_responder is True
+    assert p.simples is False
+
+
+def test_e_pergunta_olha_o_fim_sem_codigo_nem_link():
+    assert fontes.e_pergunta("Relatório.\n\nQuer que eu abra o PR?")
+    assert fontes.e_pergunta("Tudo certo. Me avise se precisar de ajuste.")
+    assert fontes.e_pergunta("Done. Let me know if you want the tests too.")
+    assert fontes.e_pergunta("Ficou assim. Você prefere a versão curta")
+    assert not fontes.e_pergunta("Pronto. Commit feito e testes verdes.")
+    assert not fontes.e_pergunta("Veja https://exemplo.com/busca?q=1 para detalhes.")
+    assert not fontes.e_pergunta("Regex nova:\n```\n^a?b$\n```\nUsei `x?` no padrão.")
+    assert not fontes.e_pergunta("")
+    # Pergunta lá no começo de um relatório longo não conta: vale o fim.
+    assert not fontes.e_pergunta("Posso seguir? " + "linha do relatório. " * 40 + "Fim.")
+
+
+def test_e_simples_so_sim_ou_nao_curta():
+    # Aceitar só onde um "sim" responde.
+    assert fontes.e_simples("Fiz o commit. Posso fazer o push?")
+    assert fontes.e_simples("Relatório.\n\nQuer que eu abra o PR?")
+    assert fontes.e_simples("Tudo certo. Should I proceed with the merge?")
+    assert fontes.e_simples("Posso seguir ou prefere revisar antes?")
+    assert fontes.e_simples("Aguardo seu ok para o push.")
+    assert fontes.e_simples("Ficou bom? Posso mandar para revisão?")
+    # Pergunta aberta, menu de opções, várias perguntas ou longa: resposta escrita.
+    assert not fontes.e_simples("Qual nome você prefere para a branch?")
+    assert not fontes.e_simples("Como você quer organizar as pastas?")
+    assert not fontes.e_simples("E o que acha disso?")
+    assert not fontes.e_simples("Opções:\n1. Postgres\n2. SQLite\n3. Arquivo\nPosso usar a 1?")
+    assert not fontes.e_simples("Posso seguir? Quer A? Ou B? Ou C?")
+    assert not fontes.e_simples("Posso " + "mesmo " * 40 + "seguir?")
+    # Sem pergunta, ou "?" só em código e link: nada a aceitar.
+    assert not fontes.e_simples("Pronto. Commit feito e testes verdes.")
+    assert not fontes.e_simples("Veja `x?` e https://exemplo.com/?q=1")
+    assert not fontes.e_simples("")
 
 
 def test_claude_titulo_ia_quando_nao_ha_titulo_proprio(tmp_path):
@@ -121,6 +167,8 @@ def test_codex_pendente_com_titulo(tmp_path):
     p = itens[0]
     assert (p.fonte, p.id, p.titulo, p.projeto, p.cwd) == ("codex", "t1", "Título novo", "repo", "/tmp/repo")
     assert p.mensagem.startswith("Feito.")
+    assert p.pergunta is True
+    assert p.simples is fontes.e_simples(p.mensagem)
     assert p.versao == "2026-10-19T09:05:00Z"
 
 
@@ -195,6 +243,7 @@ def test_noah_ligado_vira_item_so_leitura(monkeypatch):
                         lambda: [presence.PresenceItem(source="Lembretes", why="2 vencidos", action="Abrir lembretes")])
     [p] = fontes.pendencias_noah()
     assert p.fonte == "noah" and p.pode_responder is False and "Abrir lembretes" in p.mensagem
+    assert p.pergunta is True and p.simples is False
 
 
 def test_formatar_texto():

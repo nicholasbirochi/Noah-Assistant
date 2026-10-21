@@ -17,6 +17,18 @@ fonte inteira) é pulada -- falha fechada, nunca uma pendência chutada.
 
 Sessões automáticas ficam de fora: ``claude -p`` (entrypoint ``sdk-*``),
 ``codex exec`` e subagentes do Codex. Decisão em docs/ADR-0002.
+
+Cada item diz também se a última mensagem pede algo a você (``pergunta``) ou é só
+uma resposta pronta, um relatório sem pergunta. O critério é textual e fica no fim
+da mensagem (fora de blocos de código e links): um "?" ou um pedido explícito
+("me avise", "aguardo", "let me know"...). Sem isso o item vira resposta pronta:
+continua listado e respondível, só não conta como "esperando você" na ilha e nos
+widgets. Itens do Noah são sempre pergunta (ação sugerida). Decisão em docs/ADR-0002.
+
+Uma pergunta é ``simples`` quando dá para responder com um "sim": a última pergunta é
+curta, de sim ou não ("posso seguir?", "quer que eu faça o push?", "should I...?"),
+sem lista de opções e sem começar por "qual", "como", "o que"... Só nela aparece o
+botão Aceitar; nas outras você escreve a resposta.
 """
 
 from __future__ import annotations
@@ -24,6 +36,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import tempfile
 import threading
 import time
@@ -42,6 +55,34 @@ RAIZ_CODEX = Path.home() / ".codex"
 _FIM_DE_TURNO_CLAUDE = {"end_turn", "stop_sequence", "max_tokens"}
 _EVENTOS_DE_TURNO_CODEX = {"task_started", "task_complete", "turn_aborted"}
 
+# Quanto do fim da mensagem decide se ela é pergunta: o pedido costuma vir no
+# último parágrafo, depois do relatório.
+FIM_PERGUNTA = 400
+_BLOCO_CODIGO = re.compile(r"```.*?(```|$)|`[^`\n]*`", re.S)
+_LINK = re.compile(r"\S+://\S+")
+_PEDIDOS = re.compile(
+    r"\b(me (avise|diga|fala|confirme)|aguardo|confirm[ae] (se|que|antes)|"
+    r"(voc[eê]|vc) (autoriza|aprova|prefere|quer)|posso (seguir|continuar|prosseguir|fazer)|"
+    r"let me know|should i|do you want|would you like|want me to|shall i)\b",
+    re.I,
+)
+# Pergunta simples (botão Aceitar): curta, de sim ou não, sem menu de opções.
+MAX_PERGUNTA_SIMPLES = 200
+_SIM_OU_NAO = re.compile(
+    r"\b(posso|podemos|pode|devo|quer|autoriza|aprova|confirma|sigo|seguimos|"
+    r"fa[cç]o|mando|envio|aplico|deixo|tudo bem|ok|"
+    r"should i|shall i|can i|may i|do you want|would you like|want me to|"
+    r"is it ok|okay to|proceed)\b",
+    re.I,
+)
+_ABERTA = re.compile(
+    r"^\W*((e|ent[aã]o|mas|and|so)\s+)?(qual|quais|como|quanto|quantos|quantas|onde|"
+    r"quando|por ?qu[eê]|o que|quem|what|which|how|where|when|why|who)\b",
+    re.I,
+)
+_OPCAO = re.compile(r"^\s*(\d+[.)]|[a-z][.)]|[-*•])\s+", re.M)
+_FRASE = re.compile(r"[^.!?\n]+[.!?]*")
+
 
 @dataclass(frozen=True)
 class Pendencia:
@@ -53,6 +94,8 @@ class Pendencia:
     mensagem: str
     versao: str  # muda quando chega mensagem nova; "dispensar" vale só para esta
     pode_responder: bool = True
+    pergunta: bool = True  # False: resposta pronta, sem nada pedido a você
+    simples: bool = False  # pergunta de sim ou não: o app mostra o botão Aceitar
     cwd: str = ""  # usado só para retomar a conversa; não vai para a página
 
     @property
@@ -107,6 +150,38 @@ def _recentes(arquivos, dias: float, agora: float) -> list[Path]:
 def _cortar(texto: str) -> str:
     texto = texto.strip()
     return texto if len(texto) <= LIMITE_TEXTO else texto[:LIMITE_TEXTO].rstrip() + "…"
+
+
+def e_pergunta(texto: str) -> bool:
+    """A mensagem termina pedindo algo a você? Olha só o fim, sem código e links
+    (um "?" de regex ou de URL não é pergunta)."""
+    limpo = _LINK.sub(" ", _BLOCO_CODIGO.sub(" ", texto)).strip()
+    if not limpo:
+        return False
+    fim = limpo[-FIM_PERGUNTA:]
+    return "?" in fim or bool(_PEDIDOS.search(fim))
+
+
+def e_simples(texto: str) -> bool:
+    """A última pergunta dá para responder com um "sim"? Curta, de sim ou não e sem
+    lista de opções. Na dúvida, não: aí o app pede uma resposta escrita."""
+    limpo = _LINK.sub(" ", _BLOCO_CODIGO.sub(" ", texto)).strip()
+    fim = limpo[-FIM_PERGUNTA:]
+    if not fim or len(_OPCAO.findall(fim)) >= 3:
+        return False
+    frases = [f.strip() for f in _FRASE.findall(fim) if f.strip()]
+    perguntas = [f for f in frases if f.endswith("?")]
+    if len(perguntas) > 2:
+        return False  # várias perguntas pedem resposta escrita
+    if perguntas:
+        alvo = perguntas[-1]
+    elif frases and _PEDIDOS.search(frases[-1]):
+        alvo = frases[-1]  # "Aguardo seu ok para o push."
+    else:
+        return False
+    if len(alvo) > MAX_PERGUNTA_SIMPLES or _ABERTA.search(alvo):
+        return False
+    return bool(_SIM_OU_NAO.search(alvo) or _PEDIDOS.search(alvo))
 
 
 def _projeto(cwd: str) -> str:
@@ -209,6 +284,8 @@ def pendencias_claude(raiz: Path = RAIZ_CLAUDE, *, dias: float = DIAS_PADRAO, ag
             quando=resposta["quando"],
             mensagem=_cortar(resposta["texto"]),
             versao=resposta["quando"],
+            pergunta=e_pergunta(resposta["texto"]),
+            simples=e_simples(resposta["texto"]),
             cwd=resposta["cwd"],
         ))
     return saida
@@ -291,6 +368,8 @@ def pendencias_codex(raiz: Path = RAIZ_CODEX, *, dias: float = DIAS_PADRAO, agor
             quando=resposta["quando"],
             mensagem=_cortar(resposta["texto"]),
             versao=resposta["quando"],
+            pergunta=e_pergunta(resposta["texto"]),
+            simples=e_simples(resposta["texto"]),
             cwd=cwd,
         ))
     return saida
