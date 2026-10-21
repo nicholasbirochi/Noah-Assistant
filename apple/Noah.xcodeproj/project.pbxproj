@@ -14,6 +14,7 @@
 		1018F23AEBA79636552C66FF /* Escuta.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2137F49ACD4703A0A092D81 /* Escuta.swift */; };
 		17FE2055E910D3A5D2EC2F71 /* Cadeado.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4448D16D138EDAB95517D35E /* Cadeado.swift */; };
 		18368944AABEDA5ACBF614D9 /* Cofre.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA6627B814EFA52F4C6B1917 /* Cofre.swift */; };
+		197AC2FE5E39724AFB10154A /* VozDaCentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D64D0CC8240651A6ACEF14 /* VozDaCentral.swift */; };
 		20EC9C73007EEF17E34BB1ED /* Escuta.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2137F49ACD4703A0A092D81 /* Escuta.swift */; };
 		24D2A95A67AD310AB8FFF745 /* Cadeado.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4448D16D138EDAB95517D35E /* Cadeado.swift */; };
 		2F38C5D34746E7A633F842A0 /* Avisos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83AE75BF042DE2CEB091B8C1 /* Avisos.swift */; };
@@ -24,6 +25,7 @@
 		36375A2A5FF694DFB65DE047 /* Avisos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83AE75BF042DE2CEB091B8C1 /* Avisos.swift */; };
 		386488289E41D9A4B2A199AC /* FluxoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2083B8505BEA74BDE79F4F99 /* FluxoView.swift */; };
 		3A2CBC511828A730F66567DA /* FluxoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2083B8505BEA74BDE79F4F99 /* FluxoView.swift */; };
+		3C1B29EBBBFD1B3A94184D4B /* VozDaCentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D64D0CC8240651A6ACEF14 /* VozDaCentral.swift */; };
 		3C47D6EBD8C20CB6FCEF0785 /* NoahApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E834F031211A62BEC67CBF1F /* NoahApp.swift */; };
 		3F83CA0F219C81B88B215286 /* NoahCore in Frameworks */ = {isa = PBXBuildFile; productRef = 96DDD5B717E97D6B9B74E7C2 /* NoahCore */; };
 		43A4D03C9A9BCE3F9F8D037A /* NoahAtributos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE09B8EDFE023883860602 /* NoahAtributos.swift */; };
@@ -47,6 +49,7 @@
 		84CC8A955FE3DD6207670FC6 /* Modelo.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C916317CA806DD90E28471 /* Modelo.swift */; };
 		876CAD75A482377967EB4264 /* NoahAtributos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE09B8EDFE023883860602 /* NoahAtributos.swift */; };
 		8C77F04F3E5A503578AE88CF /* Telas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */; };
+		8CB859640CABC38C8496DA19 /* VozDaCentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D64D0CC8240651A6ACEF14 /* VozDaCentral.swift */; };
 		95CC8E28F13FA330681A505A /* NoahWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE799611396266451C18D60 /* NoahWidgets.swift */; };
 		9F58450B9250407AA3ACF495 /* IlhaMac.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4C3D52B287A8732C8CE6C7B /* IlhaMac.swift */; };
 		A160E78E96ACE7DB5156502E /* NoahAtributos.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DEE09B8EDFE023883860602 /* NoahAtributos.swift */; };
@@ -137,6 +140,7 @@
 		9B9DE918BC1E184FF0556798 /* Noah-iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "Noah-iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9C916317CA806DD90E28471 /* Modelo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Modelo.swift; sourceTree = "<group>"; };
 		ADCC254136C258234B5B70AD /* Vitrine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Vitrine.swift; sourceTree = "<group>"; };
+		C1D64D0CC8240651A6ACEF14 /* VozDaCentral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VozDaCentral.swift; sourceTree = "<group>"; };
 		C4C3D52B287A8732C8CE6C7B /* IlhaMac.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IlhaMac.swift; sourceTree = "<group>"; };
 		CA6627B814EFA52F4C6B1917 /* Cofre.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cofre.swift; sourceTree = "<group>"; };
 		D2137F49ACD4703A0A092D81 /* Escuta.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Escuta.swift; sourceTree = "<group>"; };
@@ -253,6 +257,7 @@
 				E834F031211A62BEC67CBF1F /* NoahApp.swift */,
 				0B4ED4091FCE40F6FDD2DA96 /* Telas.swift */,
 				ADCC254136C258234B5B70AD /* Vitrine.swift */,
+				C1D64D0CC8240651A6ACEF14 /* VozDaCentral.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -483,6 +488,7 @@
 				F68B77E92614F253826CAFA2 /* Rosto.swift in Sources */,
 				8C77F04F3E5A503578AE88CF /* Telas.swift in Sources */,
 				EA0822FA83018966D7294F30 /* Vitrine.swift in Sources */,
+				3C1B29EBBBFD1B3A94184D4B /* VozDaCentral.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -506,6 +512,7 @@
 				719D6715535A83FD4673AA55 /* Rosto.swift in Sources */,
 				00475B9C0CFC4C2E7D9F5C47 /* Telas.swift in Sources */,
 				7449C0C696F866174080AA7A /* Vitrine.swift in Sources */,
+				197AC2FE5E39724AFB10154A /* VozDaCentral.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -549,6 +556,7 @@
 				62EE1D56719D6ACD4AD6CD50 /* Rosto.swift in Sources */,
 				715F56EA8D9F36339B0E772A /* Telas.swift in Sources */,
 				FFC05BF24933E1E6FC053B5D /* Vitrine.swift in Sources */,
+				8CB859640CABC38C8496DA19 /* VozDaCentral.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

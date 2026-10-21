@@ -10,6 +10,12 @@ public enum Fonte {
     }
 }
 
+public struct Subagente: Codable, Hashable, Sendable {
+    public var id: String
+
+    public init(id: String) { self.id = id }
+}
+
 public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
     public var fonte: String
     /// Id da conversa na fonte (o `id` do JSON).
@@ -32,18 +38,20 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
     /// "fonte:id": a mesma em todos os aparelhos, por isso vira o id do aviso.
     public var chave: String
     public var respondendo: Bool
+    /// Subagentes sidechain verificados pela central; nenhum conteúdo é enviado.
+    public var subagentes: [Subagente]
 
     public var id: String { chave }
 
     enum CodingKeys: String, CodingKey {
         case fonte, ident = "id", titulo, projeto, quando, mensagem, versao
-        case podeResponder = "pode_responder", pergunta, simples, chave, respondendo
+        case podeResponder = "pode_responder", pergunta, simples, chave, respondendo, subagentes
     }
 
     public init(fonte: String, ident: String, titulo: String, projeto: String = "", quando: String = "",
                 mensagem: String = "", versao: String = "", podeResponder: Bool = true,
                 pergunta: Bool = true, simples: Bool = false, chave: String? = nil,
-                respondendo: Bool = false) {
+                respondendo: Bool = false, subagentes: [Subagente] = []) {
         self.fonte = fonte
         self.ident = ident
         self.titulo = titulo
@@ -56,6 +64,7 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
         self.simples = simples
         self.chave = chave ?? "\(fonte):\(ident)"
         self.respondendo = respondendo
+        self.subagentes = subagentes
     }
 
     public init(from decoder: Decoder) throws {
@@ -73,7 +82,8 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
             pergunta: try c.decodeIfPresent(Bool.self, forKey: .pergunta) ?? true,
             simples: try c.decodeIfPresent(Bool.self, forKey: .simples) ?? false,
             chave: try c.decodeIfPresent(String.self, forKey: .chave),
-            respondendo: try c.decodeIfPresent(Bool.self, forKey: .respondendo) ?? false)
+            respondendo: try c.decodeIfPresent(Bool.self, forKey: .respondendo) ?? false,
+            subagentes: try c.decodeIfPresent([Subagente].self, forKey: .subagentes) ?? [])
     }
 }
 

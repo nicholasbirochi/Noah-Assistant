@@ -29,6 +29,23 @@ final class VozTests: XCTestCase {
         XCTAssertTrue(turno.parcial.isEmpty)
     }
 
+    func testDetectorDeVozToleraPisoBaixoMasRejeitaRuido() {
+        var detector = DetectorDeVoz()
+        for _ in 0..<40 { XCTAssertFalse(detector.atualizar(rms: 0.004)) }
+        XCTAssertFalse(detector.atualizar(rms: 0.03))
+        XCTAssertFalse(detector.atualizar(rms: 0.03))
+        XCTAssertTrue(detector.atualizar(rms: 0.03))
+        for _ in 0..<11 { XCTAssertTrue(detector.atualizar(rms: 0.004)) }
+        XCTAssertFalse(detector.atualizar(rms: 0.004))
+    }
+
+    func testReconhecimentoDescartaFragmentosDeRuidoMasMantemOi() {
+        XCTAssertFalse(TurnoDeVoz.pareceFala("é"))
+        XCTAssertFalse(TurnoDeVoz.pareceFala("x!"))
+        XCTAssertTrue(TurnoDeVoz.pareceFala(" oi "))
+        XCTAssertTrue(TurnoDeVoz.pareceFala("não"))
+    }
+
     func testDescartarEsqueceAFrase() {
         var turno = TurnoDeVoz(silencio: 1)
         turno.ouviu("isso não era para você", em: t0)

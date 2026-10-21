@@ -129,7 +129,10 @@ struct Mapa {
     let blocos: [(pai: String, y: CGFloat)]
     private let posicoes: [String: CGPoint]
 
-    static func filho(_ no: Fluxo.No) -> Bool { no.tipo == .nota || (no.tipo == .pasta && no.id.contains("/")) }
+    static func filho(_ no: Fluxo.No) -> Bool {
+        no.tipo == .nota || no.tipo == .conversa || no.tipo == .subagente
+            || (no.tipo == .pasta && no.id.contains("/"))
+    }
 
     init(largura: CGFloat, alturaBase: CGFloat, grafo: Fluxo.Grafo, largo: Bool) {
         self.largo = largo
@@ -255,6 +258,10 @@ enum Desenho {
         switch l.estado {
         case .parada:
             g.stroke(caminho, with: .color(.white.opacity(0.08)), lineWidth: 1)
+            if !l.rotulo.isEmpty {
+                rotulo(l.rotulo, cor: .white.opacity(0.55), tamanho: 8,
+                       em: ponto(a, c1, c2, b, 0.5), cabe: mapa.espacoDoRotulo(l), g: &g)
+            }
         case .semSinal:
             // Tracejado andando devagar: mostra o sentido sem fingir pacotes de dado.
             let fase = -CGFloat(tempo.truncatingRemainder(dividingBy: 10) * 6)
@@ -344,8 +351,11 @@ enum Paleta {
         case Fluxo.central: central
         case Fluxo.aparelhos, "app": aparelhos
         default:
-            id.hasPrefix("pasta-") ? cerebro.opacity(0.85)
-                : id.hasPrefix("nota:") || id.hasPrefix("mais:") ? cerebro.opacity(0.6) : modelo
+            if id.hasPrefix("conversa:") { claude.opacity(0.82) }
+            else if id.hasPrefix("subagente:") { claude.opacity(0.62) }
+            else if id.hasPrefix("pasta-") { cerebro.opacity(0.85) }
+            else if id.hasPrefix("nota:") || id.hasPrefix("mais:") { cerebro.opacity(0.6) }
+            else { modelo }
         }
     }
 }

@@ -2,6 +2,8 @@
 em pasta temporária: nada de ~/.claude nem ~/.codex de verdade."""
 
 import json
+import os
+import time
 
 from central import fontes
 from central.fontes import Dispensadas, Pendencia
@@ -48,6 +50,59 @@ def test_claude_pendente_com_titulo(tmp_path):
     assert p.simples is True and p.para_json()["simples"] is True
     assert p.cwd == "/tmp/proj"
     assert "cwd" not in p.para_json() and p.para_json()["chave"] == "claude:s1"
+
+
+def test_claude_anexa_ids_de_subagentes_confirmados_sem_conteudo(tmp_path):
+    _escrever(tmp_path / "proj" / "s1.jsonl", [
+        {**_user("oi"), "sessionId": "s1"},
+        _assistant([_texto("Pronto.")], sessionId="s1"),
+    ])
+    pasta = tmp_path / "proj" / "s1" / "subagents"
+    _escrever(pasta / "agent-abc123.jsonl", [{
+        "type": "user", "sessionId": "s1", "agentId": "abc123", "isSidechain": True,
+        "message": {"role": "user", "content": "CONTEUDO PRIVADO"},
+    }])
+    _escrever(pasta / "agent-orfa.jsonl", [{
+        "type": "user", "sessionId": "outra-sessao", "agentId": "orfa", "isSidechain": True,
+    }])
+    _escrever(pasta / "agent-nao-sidechain.jsonl", [{
+        "type": "user", "sessionId": "s1", "agentId": "nao-sidechain", "isSidechain": False,
+    }])
+
+    [item] = fontes.pendencias_claude(tmp_path)
+    assert item.subagentes == [{"id": "abc123"}]
+    assert item.para_json()["subagentes"] == [{"id": "abc123"}]
+    assert "CONTEUDO PRIVADO" not in json.dumps(item.para_json())
+
+
+def test_snapshot_de_conversas_ativas_so_leva_ids_confirmados_e_recentes(tmp_path):
+    agora = time.time()
+    projetos = tmp_path / "projeto"
+    pai_ativo = projetos / "ativa.jsonl"
+    pai_antigo = projetos / "antiga.jsonl"
+    _escrever(pai_ativo, [{"conteudo": "TRANSCRIPT PRIVADO"}])
+    _escrever(pai_antigo, [{"conteudo": "TRANSCRIPT PRIVADO"}])
+    os.utime(pai_ativo, (agora, agora))
+    os.utime(pai_antigo, (agora - 601, agora - 601))
+    pasta = projetos / "ativa" / "subagents"
+    for i in range(22):
+        _escrever(pasta / f"agent-a{i}.jsonl", [{
+            "sessionId": "ativa", "agentId": f"a{i}", "isSidechain": True,
+            "message": {"content": "CONTEUDO PRIVADO"},
+        }])
+    (pasta / "agent-truncado.jsonl").write_text(
+        '{"sessionId":"ativa","agentId":"truncado","isSidechain":true', encoding="utf-8")
+    (pasta / "agent-longo.jsonl").write_text(
+        json.dumps({"sessionId": "ativa", "agentId": "longo", "isSidechain": True,
+                    "message": "x" * 70000}), encoding="utf-8")
+
+    snapshot = fontes.conversas_claude_com_subagentes(tmp_path, agora=agora)
+    assert len(snapshot) == 1 and snapshot[0]["id"] == "ativa"
+    assert len(snapshot[0]["subagentes"]) == fontes.MAX_SUBAGENTES_SNAPSHOT
+    assert "truncado" not in {s["id"] for s in snapshot[0]["subagentes"]}
+    assert "longo" not in {s["id"] for s in snapshot[0]["subagentes"]}
+    assert set(snapshot[0]) == {"id", "quando", "subagentes"}
+    assert "PRIVADO" not in json.dumps(snapshot)
 
 
 def test_claude_junta_blocos_da_mesma_mensagem(tmp_path):

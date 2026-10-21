@@ -278,3 +278,13 @@ def test_conversa_valida_e_exige_token(servidor_factory):
     assert _req(srv, "POST", "/central/api/conversa", {"mensagem": "oi", "sessao": 3}, headers=auth)[0] == 400
     status, _, dados = _req(srv, "POST", "/central/api/conversa", {"mensagem": "oi"}, headers=auth)
     assert status == 200 and dados["resposta"] == "oi"
+    assert _req(srv, "POST", "/central/api/conversa/cancelar", {"request_id": "x"})[0] == 401
+    status, _, dados = _req(
+        srv, "POST", "/central/api/conversa/cancelar", {"request_id": "cancelado-antes"}, headers=auth
+    )
+    assert status == 200 and dados == {"ok": True}
+    status, _, dados = _req(
+        srv, "POST", "/central/api/conversa",
+        {"mensagem": "não iniciar", "request_id": "cancelado-antes"}, headers=auth,
+    )
+    assert status == 409 and dados["erro"] == "pedido cancelado"

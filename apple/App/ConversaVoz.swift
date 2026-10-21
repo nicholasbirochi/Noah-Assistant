@@ -27,6 +27,10 @@ struct ConversaVoz: View {
             ouvido.aoFechar = { frase in
                 Task { await modelo.conversar(frase) }
             }
+            ouvido.aoIniciarFala = {
+                if ouvido.falando { ouvido.calar() }
+                if modelo.conversando { modelo.interromperConversa() }
+            }
             atualizar()
         }
         .onDisappear {
@@ -46,9 +50,10 @@ struct ConversaVoz: View {
     }
 
     /// Microfone aberto só quando faz sentido: fora do modo digitação, sem
-    /// mudo, e nunca enquanto o Noah pensa ou fala (para não ouvir a si mesmo).
+    /// mudo. O processamento local continua durante espera e leitura para
+    /// permitir interromper falando; o Voice Processing reduz eco no iPhone.
     private func atualizar() {
-        ouvido.ajustar(ouvir: !digitando && !ouvido.mudo && !modelo.conversando && !ouvido.falando)
+        ouvido.ajustar(ouvir: !digitando && !ouvido.mudo)
     }
 
     private func responderEmVoz() {
@@ -102,6 +107,10 @@ private struct PalcoDeVoz: View {
                 .foregroundStyle(corDoStatus)
                 .multilineTextAlignment(.center)
                 .padding(.top, 6)
+            if let aviso = ouvido.avisoVoz {
+                Text(aviso).font(.caption).foregroundStyle(.orange)
+                    .multilineTextAlignment(.center).padding(.horizontal, 24)
+            }
             Text(legenda)
                 .font(.system(size: 15))
                 .foregroundStyle(ouvido.parcial.isEmpty ? .secondary : .primary)
@@ -151,8 +160,8 @@ private struct PalcoDeVoz: View {
     }
 
     private var status: String {
-        if modelo.conversando { return "Noah pensando…" }
-        if ouvido.falando { return "Noah falando…" }
+        if modelo.conversando { return "Noah pensando · fale para interromper" }
+        if ouvido.falando { return "Noah falando · fale para interromper" }
         switch ouvido.estado {
         case .semPermissao(let m), .indisponivel(let m): return m
         case .ouvindo: return "Estou ouvindo…"
@@ -170,6 +179,7 @@ private struct PalcoDeVoz: View {
     /// O que você está falando agora; senão, a última coisa da conversa.
     private var legenda: String {
         if !ouvido.parcial.isEmpty { return ouvido.parcial }
+        if modelo.conversando || ouvido.falando { return "Pode falar a qualquer momento para interromper e continuar a conversa." }
         guard let ultima = modelo.mensagens.last else { return "Fale com o Noah. Uma pausa envia a frase." }
         switch ultima.autor {
         case .eu: return "Você: \(ultima.texto)"

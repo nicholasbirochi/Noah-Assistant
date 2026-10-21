@@ -28,13 +28,53 @@ public struct TurnoDeVoz: Sendable {
         guard let desde = ultimaMudanca, agora.timeIntervalSince(desde) >= silencio else { return nil }
         let frase = parcial
         descartar()
-        return frase.filter { $0.isLetter || $0.isNumber }.count >= 2 ? frase : nil
+        return Self.pareceFala(frase) ? frase : nil
+    }
+
+    /// Reconhecimento local às vezes transforma batidas e ruído em palavras
+    /// muito curtas. Exige conteúdo suficiente, mantendo saudações naturais.
+    public static func pareceFala(_ texto: String) -> Bool {
+        let letras = texto.filter { $0.isLetter || $0.isNumber }
+        if letras.count >= 3 { return true }
+        return texto.trimmingCharacters(in: .whitespacesAndNewlines)
+            .localizedLowercase == "oi"
     }
 
     /// Esquece a frase em andamento (microfone mudo, Noah falando).
     public mutating func descartar() {
         parcial = ""
         ultimaMudanca = nil
+    }
+}
+
+/// VAD leve para rejeitar silêncio/ruído antes de aceitar uma hipótese do
+/// Speech. Usa RMS normalizado e adapta lentamente o piso quando não há voz.
+public struct DetectorDeVoz: Sendable {
+    private var pisoRuido = 0.004
+    private var quadrosAcima = 0
+    private var quadrosAbaixo = 0
+    public private(set) var vozAtiva = false
+
+    public init() {}
+
+    /// Entrada típica é RMS de Float PCM entre 0 e 1, por quadro de áudio.
+    @discardableResult
+    public mutating func atualizar(rms: Double) -> Bool {
+        let valor = max(0, rms.isFinite ? rms : 0)
+        let limiar = max(0.012, pisoRuido * 2.5)
+        if valor >= limiar {
+            quadrosAcima += 1
+            quadrosAbaixo = 0
+            if quadrosAcima >= 3 { vozAtiva = true }
+        } else {
+            quadrosAcima = 0
+            quadrosAbaixo += 1
+            // Não deixe um pico isolado subir o piso; ele só segue o sinal
+            // quando está abaixo do limiar de voz.
+            pisoRuido = pisoRuido * 0.97 + min(valor, limiar) * 0.03
+            if quadrosAbaixo >= 12 { vozAtiva = false }
+        }
+        return vozAtiva
     }
 }
 
