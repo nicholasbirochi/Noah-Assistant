@@ -30,6 +30,18 @@ def make_resume(**personal_info_overrides) -> Resume:
     )
 
 
+@pytest.fixture(autouse=True)
+def _fake_resume_store(monkeypatch):
+    """Keep the profile flow off the personal (gitignored) data/resume.json.
+
+    Tests that need specific résumé fields patch resume.store.load again;
+    their later monkeypatch wins over this default.
+    """
+    from resume import store as resume_store
+
+    monkeypatch.setattr(resume_store, "load", lambda path=None: make_resume())
+
+
 def test_parse_phone_splits_area_code_and_number():
     # Verified live against the real account: "+55 (11) 95827-5250" ->
     # txtPhone1Code="11", txtPhone1="958275250".
