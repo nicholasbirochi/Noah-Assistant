@@ -50,23 +50,32 @@ public enum IlhaNotch {
     /// Alcove ocupando o meio do topo (ele desenha por cima de qualquer janela), a
     /// ilha encosta à direita da área dele e cresce para a direita, sem passar de
     /// `limiteDireita` (onde começam os ícones da barra); se não couber, à esquerda,
-    /// crescendo para a esquerda.
+    /// crescendo para a esquerda. O recuo aproxima a ilha do centro quando a janela
+    /// do Alcove inclui uma margem transparente nas laterais.
     /// - Parameters:
     ///   - tela: faixa horizontal da tela (minX...maxX).
     ///   - largura: largura do painel da ilha.
     ///   - alcove: faixa horizontal ocupada pelo Alcove, se ele estiver aberto nesta tela.
     ///   - limiteDireita: até onde a ilha pode ir à direita; sem ele, a borda da tela.
+    ///   - recuoDireita: aproxima a ilha do centro, em pontos, mantendo-a à direita.
     public static func posicao(tela: ClosedRange<CGFloat>, largura: CGFloat,
-                               alcove: ClosedRange<CGFloat>?, limiteDireita: CGFloat? = nil) -> Posicao {
+                               alcove: ClosedRange<CGFloat>?, limiteDireita: CGFloat? = nil,
+                               recuoDireita: CGFloat = 0) -> Posicao {
         let centro = Posicao(x: (tela.lowerBound + tela.upperBound - largura) / 2, alinhamento: .centro)
         guard let a = alcove else { return centro }
-        let direita = a.upperBound + vaoAlcove
+        let esquerda = a.lowerBound - vaoAlcove - largura
+        let direita = max(tela.lowerBound, a.upperBound + vaoAlcove - max(0, recuoDireita))
         if direita + largura <= min(limiteDireita ?? tela.upperBound, tela.upperBound) {
             return Posicao(x: direita, alinhamento: .esquerda)
         }
-        let esquerda = a.lowerBound - vaoAlcove - largura
         if esquerda >= tela.lowerBound { return Posicao(x: esquerda, alinhamento: .direita) }
         return centro
+    }
+
+    /// Deslocamento relativo à barra de status: aberto cobre ícones vizinhos;
+    /// fechado, o Thaw mantém prioridade sobre a pílula.
+    public static func deslocamentoDaCamada(aberta: Bool, thawEmExecucao: Bool) -> Int {
+        aberta ? 1 : (thawEmExecucao ? -2 : 0)
     }
 
     public enum Alinhamento: Equatable, Sendable { case centro, esquerda, direita }
