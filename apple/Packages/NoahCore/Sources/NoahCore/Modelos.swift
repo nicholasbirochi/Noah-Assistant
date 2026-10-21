@@ -21,6 +21,14 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
     public var mensagem: String
     public var versao: String
     public var podeResponder: Bool
+    /// A última mensagem pede algo a você. Falso numa resposta pronta (relatório
+    /// sem pergunta): continua na lista, mas não conta como "esperando você".
+    /// Centrais antigas não mandam o campo, então o padrão é verdadeiro.
+    public var pergunta: Bool
+    /// Pergunta curta de sim ou não ("Posso fazer o push?"): só nela aparece o
+    /// botão Aceitar. Pergunta aberta ou com várias opções pede resposta escrita.
+    /// Centrais antigas não mandam o campo, então o padrão é falso (sem Aceitar).
+    public var simples: Bool
     /// "fonte:id": a mesma em todos os aparelhos, por isso vira o id do aviso.
     public var chave: String
     public var respondendo: Bool
@@ -29,12 +37,13 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case fonte, ident = "id", titulo, projeto, quando, mensagem, versao
-        case podeResponder = "pode_responder", chave, respondendo
+        case podeResponder = "pode_responder", pergunta, simples, chave, respondendo
     }
 
     public init(fonte: String, ident: String, titulo: String, projeto: String = "", quando: String = "",
                 mensagem: String = "", versao: String = "", podeResponder: Bool = true,
-                chave: String? = nil, respondendo: Bool = false) {
+                pergunta: Bool = true, simples: Bool = false, chave: String? = nil,
+                respondendo: Bool = false) {
         self.fonte = fonte
         self.ident = ident
         self.titulo = titulo
@@ -43,6 +52,8 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
         self.mensagem = mensagem
         self.versao = versao
         self.podeResponder = podeResponder
+        self.pergunta = pergunta
+        self.simples = simples
         self.chave = chave ?? "\(fonte):\(ident)"
         self.respondendo = respondendo
     }
@@ -59,6 +70,8 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
             mensagem: try c.decodeIfPresent(String.self, forKey: .mensagem) ?? "",
             versao: try c.decodeIfPresent(String.self, forKey: .versao) ?? "",
             podeResponder: try c.decodeIfPresent(Bool.self, forKey: .podeResponder) ?? true,
+            pergunta: try c.decodeIfPresent(Bool.self, forKey: .pergunta) ?? true,
+            simples: try c.decodeIfPresent(Bool.self, forKey: .simples) ?? false,
             chave: try c.decodeIfPresent(String.self, forKey: .chave),
             respondendo: try c.decodeIfPresent(Bool.self, forKey: .respondendo) ?? false)
     }
@@ -229,6 +242,7 @@ extension Pendencia {
     /// De onde veio, numa frase, para o detalhe.
     public var origem: String {
         if automatica { return "Gerada automaticamente pelo Noah a partir de \(titulo)." }
+        if !pergunta { return "\(Fonte.nome(fonte)) terminou. Resposta pronta, sem pergunta para você." }
         return "\(Fonte.nome(fonte)) terminou e está esperando sua resposta."
     }
 

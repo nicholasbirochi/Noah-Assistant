@@ -39,8 +39,9 @@ repositório público (nenhum Team ID ou dado pessoal no git).
    - logo depois de cada ação.
 3. **Avisos locais com ação.** Não há push (APNs), porque ele exige conta paga. Cada
    aparelho compara a lista nova com o que já avisou (`Sincronia.comparar`):
-   - **Item novo ou alterado:** vira aviso com Responder, Aceitar e Dispensar (os
-     só-leitura só têm Dispensar).
+   - **Item novo ou alterado:** vira aviso com Responder, Aceitar e Dispensar. Aceitar
+     só entra numa pergunta simples (`simples`); nas outras o aviso tem Responder e
+     Dispensar, e os só-leitura só têm Dispensar.
    - **Item que sumiu ou que alguém começou a responder:** o aviso é apagado.
    - **Identificador:** é a chave da pendência, igual nos dois aparelhos.
 

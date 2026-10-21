@@ -11,6 +11,8 @@ final class Avisos: NSObject, UNUserNotificationCenterDelegate {
     static let shared = Avisos()
 
     static let categoria = "PENDENCIA"
+    /// Pergunta aberta: Responder e Dispensar, sem Aceitar.
+    static let categoriaEscrita = "PENDENCIA_ESCRITA"
     static let categoriaLeitura = "PENDENCIA_LEITURA"
     static let acaoResponder = "RESPONDER"
     static let acaoAceitar = "ACEITAR"
@@ -34,6 +36,8 @@ final class Avisos: NSObject, UNUserNotificationCenterDelegate {
                                              options: [.destructive, .authenticationRequired])
         centro.setNotificationCategories([
             UNNotificationCategory(identifier: Self.categoria, actions: [responder, aceitar, dispensar],
+                                   intentIdentifiers: []),
+            UNNotificationCategory(identifier: Self.categoriaEscrita, actions: [responder, dispensar],
                                    intentIdentifiers: []),
             UNNotificationCategory(identifier: Self.categoriaLeitura, actions: [dispensar],
                                    intentIdentifiers: []),
@@ -85,7 +89,7 @@ final class Avisos: NSObject, UNUserNotificationCenterDelegate {
         c.body = p.mensagem.isEmpty ? "Esperando você." : p.mensagem
         c.sound = .default
         c.threadIdentifier = p.fonte
-        c.categoryIdentifier = p.podeResponder ? categoria : categoriaLeitura
+        c.categoryIdentifier = !p.podeResponder ? categoriaLeitura : (p.simples ? categoria : categoriaEscrita)
         c.userInfo = ["fonte": p.fonte, "ident": p.ident, "chave": p.chave, "titulo": p.titulo]
         // A chave é a mesma nos dois aparelhos: o aviso novo substitui o antigo.
         return UNNotificationRequest(identifier: p.chave, content: c, trigger: nil)

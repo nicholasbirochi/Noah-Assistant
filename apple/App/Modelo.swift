@@ -35,7 +35,8 @@ final class Modelo {
     var jobsVisiveis: [Job] { Sincronia.jobsVisiveis(jobs) }
     /// O que a ilha, os widgets e a barra de menus mostram.
     var resumo: ResumoIlha { Ilha.resumo(itens: itens, jobs: jobs) }
-    var contagem: Int { itens.filter { !$0.respondendo }.count }
+    /// Selo da aba: só o que pede algo a você (respostas prontas ficam de fora).
+    var contagem: Int { itens.filter { !$0.respondendo && $0.pergunta }.count }
     func item(_ chave: String) -> Pendencia? { itens.first { $0.chave == chave } }
 
     init() {

@@ -297,8 +297,10 @@ struct PendenciaDetalhe: View {
                             Task { await modelo.responder(p, texto: texto) }
                         }
                         .disabled(ocupado || rascunho.wrappedValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        Button("Aceitar (“\(Ajustes.respostaAceitar)”)") { Task { await modelo.aceitar(p) } }
-                            .disabled(ocupado)
+                        if p.simples {
+                            Button("Aceitar (“\(Ajustes.respostaAceitar)”)") { Task { await modelo.aceitar(p) } }
+                                .disabled(ocupado)
+                        }
                     }
                     Button("Dispensar", role: .destructive) { Task { await modelo.dispensar(p) } }
                         .disabled(ocupado)
