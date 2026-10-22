@@ -139,7 +139,8 @@ class FakeTtsModel:
         self.conditioning_calls.append(audio_path)
         return self.latents
 
-    def inference_stream(self, text, language, gpt_cond_latent, speaker_embedding):
+    def inference_stream(self, text, language, gpt_cond_latent, speaker_embedding, **options):
+        assert options == {"stream_chunk_size": 0, "enable_text_splitting": True}
         self.inference_calls.append((text, language, gpt_cond_latent, speaker_embedding))
         yield from self.chunks
 

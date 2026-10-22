@@ -10,6 +10,7 @@ import BackgroundTasks
 struct NoahApp: App {
     #if os(macOS)
     @NSApplicationDelegateAdaptor(Delegado.self) private var delegado
+    @AppStorage("ilhaLigada") private var ilhaLigada = true
     #endif
     @State private var modelo: Modelo
     @Environment(\.scenePhase) private var fase
@@ -39,9 +40,8 @@ struct NoahApp: App {
         .defaultSize(width: 1100, height: 720)
         .handlesExternalEvents(matching: [Atalho.esquema])
 
-        // Fica na barra de menus mesmo com a janela fechada, para continuar avisando.
-        // Estilo janela: um painel com o rosto do Noah, como a ilha do iPhone.
-        MenuBarExtra {
+        // O ícone de menu é uma alternativa quando a ilha está desligada.
+        MenuBarExtra(isInserted: Binding(get: { !ilhaLigada }, set: { _ in })) {
             PainelDaBarra().environment(modelo)
         } label: {
             let r = modelo.resumo

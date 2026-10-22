@@ -183,7 +183,7 @@ final class Ouvido {
 
     private func recebeu(_ texto: String?, acabou: Bool, geracao dele: Int) {
         guard dele == geracao, estado == .ouvindo else { return }
-        if let texto, caixa.ouveVozRecentemente, TurnoDeVoz.pareceFala(texto) {
+        if let texto, caixa.teveVozNoPedido, TurnoDeVoz.pareceFala(texto) {
             turno.ouviu(texto, em: .now)
             parcial = turno.parcial
             if !acionouBargeIn {
@@ -241,17 +241,15 @@ private final class Caixa: @unchecked Sendable {
     private var pedido: SFSpeechAudioBufferRecognitionRequest?
     private var _nivel: Double = 0
     private var detector = DetectorDeVoz()
-    private var ultimaVoz: Date?
 
     var nivel: Double { trava.withLock { _nivel } }
-    var ouveVozRecentemente: Bool {
-        trava.withLock { ultimaVoz.map { Date.now.timeIntervalSince($0) < 1.5 } ?? false }
-    }
+    var teveVozNoPedido: Bool { trava.withLock { detector.teveVozNoPedido } }
 
     func trocar(_ novo: SFSpeechAudioBufferRecognitionRequest?) {
         trava.withLock {
             pedido?.endAudio()
             pedido = novo
+            detector.novoPedido()
         }
     }
 
@@ -264,7 +262,7 @@ private final class Caixa: @unchecked Sendable {
         }
         trava.withLock {
             pedido?.append(buffer)
-            if detector.atualizar(rms: rms) { ultimaVoz = .now }
+            detector.atualizar(rms: rms)
             _nivel = min(1, rms * 12)
         }
     }

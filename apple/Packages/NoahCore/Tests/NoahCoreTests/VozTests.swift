@@ -39,6 +39,18 @@ final class VozTests: XCTestCase {
         XCTAssertFalse(detector.atualizar(rms: 0.004))
     }
 
+    func testVozContinuaValidaSeATranscricaoChegarDepoisDoSilencio() {
+        var detector = DetectorDeVoz()
+        for _ in 0..<3 { detector.atualizar(rms: 0.03) }
+        for _ in 0..<100 { detector.atualizar(rms: 0.004) }
+        XCTAssertFalse(detector.vozAtiva)
+        XCTAssertTrue(detector.teveVozNoPedido)
+        detector.novoPedido()
+        XCTAssertFalse(detector.teveVozNoPedido)
+        for _ in 0..<100 { detector.atualizar(rms: 0.004) }
+        XCTAssertFalse(detector.teveVozNoPedido)
+    }
+
     func testReconhecimentoDescartaFragmentosDeRuidoMasMantemOi() {
         XCTAssertFalse(TurnoDeVoz.pareceFala("é"))
         XCTAssertFalse(TurnoDeVoz.pareceFala("x!"))
@@ -71,5 +83,24 @@ final class VozTests: XCTestCase {
         let falado = FalaDoNoah.paraFalar(r, limite: 100)
         XCTAssertTrue(falado.hasSuffix("aqui. O resto está no chat."), falado)
         XCTAssertLessThan(falado.count, 140)
+    }
+}
+
+final class AudioDaCentralTests: XCTestCase {
+    func testReuneOsBlocosAntesDeReproduzirSemPausasDaRede() throws {
+        let dados = Data([0, 0, 0, 2, 1, 2, 0, 0, 0, 4, 3, 4, 5, 6, 0, 0, 0, 0])
+        XCTAssertEqual(try AudioDaCentral.pcm(dados), Data([1, 2, 3, 4, 5, 6]))
+    }
+
+    func testRejeitaTransmissaoTruncadaVaziaOuComLixoAposOFim() {
+        for bytes: [UInt8] in [[], [0], [0, 0, 0, 0], [0, 0, 0, 4, 1, 2],
+                               [0, 0, 0, 2, 1, 2], [0, 0, 0, 2, 1, 2, 0, 0, 0, 0, 7]] {
+            XCTAssertThrowsError(try AudioDaCentral.pcm(Data(bytes)))
+        }
+    }
+
+    func testRejeitaAmostraIncompletaEBlocoGigante() {
+        XCTAssertThrowsError(try AudioDaCentral.pcm(Data([0, 0, 0, 1, 1, 0, 0, 0, 0])))
+        XCTAssertThrowsError(try AudioDaCentral.pcm(Data([255, 255, 255, 255])))
     }
 }

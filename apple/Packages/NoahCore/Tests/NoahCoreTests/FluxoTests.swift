@@ -121,17 +121,18 @@ final class FluxoTests: XCTestCase {
         XCTAssertTrue(g.aceso(Fluxo.aparelhos))
     }
 
-    func testConversasClaudeMostramSubagentesLigadosAPai() {
+    func testFluxoNaoIncluiConversasOuSubagentesDeNenhumaFonte() {
         var item = p("sessao123", fonte: "claude")
-        item.subagentes = [Subagente(id: "agentabc123"), Subagente(id: "agentdef456")]
-        let g = Fluxo.grafo(itens: [item], jobs: [])
-        let sessao = Fluxo.conversa("sessao123")
-        let primeiro = Fluxo.subagente("sessao123", "agentabc123")
-        XCTAssertEqual(g.no(sessao)?.tipo, .conversa)
-        XCTAssertEqual(g.ligacao(Fluxo.claude, sessao)?.rotulo, "conversa")
-        XCTAssertEqual(g.no(primeiro)?.nome, "Agente agentabc")
-        XCTAssertEqual(g.ligacao(sessao, primeiro)?.rotulo, "subagente")
-        XCTAssertEqual(Set(g.nos.map(\.id)).count, g.nos.count)
+        item.subagentes = [Subagente(id: "filho")]
+        let painel = PainelCentral(conversasClaude: [
+            ConversaClaudeAtiva(id: "ativa", quando: 42, subagentes: [Subagente(id: "outro")])
+        ])
+        let g = Fluxo.grafo(itens: [item, p("codex123", fonte: "codex")], jobs: [], painel: painel)
+        XCTAssertFalse(g.nos.contains { $0.id.contains("sessao123") || $0.id.contains("codex123")
+            || $0.id.contains("filho") || $0.id.contains("ativa") || $0.id.contains("outro") })
+        XCTAssertNotNil(g.no(Fluxo.claude))
+        XCTAssertNotNil(g.no(Fluxo.codex))
+        XCTAssertNotNil(g.ligacao(Fluxo.claude, Fluxo.central))
     }
 
     func testPayloadAntigoEOpcionalDeSubagentesDecodifica() throws {
@@ -141,19 +142,19 @@ final class FluxoTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(Pendencia.self, from: novo).subagentes, [Subagente(id: "a1")])
     }
 
-    func testConversaAtivaClaudePermaneceNoFluxoEDeduplicaPendencia() throws {
-        let raw = Data(#"{"ollama":true,"conversas_claude":[{"id":"ativa","quando":42,"subagentes":[{"id":"side1"}]}]}"#.utf8)
-        let painelAtivo = try JSONDecoder().decode(PainelCentral.self, from: raw)
-        XCTAssertEqual(painelAtivo.conversasClaude.count, 1)
+    func testHierarquiaDaPendenciaUneApenasFilhosDaPropriaFonteESessao() throws {
+        let raw = Data(#"{"ollama":true,"conversas_claude":[{"id":"ativa","quando":42,"subagentes":[{"id":"side1"},{"id":"side2"}]}]}"#.utf8)
+        let painel = try JSONDecoder().decode(PainelCentral.self, from: raw)
         XCTAssertTrue(try JSONDecoder().decode(PainelCentral.self, from: Data(#"{"ollama":true}"#.utf8)).conversasClaude.isEmpty)
-
-        var pendente = p("ativa")
-        pendente.titulo = "Título preservado"
-        pendente.subagentes = [Subagente(id: "side1")]
-        let g = Fluxo.grafo(itens: [pendente], jobs: [], painel: painelAtivo)
-        XCTAssertEqual(g.nos.filter { $0.id == Fluxo.conversa("ativa") }.count, 1)
-        XCTAssertEqual(g.no(Fluxo.conversa("ativa"))?.nome, "Título preservado")
-        XCTAssertEqual(g.nos.filter { $0.id == Fluxo.subagente("ativa", "side1") }.count, 1)
+        var item = p("ativa")
+        item.subagentes = [Subagente(id: "side1"), Subagente(id: "")]
+        XCTAssertEqual(item.filhos(no: painel).map(\.id), ["side1", "side2"])
+        XCTAssertEqual(item.filhos(no: nil).map(\.id), ["side1"])
+        item.fonte = "codex"
+        XCTAssertEqual(item.filhos(no: painel).map(\.id), ["side1"])
+        item.ident = "outra"
+        item.fonte = "claude"
+        XCTAssertEqual(item.filhos(no: painel).map(\.id), ["side1"])
     }
 
     func testGeradaPeloNoahAcendeNoah() {

@@ -12,7 +12,7 @@ import Foundation
 /// inventada.
 public enum Fluxo {
     public enum Tipo: String, Hashable, Sendable {
-        case agente, noah, central, aparelhos, cerebro, pasta, modelo, nota, conversa, subagente
+        case agente, noah, central, aparelhos, cerebro, pasta, modelo, nota
     }
 
     public struct No: Identifiable, Hashable, Sendable {
@@ -77,8 +77,6 @@ public enum Fluxo {
     public static let claude = "claude", codex = "codex", noah = "noah"
     public static let central = "central", aparelhos = "aparelhos", cerebro = "cerebro"
     public static func modelo(_ id: String) -> String { "modelo:\(id)" }
-    public static func conversa(_ id: String) -> String { "conversa:\(id)" }
-    public static func subagente(_ sessao: String, _ id: String) -> String { "subagente:\(sessao):\(id)" }
     public static func pasta(_ numero: String) -> String { "pasta-\(numero)" }
     public static func subpasta(_ pai: String, _ nome: String) -> String { "\(pai)/\(nome)" }
     public static func nota(_ pai: String, _ nome: String) -> String { "nota:\(pai)/\(nome)" }
@@ -104,32 +102,6 @@ public enum Fluxo {
             No(id: aparelhos, nome: "iPhone e Mac", detalhe: "este app", tipo: .aparelhos),
         ]
         var ligacoes = ligacoesDaCentral(itens: itens, jobs: jobs)
-
-        // Pendências e snapshots de atividade são unidos por ID; sessões ativas
-        // não desaparecem enquanto Claude está usando ferramentas.
-        var conversas: [String: (titulo: String, agentes: [Subagente])] = [:]
-        for item in itens where item.fonte == claude {
-            conversas[item.ident] = (item.titulo, item.subagentes)
-        }
-        for snapshot in painel?.conversasClaude ?? [] {
-            let existentes = conversas[snapshot.id]
-            let ids = Set((existentes?.agentes ?? []).map(\.id))
-            conversas[snapshot.id] = (existentes?.titulo ?? "", (existentes?.agentes ?? [])
-                + snapshot.subagentes.filter { !ids.contains($0.id) })
-        }
-        for (ident, conversaDados) in conversas.sorted(by: { $0.key < $1.key }) {
-            let sessao = conversa(ident)
-            nos.append(No(id: sessao, nome: conversaDados.titulo.isEmpty ? "Conversa Claude" : conversaDados.titulo,
-                          detalhe: "sessão \(ident.prefix(8)) · \(contar(conversaDados.agentes.count, "subagente", "subagentes"))",
-                          tipo: .conversa))
-            ligacoes.append(Ligacao(de: claude, para: sessao, estado: .parada, rotulo: "conversa"))
-            for agente in conversaDados.agentes {
-                let id = subagente(ident, agente.id)
-                nos.append(No(id: id, nome: "Agente \(agente.id.prefix(8))", detalhe: "subconversa Claude",
-                              tipo: .subagente))
-                ligacoes.append(Ligacao(de: sessao, para: id, estado: .parada, rotulo: "subagente"))
-            }
-        }
 
         // Modelos: os que têm rota (o que os agentes delegam) e o do Noah.
         let doNoah = painel?.noah?.modelo

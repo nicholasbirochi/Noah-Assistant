@@ -12,6 +12,7 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - **Geradas automaticamente:** itens que o Noah cria sozinho a partir da Presença,
     marcados como automáticos.
   - **Respostas:** o que está sendo respondido agora ou terminou há pouco.
+  - Conversas do Claude com subagentes têm um grupo expansível sob a tarefa principal; os vínculos usam os IDs confirmados pelos metadados da sessão.
 
   Toque numa tarefa para abrir o detalhe:
   - "O que fazer" e "Por quê", ou a última mensagem do agente;
@@ -27,9 +28,7 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - **iPhone:** uma folha que sobe de baixo.
 - **Fluxo.** Um mapa animado do caminho da informação entre Claude Code, Codex, Noah,
   Cérebro, Qwen local, a central e os aparelhos.
-  - Conversas Claude com subagentes aparecem como nós ligados à sessão de origem,
-    inclusive enquanto a conversa pai segue ativa; a central envia apenas IDs
-    confirmados pelos metadados sidechain, sem texto das conversas.
+  - Mostra agentes, serviços e contagens agregadas. Conversas individuais e seus subagentes ficam somente nas Pendências.
   - **Ligações com a central:** têm sinal ao vivo. Quando há pendência esperando ou
     resposta em andamento, partículas correm pela linha com a contagem ("1 para fazer").
   - **Consultas ao Cérebro e tarefas delegadas ao Qwen:** vêm do sinal da central
@@ -60,8 +59,10 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
     ou fala. Ao reconhecer uma frase nova, para a leitura e cancela só o turno anterior;
     a nova fala continua até a pausa e vira a próxima mensagem. O iPhone usa o
     processamento de voz do sistema para reduzir o retorno do alto-falante.
-  - **Voz do Jarvis:** a Central transmite a voz clonada já instalada no Mac, em blocos
-    de áudio, para começar a tocar sem esperar a frase inteira. Ative o pré-carregamento
+  - **Voz do Jarvis:** a Central transmite a voz clonada já instalada no Mac. O app
+    reúne o áudio antes de reproduzir, evitando cortes quando a geração local é mais
+    lenta que a fala. O XTTS gera frases completas, sem recalcular o vocoder a cada
+    pequeno bloco. Isso prioriza fala contínua e ainda exige esperar a síntese. Ative o pré-carregamento
     com `NOAH_CENTRAL_VOZ=1`; `NOAH_VOICE_PYTHON` pode apontar para um runtime local
     separado. Os arquivos XTTS e a referência ficam fora do repositório. A inicialização
     exige os pesos já presentes e não inicia download. Se a voz não estiver pronta,
@@ -70,7 +71,8 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
     (`requiresOnDeviceRecognition`), e o áudio não sai do aparelho. Se o aparelho não tiver
     português offline, a tela avisa em laranja e a setinha continua servindo para digitar.
   - **Ruído:** a transcrição só entra na conversa quando há atividade de voz no microfone
-    e texto reconhecido suficiente; fragmentos curtos de ruído são descartados.
+    e texto reconhecido suficiente; fragmentos curtos de ruído são descartados. A
+    evidência de voz vale até o fim do pedido, para aceitar transcrições atrasadas.
   - **Leitura curta:** blocos de código, links e marcações de Markdown não são lidos, e a
     resposta longa para na última frase que cabe, com "O resto está no chat."
     (`FalaDoNoah`, em NoahCore).
@@ -162,7 +164,18 @@ O `Noah.xcodeproj` gerado também está no repositório, para abrir sem instalar
 cd apple && xcodegen
 ```
 
-O app do Mac é assinado localmente (`-`) e não precisa de conta.
+O app do Mac é assinado localmente (`-`) por padrão e não precisa de conta. Essa assinatura
+muda entre compilações e pode fazer as Chaves pedirem autorização novamente. Se houver uma
+identidade Apple Development configurada no Xcode, use a mesma equipe e identidade nas
+atualizações para manter um requisito de assinatura estável, em vez de vincular o acesso
+apenas ao hash de cada compilação:
+
+```bash
+xcodebuild -project Noah.xcodeproj -scheme Noah-macOS -configuration Release DEVELOPMENT_TEAM=SEU_TIME CODE_SIGN_IDENTITY='Apple Development' CODE_SIGN_STYLE=Automatic build
+```
+
+A troca inicial de assinatura ainda pode exigir autorização no próprio macOS. Não salve
+senhas, certificados ou tokens no repositório.
 
 ### Instalar com conta pessoal sem App Groups
 
@@ -298,3 +311,10 @@ caminho conta, mas não acende pasta.
 `.inspector` derrubava o app no macOS (laço de layout do AppKit). Por isso o painel "Ao vivo"
 é uma coluna comum no Mac e uma folha no iPhone. A janela do Mac tem mínimo de 860×520
 pelo mesmo motivo.
+
+### Ilha e ícone no Mac
+
+Com a ilha ligada, o app não insere outro ícone de menu. Ao desligá-la nos Ajustes,
+o ícone volta como alternativa. O rosto usa a mesma geometria animada entre a
+pílula e o painel: desce e cresce ao abrir, sobe e encolhe ao fechar, respeitando
+“Reduzir movimento”. A posição da ilha e a camada sobre os ícones vizinhos são preservadas.

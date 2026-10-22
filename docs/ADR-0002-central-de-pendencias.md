@@ -163,3 +163,9 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
   aparelho.
 - A resposta usa o plano da própria CLI, ou seja, a assinatura do usuário. Não há chave
   de API nem custo novo.
+
+## Hierarquia de sessões na interface nativa
+
+Conversas individuais e subagentes aparecem agrupados somente em Pendências,
+usando a origem e os IDs de sessão confirmados. O Fluxo apresenta agentes e
+serviços com atividade agregada, sem nós de conversas individuais.

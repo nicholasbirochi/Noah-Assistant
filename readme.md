@@ -727,3 +727,11 @@ a contagem de tokens ainda variou um pouco entre tentativas (142 vs. 147 num pro
 ## Licença
 
 Código e documentação autorais sob [MIT](license).
+
+### Revisão da Central nativa
+
+A hierarquia conversa principal → subagentes aparece somente nas Pendências;
+o Fluxo mantém o mapa agregado de agentes e serviços. No Mac, a ilha substitui o
+ícone de menu para evitar duas entradas do Noah. A voz clonada gera frases completas
+e o app valida e reúne o PCM antes da reprodução, evitando pausas por falta de áudio.
+A síntese local ainda tem um tempo de preparação; veja [o app nativo](apple/README.md).

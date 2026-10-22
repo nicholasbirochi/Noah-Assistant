@@ -130,7 +130,7 @@ struct Mapa {
     private let posicoes: [String: CGPoint]
 
     static func filho(_ no: Fluxo.No) -> Bool {
-        no.tipo == .nota || no.tipo == .conversa || no.tipo == .subagente
+        no.tipo == .nota
             || (no.tipo == .pasta && no.id.contains("/"))
     }
 
@@ -351,9 +351,7 @@ enum Paleta {
         case Fluxo.central: central
         case Fluxo.aparelhos, "app": aparelhos
         default:
-            if id.hasPrefix("conversa:") { claude.opacity(0.82) }
-            else if id.hasPrefix("subagente:") { claude.opacity(0.62) }
-            else if id.hasPrefix("pasta-") { cerebro.opacity(0.85) }
+            if id.hasPrefix("pasta-") { cerebro.opacity(0.85) }
             else if id.hasPrefix("nota:") || id.hasPrefix("mais:") { cerebro.opacity(0.6) }
             else { modelo }
         }
