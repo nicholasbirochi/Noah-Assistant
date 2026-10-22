@@ -4,8 +4,7 @@
 
 *Prévia da interface real do HUD, renderizada com estado “Falando” e uma frase de demonstração.*
 
-Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md) e
-[o mapa do projeto](.ai/PROJECT_MAP.md).
+Veja [a migracao para Noah](docs/RENOMEACAO_NOAH.md).
 
 Noah e o unico nome do produto. A ativacao padrao usa duas palmas.
 Ativacao falada exige um detector Noah local, treinado e validado.
@@ -111,6 +110,19 @@ Todos os caminhos abaixo são relativos a `src/` (ex.: `assistant/providers.py` 
   (WKWebView via PyObjC -- o mesmo motor do Safari) em vez de uma aba de navegador --
   tentamos primeiro abrir o Chromium do Playwright em modo app (`--app=`), mas ele mostrava
   um aviso "atualize o Chrome" por cima da página, o que não é problema com WebKit direto.
+- **`assistant/presence.py`** — card de sugestões proativas no HUD (desligado por padrão,
+  `NOAH_PRESENCE_ENABLED=true`). Conta por código, sem LLM e sem rede, o que já está em
+  disco (propostas de currículo pendentes, conflitos em aberto, lembretes) e mostra cada
+  item como fonte → por que importa → o que fazer; o Noah só sugere, nunca executa. Canal
+  próprio em `visualizer/state.py` (`publish_presence`), independente do gráfico. Decisão
+  em [`docs/ADR-0001-presenca-local-first.md`](docs/ADR-0001-presenca-local-first.md).
+- **`central/`** — app Noah, com duas abas. **Pendências** lista as conversas do Claude
+  Code e do Codex que terminaram e esperam uma resposta sua (mais os itens da presença do
+  Noah) e deixa responder dali, no Mac ou no iPhone. **Presença** mostra as sugestões da
+  presença (fonte → por quê → o que fazer), só leitura. `fontes.py` lê os transcripts
+  locais por código, `resposta.py` retoma a conversa só em modo leitura e `servidor.py`
+  serve o app (PWA em `central/pwa/`) na porta 8769. Decisão em
+  [`docs/ADR-0002-central-de-pendencias.md`](docs/ADR-0002-central-de-pendencias.md).
 
 ## Setup
 
@@ -255,6 +267,13 @@ nenhuma ferramenta correspondente ter rodado no turno, o `send_turn` devolve um 
 modelo e dá mais uma tentativa; se ele insistir, o Noah diz que nada foi feito, em vez de
 repetir a afirmação falsa. A ação nunca é executada no lugar do modelo.
 
+Sugestões proativas (só leitura): `python src/cli.py presenca` lista o que está pendente
+no formato fonte → por quê → ação, ou "Nada pendente." quando não há nada. Com
+`NOAH_PRESENCE_ENABLED=true` no `.env`, o mesmo card aparece no canto do HUD ao clicar em
+"Abrir" no menu bar; sem a flag, o HUD não mostra nada novo. Nenhuma fonte usa rede ou
+nuvem, nem como fallback -- uma fonte ilegível é simplesmente pulada
+([ADR-0001](docs/ADR-0001-presenca-local-first.md)).
+
 Se as palmas não estiverem sendo detectadas (ou disparando à toa), meça o pico real do
 seu microfone/ambiente antes de ajustar `CLAP_PEAK_THRESHOLD` no `.env`:
 
@@ -344,6 +363,139 @@ exige `Content-Type: application/json` e um `Host` local, o que barra formulári
 outras páginas e DNS rebinding. Um turno roda por vez. Porta: `NOAH_API_PORT` ou
 `--porta` (8765 é o HUD, 8766 o XTTS e 8767 o portal). Sem streaming nem WebSocket
 nesta versão: a resposta chega inteira no fim do turno.
+
+## App Noah: central de pendências e presença
+
+O app Noah (`python src/cli.py central`) tem duas abas: **Pendências**, descrita abaixo,
+e **Presença**, com as sugestões da presença (ADR-0001).
+
+A aba Presença lê `GET /central/api/presenca`, só leitura. Cada item mostra a fonte, o
+porquê e o que fazer. Ela segue a mesma chave do HUD: com `NOAH_PRESENCE_ENABLED`
+desligada (o padrão), a aba diz "Presença desligada" e explica como ligar, sem contar
+nada. Para ligar, ponha `NOAH_PRESENCE_ENABLED=true` no `.env` e abra o app de novo.
+Ligada e sem nada a sugerir, ela fica quieta ("Nada agora"). Uma fonte ilegível é pulada,
+e se a leitura toda falhar a aba avisa, sem número chutado.
+
+### Pendências (Claude Code, Codex e Noah)
+
+Uma lista só do que está esperando você: conversas do Claude Code e do Codex cujo último
+turno terminou com uma resposta do agente, mais os itens da presença do Noah (só leitura,
+com `NOAH_PRESENCE_ENABLED=true`). Tudo é lido do disco por código, sem modelo e sem
+rede: `~/.claude/projects/` e `~/.codex/sessions/` (títulos em
+`~/.codex/session_index.jsonl`), janela de 3 dias e no máximo 40 itens.
+
+```bash
+python src/cli.py pendencias   # lista no terminal
+python src/cli.py central      # página em http://127.0.0.1:8769/central/
+```
+
+Na página, cada cartão mostra a fonte, o título, o projeto e a última mensagem do agente.
+"Responder" retoma a própria conversa em segundo plano, **sem editar nada**:
+
+- Claude: `claude -p --resume <id>` em modo `plan`, só com as ferramentas Read, Grep e
+  Glob e sem servidores MCP;
+- Codex: `codex exec resume <id>` com `sandbox_mode="read-only"`.
+
+A mensagem vai pelo stdin (até 4.000 caracteres), uma resposta por conversa por vez e no
+máximo duas ao mesmo tempo. Para o agente mudar arquivos, abra a conversa no app.
+"Dispensar" esconde o item até chegar uma resposta nova naquela conversa (marca local em
+`LOCAL_STATE_DIR/central/dispensadas.json`).
+
+Cada item diz também se a última mensagem pede algo a você (`pergunta`). A regra é
+textual, sem modelo: olha os últimos 400 caracteres, sem blocos de código e links, e
+procura um "?" ou um pedido explícito ("me avise", "aguardo", "você autoriza", "let me
+know"...). Sem isso, o item é uma **resposta pronta**: continua na lista e dá para
+responder, mas não conta como "Esperando você" na ilha, na Live Activity e nos widgets
+(conta como pronta). Itens do Noah sempre contam como pergunta.
+
+O botão **Aceitar** só aparece numa pergunta simples (`simples`), que um "sim" responde:
+uma pergunta curta de sim ou não no fim ("Posso fazer o push?", "Quer que eu abra a PR?",
+"Aguardo seu ok"). Pergunta aberta (qual, como, o que...), lista com 3 ou mais opções,
+mais de duas perguntas ou pergunta longa pedem resposta escrita: o app mostra só
+Responder. Vale igual para Claude e Codex; itens do Noah nunca têm Aceitar.
+
+No iPhone, pelo Wi-Fi de casa:
+
+1. No Mac: `python src/cli.py central --host "$(ipconfig getifaddr en0)" --token
+   "$(openssl rand -hex 16)"` (fora do `127.0.0.1` o token é obrigatório). Guarde o
+   token que você gerou.
+2. No Safari do iPhone, abra `http://<IP do Mac>:8769/central/`, cole o token no campo
+   da página e use "Adicionar à Tela de Início". O ícone (PNG de 180 px) e o nome "Noah"
+   vêm do manifesto. Esse caminho ainda não foi testado num iPhone de verdade.
+
+As travas são as mesmas da API local: `Host` conferido, `Origin` de outro endereço
+recusado, `Authorization: Bearer` nas rotas de dados (pendências e presença), POST só
+com JSON e corpo de até 64 KB, sem CORS. A página, o manifesto e os ícones abrem sem
+token porque não têm dado nenhum.
+
+Variáveis opcionais: `NOAH_CENTRAL_TOKEN`, `NOAH_CENTRAL_PORT` (padrão 8769),
+`NOAH_CLAUDE_BIN` e `NOAH_CODEX_BIN` (caminho das CLIs). Sem `NOAH_CODEX_BIN`, a
+central usa o `codex` que vem dentro do app ChatGPT/Codex, que é a mesma versão que
+gravou as conversas. Só se ele não existir é que ela recorre ao PATH: um `codex`
+antigo no PATH recusa o modelo configurado no app.
+
+Limites conhecidos:
+
+- só funciona na rede de casa; fora dela precisaria de uma VPN (Tailscale), ainda não
+  instalada;
+- sessões automáticas (`claude -p`, `codex exec`, subagentes) e conversas arquivadas no
+  Codex não aparecem;
+- se a conversa estiver aberta no app do Claude ou do Codex, talvez seja preciso
+  reabri-la para ver o turno enviado pela central;
+- os formatos dos transcripts não são uma API pública: se mudarem, a fonte é pulada
+  (a página avisa "Fonte com problema"), nunca inventada;
+- com a presença ligada, os itens dela aparecem nas duas abas: em Pendências como
+  cartões "Noah" (só leitura) e na aba Presença com o "o que fazer".
+
+### App nativo (iPhone e Mac)
+
+Em `apple/` há um app SwiftUI com Central, Pendências, Presença, Fluxo e Ajustes,
+que lê a mesma central. A central sincroniza os dois aparelhos: o que você aceita, responde ou dispensa
+num some do outro.
+
+- A Central reúne a conversa com o Noah, os modelos locais e a atividade do Cérebro.
+  Voz e digitação usam a mesma conversa, mantida em memória no Mac. O reconhecimento
+  de voz exige português disponível no aparelho; sem ele, a digitação continua disponível.
+  O microfone continua aberto enquanto ele pensa ou fala: ao reconhecer uma fala nova,
+  interrompe a leitura e cancela o turno anterior. Atividade de voz e texto reconhecido
+  filtram ruídos; o processamento de voz do sistema reduz eco. Cumprimentos e
+  agradecimentos exatos têm resposta imediata, sem carregar o modelo.
+  A voz clonada já instalada no Mac é transmitida aos dois aparelhos; sem ela pronta,
+  o app avisa e usa a voz do sistema.
+- Pendências mostra Para fazer, Geradas automaticamente pelo Noah (marcadas) e Respostas.
+  Tocar numa tarefa abre o detalhe com o porquê e as ações.
+- Central e Fluxo atualizam a cada 2 s enquanto visíveis. As outras abas atualizam a
+  cada 20 s, ou 4 s enquanto há resposta em andamento.
+- O painel "Ao vivo" mostra a sincronização e o feed do que mudou.
+- Cada pendência nova vira um aviso com Responder e Dispensar, e Aceitar quando a pergunta
+  é simples (sim ou não).
+- A aba Fluxo anima o caminho da informação: as ligações com a central têm partículas
+  ao vivo. As consultas ao Cérebro e as tarefas delegadas ao Qwen também, com a contagem
+  dos últimos 10 minutos lida em `GET /central/api/cerebro`. A central conta só chamadas
+  de ferramenta que executam `cerebro.py` ou `auxiliares.py` nos transcripts locais, mais
+  as consultas do Noah (só o horário). Se uma fonte falha, a ligação fica tracejada, "sem
+  sinal ao vivo", sem número chutado.
+- O Cérebro aparece em pedaços, nas 8 pastas do cofre. Acendem as pastas que cada agente
+  tocou, e o bonequinho dele anda até elas. A central manda só o código da pasta (`partes`),
+  tirado dos caminhos de nota que a resposta da ferramenta trouxe.
+- No iPhone, a ilha dinâmica e a tela bloqueada mostram o estado: azul "Trabalhando",
+  âmbar "Esperando você" com "!" e verde "Tudo pronto". O esquema completo inclui
+  widgets de resumo; o esquema pessoal mantém a Live Activity sem exigir App Group.
+- Responder, Aceitar e Dispensar pedem Face ID no iPhone e Touch ID no Mac. Ilha e widgets
+  só abrem o app.
+- No Mac, o painel da barra de menus lista as pendências e abre o app do agente.
+  Abrir Noah pelo menu ou por `noah://` reutiliza uma única janela principal.
+- No Mac, uma ilha no notch mostra o mesmo estado. Ela abre com o mouse, fecha pouco depois
+  que ele sai e, com o Alcove aberto, encosta ao lado dele.
+- Na ilha aberta, cada item tem a etiqueta "Pergunta" ou "Resposta pronta". Clicar na
+  linha mostra, de forma opcional, a mensagem inteira e um campo "Sua resposta" (Return
+  envia, com Touch ID), além de "Abrir no Noah" e "Dispensar". Enquanto você escreve, a
+  ilha não fecha quando o mouse sai; fecha quando o campo perde o foco.
+- O ícone é um botzinho preto e branco, gerado por `src/scripts/generate_app_icon.py`.
+
+Como gerar, instalar no iPhone e ligá-lo pela rede de casa está em
+[apple/README.md](apple/README.md). A decisão está em
+[docs/ADR-0003](docs/ADR-0003-app-nativo.md).
 
 ## Pedir uma mudança de código por voz
 
@@ -562,9 +714,24 @@ a contagem de tokens ainda variou um pouco entre tentativas (142 vs. 147 num pro
   de pensar em torná-lo padrão (o código e os testes simulados já existem).
 - API local (F7), próximo passo: FastAPI + WebSocket para resposta em streaming, depois
   de autorizar a dependência; acesso pelo iPhone só via VPN privada e com token.
+- Central de pendências: testar de verdade no iPhone; acesso fora de casa (Tailscale,
+  depende de autorização); juntar com a API local (8768) quando as duas estiverem
+  estáveis; respostas do Noah como fonte respondível.
 - Itens extras no menu bar (abrir logs/perfil, revisar propostas pendentes direto do
   menu -- hoje só tem liga/desliga).
+- Presença proativa, próximas fatias (cada uma com decisão própria, sempre local e sem
+  fallback de nuvem -- ver ADR-0001): rotinas agendadas por horário (agendador local),
+  novas fontes contáveis (Cérebro, Pontos Loop), resumo falado opcional e ações que só
+  rodam depois de aprovação explícita.
 
 ## Licença
 
 Código e documentação autorais sob [MIT](license).
+
+### Revisão da Central nativa
+
+A hierarquia conversa principal → subagentes aparece somente nas Pendências;
+o Fluxo mantém o mapa agregado de agentes e serviços. No Mac, a ilha substitui o
+ícone de menu para evitar duas entradas do Noah. A voz clonada gera frases completas
+e o app valida e reúne o PCM antes da reprodução, evitando pausas por falta de áudio.
+A síntese local ainda tem um tempo de preparação; veja [o app nativo](apple/README.md).

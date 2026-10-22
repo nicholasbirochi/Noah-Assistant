@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import atexit
 import json
+import os
 import struct
 import subprocess
 import urllib.error
@@ -32,6 +33,8 @@ def ensure_worker_started() -> None:
 
     if not has_reference_audio():
         return
+    if is_running():
+        return
     if _process is not None and _process.poll() is None:
         return
 
@@ -52,7 +55,7 @@ def ensure_worker_started() -> None:
     # interpreter guaranteed to have src/ on sys.path (via the .pth file
     # -- see README), regardless of how *this* process itself was
     # launched.
-    venv_python = PROJECT_ROOT / ".venv" / "bin" / "python"
+    venv_python = os.environ.get("NOAH_VOICE_PYTHON") or PROJECT_ROOT / ".venv" / "bin" / "python"
     _process = subprocess.Popen(
         [str(venv_python), "-m", "voice.xtts_worker"],
         cwd=PROJECT_ROOT / "src",
@@ -69,14 +72,24 @@ def _terminate_worker() -> None:
         _process.terminate()
 
 
-def is_ready() -> bool:
+def _health() -> bool | None:
     from config import XTTS_WORKER_PORT
 
     try:
         with urllib.request.urlopen(f"http://127.0.0.1:{XTTS_WORKER_PORT}/health", timeout=1) as resp:
-            return json.loads(resp.read())["ready"]
+            ready = json.loads(resp.read())["ready"]
+            return ready if isinstance(ready, bool) else None
     except (urllib.error.URLError, TimeoutError, OSError, ValueError, KeyError):
-        return False  # worker not up yet, still loading, or genuinely gone -- all "not ready"
+        return None
+
+
+def is_running() -> bool:
+    """A worker loading its model already owns the port; don't spawn another."""
+    return _health() is not None
+
+
+def is_ready() -> bool:
+    return _health() is True
 
 
 def synthesize_to_file(text: str, out_path: str) -> None:

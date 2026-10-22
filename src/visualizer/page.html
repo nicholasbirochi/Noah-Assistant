@@ -192,6 +192,37 @@
     color: var(--text-dim);
   }
   #brand b { color: var(--blue-listening); }
+
+  /* Proactive presence card (assistant/presence.py, ADR-0001): its own
+     slot on the SSE stream (kind "presence"), independent of
+     #chart-panel, so a chart never hides it and vice versa. Top-left,
+     under the brand, narrow enough for the default small window. Hidden
+     whenever the item list is empty -- quiet on noop. */
+  #presence-panel {
+    position: fixed;
+    top: 48px;
+    left: 28px;
+    width: min(280px, 42vw);
+    max-height: 40vh;
+    overflow-y: auto;
+    padding: 10px 12px;
+    border: 1px solid rgba(127,227,255,0.18);
+    border-radius: 8px;
+    background: rgba(5,12,20,0.72);
+    font: 11px "SF Mono", Menlo, monospace;
+    color: #cdeeff;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  #presence-panel.visible { opacity: 1; pointer-events: auto; }
+  .presence-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .presence-title { letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); }
+  .presence-close { background: none; border: 0; color: var(--text-dim); cursor: pointer; font: inherit; padding: 0 2px; }
+  .presence-item + .presence-item { margin-top: 8px; }
+  .presence-source { color: var(--blue-listening); }
+  .presence-why { margin-top: 2px; line-height: 1.35; }
+  .presence-action { margin-top: 2px; color: var(--text-dim); word-break: break-word; }
 </style>
 </head>
 <body data-state="off">
@@ -206,6 +237,7 @@
   </div>
   <div id="transcript-wrap"><div id="transcript"></div></div>
   <div id="chart-panel"></div>
+  <div id="presence-panel" aria-live="polite"></div>
 
 <script>
 const canvas = document.getElementById("orb");
@@ -648,12 +680,58 @@ powerBtn.addEventListener("click", () => {
     .finally(() => setTimeout(() => { powerBtn.disabled = false; }, 800));
 });
 
+// Proactive presence card (assistant/presence.py, ADR-0001). Payload:
+// {title, items: [{source, why, action}]}. Every string goes in through
+// textContent, never innerHTML -- the text comes from files on disk. An
+// empty item list hides the card. Unlike the chart, it is NOT cleared on
+// idle/off: it's a "what's pending" note, not a reply to the last turn.
+// The close button only hides it in this tab, until the next publish.
+const presencePanel = document.getElementById("presence-panel");
+
+function renderPresence(payload) {
+  const items = (payload && Array.isArray(payload.items)) ? payload.items : [];
+  presencePanel.replaceChildren();
+  if (!items.length) {
+    presencePanel.classList.remove("visible");
+    return;
+  }
+  const head = document.createElement("div");
+  head.className = "presence-head";
+  const title = document.createElement("span");
+  title.className = "presence-title";
+  title.textContent = payload.title || "Sugestões";
+  const close = document.createElement("button");
+  close.type = "button";
+  close.className = "presence-close";
+  close.setAttribute("aria-label", "Fechar sugestões");
+  close.textContent = "×";
+  close.addEventListener("click", () => presencePanel.classList.remove("visible"));
+  head.append(title, close);
+  presencePanel.appendChild(head);
+
+  for (const item of items) {
+    const row = document.createElement("div");
+    row.className = "presence-item";
+    for (const [cls, text] of [["presence-source", item.source], ["presence-why", item.why], ["presence-action", item.action ? "→ " + item.action : ""]]) {
+      if (!text) continue;
+      const el = document.createElement("div");
+      el.className = cls;
+      el.textContent = String(text);
+      row.appendChild(el);
+    }
+    presencePanel.appendChild(row);
+  }
+  presencePanel.classList.add("visible");
+}
+
 function connect() {
   const es = new EventSource("/events");
   es.onmessage = (ev) => {
     try {
       const msg = JSON.parse(ev.data);
-      if (msg.type === "data") {
+      if (msg.type === "data" && msg.kind === "presence") {
+        renderPresence(msg.payload);
+      } else if (msg.type === "data") {
         renderChart(msg.kind, msg.payload);
       } else {
         setState(msg.state, msg.text);

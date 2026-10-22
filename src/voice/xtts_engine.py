@@ -28,14 +28,11 @@ shape the design here, not assumptions:
   just using CPU outright. device is hardcoded to "cpu" below for that
   reason, not auto-detected.
 
-Real, measured finding that shaped synthesize_stream() below: generation
-runs close to real-time on this hardware (not slow in absolute terms), but
-synthesize_to_file()'s blocking, whole-utterance-at-once API means Noah
-stays silent for the entire ~5s a short reply takes to generate before any
-audio plays at all -- a real, reported "demorando demais" complaint, not
-a hypothetical one. synthesize_stream() uses XTTS's own inference_stream()
-instead, yielding audio as it's generated so playback (see tts.py) can
-start within roughly a second instead of waiting for the whole thing.
+The native client buffers a complete reply before playback. On this Mac,
+repeated short inference_stream blocks took 9.6s for 4.4s of audio, versus
+4.8s with stream_chunk_size=0 (same seed and text, 2026-10-21). Completing
+sentences avoids repeatedly decoding a growing waveform; the transport
+still uses framed PCM and supports cancellation between blocks.
 
 NEVER CALL preload_in_background() FROM THE MAIN Noah PROCESS: found
 live that doing so made torchcodec dlopen the Homebrew-installed FFmpeg
@@ -104,10 +101,22 @@ def preload_in_background() -> None:
 def _build_model():
     """Split out from _load() purely so tests can make this step fail
     without needing to fight a real (or really-absent) TTS import."""
-    os.environ.setdefault("COQUI_TOS_AGREED", "1")  # personal, local, non-commercial use
-    from TTS.api import TTS
+    # Explicit paths bypass ModelManager's automatic model download.
+    from pathlib import Path
 
-    return TTS("tts_models/multilingual/multi-dataset/xtts_v2").to("cpu")
+    pasta = Path(os.environ.get(
+        "NOAH_XTTS_MODEL_DIR",
+        str(Path.home() / "Library/Application Support/tts/tts_models--multilingual--multi-dataset--xtts_v2"),
+    ))
+    if not all((pasta / nome).is_file() for nome in ("model.pth", "config.json", "vocab.json", "speakers_xtts.pth")):
+        raise RuntimeError("Voz clonada não instalada localmente; nenhum download foi iniciado")
+    from TTS.api import TTS
+    from TTS.utils.synthesizer import Synthesizer
+
+    model = TTS()
+    model.synthesizer = Synthesizer(model_dir=str(pasta), use_cuda=False)
+    model.config = model.synthesizer.tts_config
+    return model.to("cpu")
 
 
 def _load() -> None:
@@ -185,15 +194,11 @@ def _to_pcm16_bytes(wav_chunk) -> bytes:
 
 
 def synthesize_stream(text: str):
-    """Yields raw int16 PCM byte chunks (mono, STREAM_SAMPLE_RATE Hz) as
-    XTTS generates them, instead of blocking until the whole utterance is
-    done (synthesize_to_file above) -- lets playback start within roughly
-    a second instead of waiting out the full ~5s a short reply takes to
-    fully generate. Raises RuntimeError if the model isn't loaded yet or
-    there's no reference clip -- same "check is_ready() first" contract as
-    synthesize_to_file; once at least one chunk has been yielded, a later
-    failure just ends the generator (propagates the exception on the next
-    `next()` call) rather than raising up front."""
+    """Yield complete sentence waveforms as PCM16, without repeatedly
+    running the vocoder over the same growing prefix. Sentence splitting
+    also keeps long replies within XTTS's tokenizer limit. The native
+    player validates and buffers the reply before starting playback.
+    """
     from config import TTS_XTTS_LANGUAGE
 
     with _model_lock:
@@ -203,6 +208,7 @@ def synthesize_stream(text: str):
 
     gpt_cond_latent, speaker_embedding = _get_conditioning_latents()
     for wav_chunk in model.synthesizer.tts_model.inference_stream(
-        text, TTS_XTTS_LANGUAGE, gpt_cond_latent, speaker_embedding
+        text, TTS_XTTS_LANGUAGE, gpt_cond_latent, speaker_embedding,
+        stream_chunk_size=0, enable_text_splitting=True,
     ):
         yield _to_pcm16_bytes(wav_chunk)

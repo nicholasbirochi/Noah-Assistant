@@ -7,8 +7,9 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from typing import Callable
 
-from assistant.providers import LocalLLMProvider, get_provider, recover_tool_call_from_content
+from assistant.providers import LocalLLMProvider, chat_with_cancel, get_provider, recover_tool_call_from_content
 from assistant.tool_schema import functions_to_tool_specs
 from assistant.tools import READ_ONLY_TOOL_NAMES, TOOLS
 
@@ -201,6 +202,35 @@ def _parece_pergunta(texto: str) -> bool:
     return "?" in texto or bool(set(_tokens(texto)) & _PERGUNTA_MARCAS)
 
 
+def _normalizar_fastpath(texto: str) -> str:
+    normalizado = _sem_acento(texto)
+    return " ".join(re.findall(r"\w+", normalizado))
+
+
+_RESPOSTAS_FASTPATH = {
+    "oi": "Oi!", "ola": "Oi!", "opa": "Oi!", "e ai": "Oi!", "hey": "Oi!", "hello": "Oi!",
+    "oi noah": "Oi!", "ola noah": "Oi!", "opa noah": "Oi!", "e ai noah": "Oi!",
+    "opa beleza": "Opa! Beleza, e você?", "opa noah beleza": "Opa! Beleza, e você?",
+    "e ai beleza": "Opa! Beleza, e você?",
+    "bom dia": "Bom dia!", "bom dia noah": "Bom dia!", "bom dia noah tudo bem": "Bom dia! Tudo bem!",
+    "boa tarde": "Boa tarde!", "boa tarde noah": "Boa tarde!",
+    "boa tarde noah tudo bem": "Boa tarde! Tudo bem!",
+    "boa noite": "Boa noite!", "boa noite noah": "Boa noite!", "boa noite noah tudo bem": "Boa noite! Tudo bem!",
+    "tudo bem": "Tudo bem!", "oi tudo bem": "Tudo bem! E por aí?", "ola tudo bem": "Tudo bem! E por aí?",
+    "oi noah tudo bem": "Tudo bem! E por aí?", "ola noah tudo bem": "Tudo bem! E por aí?",
+    "como vai": "Tudo bem, obrigado!", "como vai noah": "Tudo bem, obrigado!",
+    "como voce esta": "Tudo bem, obrigado!", "obrigado": "Por nada!", "obrigada": "Por nada!",
+    "obg": "Por nada!", "valeu": "Por nada!", "vlw": "Por nada!", "beleza": "Beleza!",
+    "blz": "Beleza!", "tranquilo": "Tudo tranquilo!", "tranquila": "Tudo tranquilo!",
+    "tchau": "Até mais!", "ate mais": "Até mais!", "ate logo": "Até logo!",
+}
+
+
+def _resposta_fastpath(texto: str) -> str | None:
+    """Canned reply only for exact, small-talk phrases; all other turns use LLM."""
+    return _RESPOSTAS_FASTPATH.get(_normalizar_fastpath(texto))
+
+
 # Noah / project-domain vocabulary. An implicit (no "Cérebro" word) question
 # only consults the vault when it is ABOUT Noah -- its facts, decisions or
 # capabilities -- or continues a Noah topic already in the conversation. This is
@@ -246,7 +276,7 @@ def _ultima_fala_usuario(messages: list[dict]) -> str:
     return next((m.get("content", "") for m in reversed(messages) if m.get("role") == "user"), "")
 
 
-def _forcar_consulta_cerebro(messages: list[dict]) -> None:
+def _forcar_consulta_cerebro(messages: list[dict], should_cancel: Callable[[], bool] | None = None) -> None:
     """Run ONE real, bounded consult and inject its result into the history
     BEFORE the model answers, whenever the latest user turn qualifies
     (_deve_consultar_cerebro: explicit mention, or a facts/decisions/capabilities
@@ -267,6 +297,8 @@ def _forcar_consulta_cerebro(messages: list[dict]) -> None:
     contexto = _sobre_noah(user_turns[-2]) if len(user_turns) >= 2 else False
     if not _deve_consultar_cerebro(pergunta, contexto_sobre_noah=contexto):
         return
+    if should_cancel is not None and should_cancel():
+        raise RuntimeError("pedido cancelado")
     from assistant import cerebro
     from assistant.tools import consult_cerebro
 
@@ -340,18 +372,30 @@ def _alegacao_sem_ferramenta(texto: str, executadas: set[str]) -> str | None:
     return None
 
 
-def send_turn(messages: list[dict]) -> str:
+def send_turn(messages: list[dict], should_cancel: Callable[[], bool] | None = None) -> str:
     """Runs the tool loop for the conversation so far (last entry must be the
     new user turn already appended by the caller). Mutates `messages` in
     place with every assistant/tool turn produced, and returns the final
     assistant text to speak back."""
+
+    def interrompido() -> bool:
+        return should_cancel is not None and should_cancel()
+
+    if interrompido():
+        raise RuntimeError("pedido cancelado")
+    resposta_rapida = _resposta_fastpath(_ultima_fala_usuario(messages))
+    if resposta_rapida is not None:
+        messages.append({"role": "assistant", "content": resposta_rapida})
+        return resposta_rapida
 
     provider = _get_provider()
 
     # An explicit "consult the Cérebro" request must never be answered without a
     # real consultation actually running first -- see _forcar_consulta_cerebro.
     tamanho_antes = len(messages)
-    _forcar_consulta_cerebro(messages)
+    _forcar_consulta_cerebro(messages, interrompido)
+    if interrompido():
+        raise RuntimeError("pedido cancelado")
     # Tools that really ran during THIS call -- what a claim like "Adicionei..."
     # is checked against (see _alegacao_sem_ferramenta).
     executadas: set[str] = {"consult_cerebro"} if len(messages) > tamanho_antes else set()
@@ -367,12 +411,18 @@ def send_turn(messages: list[dict]) -> str:
     tool_specs = [] if social else _tool_specs
 
     for _ in range(MAX_TOOL_ITERATIONS):
-        response = provider.chat(
+        if interrompido():
+            raise RuntimeError("pedido cancelado")
+        response = chat_with_cancel(
+            provider,
             messages=[{"role": "system", "content": _build_system_prompt()}, *messages],
             tool_specs=tool_specs,
+            should_cancel=interrompido,
         )
 
         tool_calls = list(response.tool_calls)
+        if interrompido():
+            raise RuntimeError("pedido cancelado")
         intento_vazado = None
         if not tool_calls:
             # Some local chat templates write a tool call as plain JSON in the
@@ -456,6 +506,8 @@ def send_turn(messages: list[dict]) -> str:
             continue
 
         for call in tool_calls:
+            if interrompido():
+                raise RuntimeError("pedido cancelado")
             function = _functions_by_name.get(call.name)
             if function is None:
                 output = f"Ferramenta desconhecida: {call.name}"

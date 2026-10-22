@@ -48,6 +48,8 @@ import subprocess
 import sys
 import tempfile
 
+from central.sinal_cerebro import pastas_citadas, registrar_consulta_noah
+
 # The vault reads many files per query; writes take the lock + fsync. These are
 # generous for a local, personal CLI -- their only job is to stop a wedged
 # child process from hanging a voice turn forever.
@@ -126,6 +128,8 @@ def consultar(
         return "Preciso de ao menos um termo para consultar o Cérebro."
     local = _consultar_bm25(query, projeto=projeto, max_notas=max_notas, orcamento=orcamento)
     if local is not None:
+        # O ranking local também conta para o sinal ao vivo do app Noah.
+        registrar_consulta_noah(partes=pastas_citadas(local))
         return local
     args = ["buscar", *termos, "--trechos", "--max", str(max_notas), "--orcamento", str(orcamento)]
     if projeto:
@@ -136,9 +140,11 @@ def consultar(
         return f"Cérebro indisponível: {exc}. Sigo sem consultar quando for seguro."
     except subprocess.TimeoutExpired:
         return f"A consulta ao Cérebro excedeu o tempo limite ({_BUSCAR_TIMEOUT}s)."
+    saida = (proc.stdout or "").strip()
+    # Só o horário e os códigos das pastas citadas, para o sinal ao vivo do app Noah.
+    registrar_consulta_noah(partes=pastas_citadas(saida) if proc.returncode == 0 else ())
     if proc.returncode != 0:
         return f"Não consegui consultar o Cérebro: {_detalhe_erro(proc)}"
-    saida = proc.stdout.strip()
     # buscar --trechos still prints its trailing summary line when nothing
     # matched ("-- trechos de 0 nota(s)..."); turn that into a plain answer.
     if not saida or re.search(r"trechos de 0 nota", saida):
