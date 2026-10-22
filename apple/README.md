@@ -218,17 +218,21 @@ A conta gratuita da Apple serve, mas o perfil vale 7 dias: depois disso, instale
 
 - **Só no Mac.** Rode `python src/cli.py central` e deixe o endereço padrão
   `http://127.0.0.1:8769`, sem token.
-- **Mac e iPhone juntos, pelo Wi-Fi de casa:**
-  1. No Mac, rode `python src/cli.py central --host "$(ipconfig getifaddr en0)" --token "$(openssl rand -hex 16)"`
-     e guarde o token.
-  2. Em **Ajustes**, ponha `http://<IP do Mac>:8769` e o token **nos dois aparelhos,
-     inclusive no Mac**. Com `--host`, a central só atende naquele IP, e o Mac em
-     `127.0.0.1` ficaria de fora da sincronia.
+- **Mac e iPhone juntos, na mesma rede local:**
+  1. Defina `NOAH_CENTRAL_TOKEN` com uma chave privada e
+     `NOAH_CENTRAL_HOSTS="localhost,127.0.0.1,<nome-local-do-Mac>.local"` no ambiente
+     do serviço. O nome vem de `scutil --get LocalHostName`; substitua o exemplo.
+     Rode `python src/cli.py central --host 0.0.0.0`. O token continua obrigatório.
+  2. Em **Ajustes**, use `http://127.0.0.1:8769` no Mac e
+     `http://<nome-local-do-Mac>.local:8769` no iPhone, com a mesma chave.
+     A lista explícita aceita esses nomes em `Host` e `Origin`; outros são recusados.
   3. Toque em "Salvar e testar".
 
-O IP do Mac vem do roteador (DHCP) e pode mudar. Se o app parar de achar a central,
-confira o IP e atualize em Ajustes; reservar o IP no roteador evita isso. Fora de casa
-precisaria de VPN (Tailscale), ainda não instalada.
+O acesso local do Mac não depende do Wi-Fi. O nome `.local` evita gravar no iPhone
+um IP que muda por DHCP. A rede precisa permitir descoberta local (mDNS) e comunicação
+entre os aparelhos; redes de convidados ou corporativas podem bloquear isso. Um IP
+fixo ainda pode ser usado com `--host <IP>`, mas deixa de funcionar quando ele muda.
+Não há acesso remoto entre redes diferentes sem uma conexão privada adicional.
 
 ## Testes
 
@@ -318,3 +322,9 @@ Com a ilha ligada, o app não insere outro ícone de menu. Ao desligá-la nos Aj
 o ícone volta como alternativa. O rosto usa a mesma geometria animada entre a
 pílula e o painel: desce e cresce ao abrir, sobe e encolhe ao fechar, respeitando
 “Reduzir movimento”. A posição da ilha e a camada sobre os ícones vizinhos são preservadas.
+
+### Áudio do Mac durante a escuta
+
+O cancelamento de eco continua ligado para permitir interromper o Noah. A redução do áudio dos outros aplicativos usa o nível mínimo do macOS, sem redução avançada por detecção de voz. Se um fone Bluetooth perder qualidade ao abrir o microfone, selecione o microfone do Mac como entrada; a saída pode continuar no fone.
+
+Por decisão do usuário em 22/10/2026, o Noah não deve alterar o volume do sistema, ativar mudo nem trocar os dispositivos de entrada ou saída de áudio, inclusive ao iniciar, escutar ou reconectar. Essas escolhas permanecem sob controle do usuário. Não adicionar automações ou ferramentas para esses ajustes. A configuração de escuta com cancelamento de eco e redução mínima descrita acima foi mantida; ela não equivale a desativar completamente a atenuação feita pelo processamento de voz do macOS.

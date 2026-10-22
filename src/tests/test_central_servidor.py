@@ -23,7 +23,8 @@ ITENS = [
 def servidor_factory(tmp_path):
     criados = []
 
-    def criar(*, token=None, presenca=None, sinal=None, turno=None):
+    def criar(*, token=None, presenca=None, sinal=None, turno=None,
+              host="127.0.0.1", hosts_adicionais=()):
         respondidas = []
 
         def executor(p, texto):
@@ -31,7 +32,7 @@ def servidor_factory(tmp_path):
             return "ok"
 
         srv = ServidorCentral(
-            ("127.0.0.1", 0), token=token,
+            (host, 0), token=token, hosts_adicionais=hosts_adicionais,
             listar=lambda: (list(ITENS), ["Codex"]),
             respostas=Respostas(executor),
             dispensadas=Dispensadas(tmp_path / "dispensadas.json"),
@@ -119,6 +120,44 @@ def test_host_e_origem(servidor_factory):
     status, _, _ = _req(srv, "POST", "/central/api/dispensar", {"fonte": "claude", "id": "s1"},
                         headers={"Origin": f"http://127.0.0.1:{porta}"})
     assert status == 200
+
+
+@pytest.mark.parametrize("nome", ["localhost", "127.0.0.1", "Meu-Mac.local"])
+def test_escuta_em_todas_interfaces_com_hosts_explicitos_exige_token(servidor_factory, nome):
+    srv = servidor_factory(token="segredo", host="0.0.0.0",
+                           hosts_adicionais=("localhost", "127.0.0.1", "meu-mac.local"))
+    headers = {"Host": f"{nome}:{srv.server_address[1]}"}
+    assert _req(srv, "GET", "/central/api/pendencias", headers=headers)[0] == 401
+    headers["Authorization"] = "Bearer segredo"
+    assert _req(srv, "GET", "/central/api/pendencias", headers=headers)[0] == 200
+
+
+def test_hosts_adicionais_nao_liberam_host_ou_origem_arbitrarios(servidor_factory):
+    srv = servidor_factory(token="segredo", host="0.0.0.0", hosts_adicionais=("meu-mac.local",))
+    porta = srv.server_address[1]
+    headers = {"Host": f"Meu-Mac.local:{porta}", "Authorization": "Bearer segredo"}
+    headers["Origin"] = f"http://MEU-MAC.LOCAL:{porta}"
+    assert _req(srv, "GET", "/central/api/pendencias", headers=headers)[0] == 200
+    headers["Origin"] = "https://evil.example"
+    assert _req(srv, "GET", "/central/api/pendencias", headers=headers)[0] == 403
+    headers.pop("Origin")
+    headers["Host"] = f"meu-mac.local.evil.example:{porta}"
+    assert _req(srv, "GET", "/central/api/pendencias", headers=headers)[0] == 403
+
+
+def test_main_carrega_hosts_explicitos_do_ambiente(monkeypatch):
+    from unittest.mock import Mock
+
+    fabrica = Mock()
+    fabrica.return_value.server_address = ("0.0.0.0", 8769)
+    fabrica.return_value.serve_forever.side_effect = KeyboardInterrupt
+    monkeypatch.setattr(central_servidor, "ServidorCentral", fabrica)
+    monkeypatch.setenv("NOAH_CENTRAL_HOSTS", "localhost,meu-mac.local")
+    monkeypatch.delenv("NOAH_CENTRAL_VOZ", raising=False)
+    assert central_servidor.main(["--host", "0.0.0.0", "--token", "teste"]) == 0
+    fabrica.assert_called_once_with(("0.0.0.0", 8769), token="teste",
+                                   hosts_adicionais=("localhost", "meu-mac.local"))
+    fabrica.return_value.server_close.assert_called_once()
 
 
 def test_post_exige_json_e_limita_corpo(servidor_factory):

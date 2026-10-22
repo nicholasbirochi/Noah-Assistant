@@ -114,6 +114,12 @@ final class Ouvido {
             // O modo de voz do AVAudioEngine reduz o retorno do alto-falante
             // ao microfone durante a leitura, permitindo interrompê-la falando.
             try? entrada.setVoiceProcessingEnabled(true)
+            #if os(macOS)
+            // A escuta contínua não deve abafar músicas, vídeos e outros apps.
+            // Mantém o cancelamento de eco necessário para interromper o Noah.
+            entrada.voiceProcessingOtherAudioDuckingConfiguration = .init(
+                enableAdvancedDucking: false, duckingLevel: .min)
+            #endif
             let formato = entrada.outputFormat(forBus: 0)
             let caixa = caixa
             entrada.removeTap(onBus: 0)

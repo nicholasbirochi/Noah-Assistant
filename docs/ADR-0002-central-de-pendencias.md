@@ -65,6 +65,13 @@ Há também duas CLIs locais que retomam uma conversa pelo id: `claude --resume`
    - `Host` conferido, e `Origin` de outro endereço recusado com 403;
    - POST só com `application/json`, sem CORS e com corpo de até 64 KB.
 
+   Para acompanhar mudanças de rede, a escuta pode usar `0.0.0.0` com token
+   obrigatório e nomes explícitos em `NOAH_CENTRAL_HOSTS`, separados por vírgula.
+   `localhost`/`127.0.0.1` atendem o próprio Mac e o nome mDNS do Mac atende o
+   iPhone na mesma rede. Os aliases também passam pela comparação exata de
+   `Host` e `Origin` (sem distinção entre maiúsculas e minúsculas); não liberam
+   CORS nem origens arbitrárias. Nenhum IP de Wi-Fi é necessário no cliente Mac.
+
    A página e o manifesto abrem sem token porque não contêm dado nenhum. Já a lista e a
    resposta sempre exigem o token, quando ele existe. A central ficou fora da 8768 porque
    aquele servidor ainda está sendo construído por outra frente de trabalho. A junção fica
