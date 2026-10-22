@@ -115,8 +115,8 @@ final class Modelo {
         if aba == .presenca { await atualizarPresenca() }
         if aba == .fluxo || aba == .central {
             await atualizarCerebro()
-            await atualizarPainel()
         }
+        await atualizarPainel()
     }
 
     func lerPermissao() async {

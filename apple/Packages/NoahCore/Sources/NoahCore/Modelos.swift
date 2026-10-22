@@ -41,6 +41,15 @@ public struct Pendencia: Codable, Identifiable, Hashable, Sendable {
     /// Subagentes sidechain verificados pela central; nenhum conteúdo é enviado.
     public var subagentes: [Subagente]
 
+    /// Só une filhos confirmados da própria conversa pendente; não cria tarefas
+    /// para snapshots ativos e não mistura IDs iguais de fontes diferentes.
+    public func filhos(no painel: PainelCentral?) -> [Subagente] {
+        let ativos = fonte == "claude"
+            ? painel?.conversasClaude.first { $0.id == ident }?.subagentes ?? [] : []
+        var vistos: Set<String> = []
+        return (subagentes + ativos).filter { !$0.id.isEmpty && vistos.insert($0.id).inserted }
+    }
+
     public var id: String { chave }
 
     enum CodingKeys: String, CodingKey {

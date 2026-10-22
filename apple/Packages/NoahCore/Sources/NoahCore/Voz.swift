@@ -54,6 +54,8 @@ public struct DetectorDeVoz: Sendable {
     private var quadrosAcima = 0
     private var quadrosAbaixo = 0
     public private(set) var vozAtiva = false
+    /// Mantém a evidência de voz até o fim do pedido, mesmo se o texto chegar atrasado.
+    public private(set) var teveVozNoPedido = false
 
     public init() {}
 
@@ -74,7 +76,12 @@ public struct DetectorDeVoz: Sendable {
             pisoRuido = pisoRuido * 0.97 + min(valor, limiar) * 0.03
             if quadrosAbaixo >= 12 { vozAtiva = false }
         }
+        if vozAtiva { teveVozNoPedido = true }
         return vozAtiva
+    }
+
+    public mutating func novoPedido() {
+        teveVozNoPedido = false
     }
 }
 

@@ -253,6 +253,7 @@ struct IlhaDoNotch: View {
     @State private var expandidas: Set<String> = []
     @State private var alturaLista: CGFloat = 0
     @FocusState private var foco: String?
+    @Namespace private var movimentoDoRosto
 
     var body: some View {
         let r = modelo.resumo
@@ -265,7 +266,7 @@ struct IlhaDoNotch: View {
                         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: {
                             ilha.tamanhoAberto = CGSize(width: IlhaMac.larguraAberta, height: $0)
                         }
-                        .transition(.opacity.combined(with: .scale(scale: 0.92, anchor: ancora.point)))
+                        .transition(.opacity)
                 } else {
                     fechado(r, tamanho: fechada)
                         .transition(.opacity)
@@ -293,6 +294,7 @@ struct IlhaDoNotch: View {
             if IlhaNotch.deveEspiar(antes: antes, depois: depois) { ilha.espiar() }
         }
         .onChange(of: foco) { _, campo in ilha.escrevendo = campo != nil }
+        .transaction { if semMovimento { $0.animation = nil } }
         .environment(\.colorScheme, .dark)
     }
 
@@ -314,6 +316,7 @@ struct IlhaDoNotch: View {
             // Rosto na asa esquerda, texto na direita; o meio é o próprio notch.
             HStack(spacing: 0) {
                 Rosto(estado: r.estado, tamanho: rosto)
+                    .matchedGeometryEffect(id: "rosto", in: movimentoDoRosto)
                     .padding(.leading, 12)
                 Spacer(minLength: ilha.notch.width)
                 if r.estado != .quieto {
@@ -326,6 +329,7 @@ struct IlhaDoNotch: View {
         } else {
             HStack(spacing: 7) {
                 Rosto(estado: r.estado, tamanho: rosto)
+                    .matchedGeometryEffect(id: "rosto", in: movimentoDoRosto)
                 Text(r.curto).font(.system(size: 12, weight: .semibold, design: .rounded))
                     .foregroundStyle(r.estado.corClara).lineLimit(1)
                 if r.estado == .trabalhando { Pontos(cor: r.estado.corClara, parado: semMovimento) }
@@ -348,6 +352,7 @@ struct IlhaDoNotch: View {
 
             HStack(spacing: 10) {
                 Rosto(estado: r.estado, tamanho: 34)
+                    .matchedGeometryEffect(id: "rosto", in: movimentoDoRosto)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(r.estado.titulo).font(.system(size: 15, weight: .bold, design: .rounded))
                         .foregroundStyle(r.estado.corClara)

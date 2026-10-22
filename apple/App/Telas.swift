@@ -148,7 +148,35 @@ struct ListaTarefas: View {
             }
             if !conversas.isEmpty {
                 Section("Para fazer") {
-                    ForEach(conversas) { TarefaLinha(p: $0).tag($0.chave) }
+                    ForEach(conversas) { p in
+                        let filhos = p.filhos(no: modelo.painel)
+                        if filhos.isEmpty {
+                            TarefaLinha(p: p).tag(p.chave)
+                        } else {
+                            DisclosureGroup {
+                                ForEach(filhos, id: \.id) { filho in
+                                    Label {
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text("Subagente")
+                                            Text(filho.id).font(.caption.monospaced())
+                                                .foregroundStyle(.secondary).lineLimit(1)
+                                        }
+                                    } icon: {
+                                        Image(systemName: "arrow.turn.down.right")
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .accessibilityElement(children: .combine)
+                                }
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    TarefaLinha(p: p)
+                                    Text("Conversa principal · \(filhos.count) \(filhos.count == 1 ? "subagente" : "subagentes")")
+                                        .font(.caption).foregroundStyle(.secondary)
+                                }
+                            }
+                            .tag(p.chave)
+                        }
+                    }
                 }
             }
             if !automaticas.isEmpty {

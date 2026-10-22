@@ -43,10 +43,8 @@ struct ConversaVoz: View {
         }
         .onChange(of: ouvido.mudo) { atualizar() }
         .onChange(of: ouvido.falando) { atualizar() }
-        .onChange(of: modelo.conversando) { _, agora in
-            if !agora { responderEmVoz() }
-            atualizar()
-        }
+        .onChange(of: modelo.mensagens.last?.id) { _, _ in responderEmVoz() }
+        .onChange(of: modelo.conversando) { atualizar() }
     }
 
     /// Microfone aberto só quando faz sentido: fora do modo digitação, sem
