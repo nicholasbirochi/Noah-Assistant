@@ -103,12 +103,14 @@ class ServidorCentral(ThreadingHTTPServer):
     def __init__(self, endereco, *, token: str | None = None, listar: Listar | None = None,
                  respostas: Respostas | None = None, dispensadas: fontes.Dispensadas | None = None,
                  presenca: Presenca | None = None, sinal: Sinal | None = None,
-                 atividade: Atividade | None = None, conversas: Conversas | None = None):
+                 atividade: Atividade | None = None, conversas: Conversas | None = None,
+                 hosts_adicionais: tuple[str, ...] = ()):
         host = endereco[0]
         if not e_loopback(host) and not token:
             raise ValueError(f"recusado: escutar em {host} (fora do loopback) exige token")
         super().__init__(endereco, _Handler)
         self.token = token
+        self.hosts_adicionais = {nome.strip().lower() for nome in hosts_adicionais if nome.strip()}
         self.dispensadas = dispensadas or fontes.Dispensadas()
         self.listar = listar or (lambda: fontes.listar(dispensadas=self.dispensadas.carregar()))
         self.respostas = respostas or Respostas()
@@ -120,6 +122,7 @@ class ServidorCentral(ThreadingHTTPServer):
     def hosts_aceitos(self) -> set[str]:
         host, porta = self.server_address[:2]
         nomes = {host, "localhost", "127.0.0.1"} if e_loopback(host) else {host}
+        nomes |= self.hosts_adicionais
         return {f"{n}:{porta}" for n in nomes} | nomes
 
     def achar(self, fonte: str, ident: str) -> fontes.Pendencia | None:
@@ -187,11 +190,11 @@ class _Handler(BaseHTTPRequestHandler):
     # -- regras -------------------------------------------------------------
 
     def _autorizado(self, *, exigir_token: bool = True) -> bool:
-        if self.headers.get("Host", "") not in self.server.hosts_aceitos():
+        if self.headers.get("Host", "").lower() not in self.server.hosts_aceitos():
             self._erro(403, "host não permitido")
             return False
         origem = self.headers.get("Origin")
-        if origem is not None and urlsplit(origem).netloc not in self.server.hosts_aceitos():
+        if origem is not None and urlsplit(origem).netloc.lower() not in self.server.hosts_aceitos():
             self._erro(403, "origem não permitida")
             return False
         token = self.server.token
@@ -365,7 +368,10 @@ def main(argv: list[str] | None = None) -> int:
 
         xtts_client.ensure_worker_started()
     try:
-        servidor = ServidorCentral((args.host, args.porta), token=args.token)
+        servidor = ServidorCentral(
+            (args.host, args.porta), token=args.token,
+            hosts_adicionais=tuple(os.environ.get("NOAH_CENTRAL_HOSTS", "").split(",")),
+        )
     except ValueError as exc:
         print(exc, file=sys.stderr)
         return 2
