@@ -128,7 +128,13 @@ def test_synthesize_to_file_delegates_to_loaded_model(monkeypatch, tmp_path):
 # ---- synthesize_stream ----
 
 
+class FakeTokenizer:
+    char_limits = {"pt": 203}
+
+
 class FakeTtsModel:
+    tokenizer = FakeTokenizer()
+
     def __init__(self, chunks, latents=("cond_latent", "spk_emb")):
         self.chunks = chunks
         self.latents = latents
@@ -140,7 +146,8 @@ class FakeTtsModel:
         return self.latents
 
     def inference_stream(self, text, language, gpt_cond_latent, speaker_embedding, **options):
-        assert options == {"stream_chunk_size": 0, "enable_text_splitting": True}
+        # XTTS's own splitting needs spaCy, which this project doesn't install.
+        assert options == {"stream_chunk_size": 0, "enable_text_splitting": False}
         self.inference_calls.append((text, language, gpt_cond_latent, speaker_embedding))
         yield from self.chunks
 
@@ -211,6 +218,66 @@ def test_synthesize_stream_reuses_cached_conditioning_latents_across_calls(monke
     list(xtts_engine.synthesize_stream("segunda"))
 
     assert len(tts_model.conditioning_calls) == 1  # not recomputed the second time
+
+
+def test_synthesize_stream_splits_a_reply_that_reaches_the_character_limit(monkeypatch, tmp_path):
+    import numpy as np
+
+    monkeypatch.setattr(config, "TTS_XTTS_SPEAKER_WAV_PATH", tmp_path / "reference.wav")
+    monkeypatch.setattr(config, "TTS_XTTS_LANGUAGE", "pt")
+    tts_model = FakeTtsModel(chunks=[np.array([0.5])])
+    monkeypatch.setattr(xtts_engine, "_model", FakeModel(tts_model))
+    texto = " ".join(f"Esta é a frase número {n} da resposta do Noah." for n in range(12))
+
+    chunks = list(xtts_engine.synthesize_stream(texto))
+
+    pedacos = [chamada[0] for chamada in tts_model.inference_calls]
+    assert len(pedacos) > 1
+    assert all(len(pedaco) <= 203 for pedaco in pedacos)
+    assert " ".join(pedacos) == texto
+    assert len(chunks) == len(pedacos)
+
+
+# ---- _frases ----
+
+
+@pytest.mark.parametrize(
+    ("texto", "limite", "esperado"),
+    [
+        # Below the limit, several sentences stay together.
+        ("Bom dia. Tudo certo?", 203, ["Bom dia. Tudo certo?"]),
+        # Exactly at the limit is still within what XTTS accepts.
+        ("a" * 30, 30, ["a" * 30]),
+        # Whole sentences are joined up to the limit.
+        (
+            "Primeira frase curta. Segunda frase. Terceira frase aqui.",
+            40,
+            ["Primeira frase curta. Segunda frase.", "Terceira frase aqui."],
+        ),
+        # A long sentence is cut at a comma in the second half of the limit.
+        (
+            "um dois tres quatro, cinco seis sete oito nove dez",
+            30,
+            ["um dois tres quatro,", "cinco seis sete oito nove dez"],
+        ),
+        # An early comma would leave a tiny fragment, so a space wins.
+        (
+            "um, dois tres quatro cinco seis sete oito nove",
+            30,
+            ["um, dois tres quatro cinco", "seis sete oito nove"],
+        ),
+        # A decimal comma is not a clause.
+        (
+            "o valor total ficou em 1234,56 reais neste mes corrente",
+            30,
+            ["o valor total ficou em", "1234,56 reais neste mes", "corrente"],
+        ),
+        # With no separator at all, the cut stays within the limit.
+        ("a" * 70, 30, ["a" * 30, "a" * 30, "a" * 10]),
+    ],
+)
+def test_frases_splits_within_the_limit(texto, limite, esperado):
+    assert xtts_engine._frases(texto, limite) == esperado
 
 
 def test_to_pcm16_bytes_clips_out_of_range_values():

@@ -554,6 +554,13 @@ rodando a síntese como um processo próprio:
   aviso de colisão -- os três cenários testados separadamente antes de religar no loop real.
 - Enquanto o worker ainda não carregou (ou não há clipe de referência), `speak()` usa a voz
   padrão normalmente -- nunca trava esperando.
+- Respostas longas (2026-11-02, worker real em porta temporária, 5 de 5 com HTTP 200): o XTTS
+  aceita até 203 caracteres por trecho em português, e a divisão própria dele depende do spaCy,
+  que o `coqui-tts` não declara e o projeto não instala. Por isso `_frases()` divide o texto
+  antes da síntese, por frase, pontuação ou espaço, sem cortar decimais. Síntese completa:
+  **234 caracteres em 37,3s** (21,8s de áudio), **497 em 63,9s** (38,6s) e **1495 em 172,5s**
+  (125,7s); o maior intervalo entre blocos foi de 33,8s. Sequências longas só de dígitos
+  continuam podendo estourar o limite de 402 tokens (197 dígitos geraram 1044).
 
 ## Adaptador da Gupy
 

@@ -34,6 +34,13 @@ repeated short inference_stream blocks took 9.6s for 4.4s of audio, versus
 sentences avoids repeatedly decoding a growing waveform; the transport
 still uses framed PCM and supports cancellation between blocks.
 
+XTTS's own text splitting needs spaCy once a text reaches the language's
+character limit (203 for Portuguese). coqui-tts doesn't declare it and this
+project doesn't install it: a 239-character reply failed with HTTP 500 while
+163 characters worked (2026-11-01), and the iPhone then fell back to the
+device voice. _frases() does that splitting here, so no extra dependency is
+needed.
+
 NEVER CALL preload_in_background() FROM THE MAIN Noah PROCESS: found
 live that doing so made torchcodec dlopen the Homebrew-installed FFmpeg
 into the same process that already has faster-whisper's own bundled
@@ -48,6 +55,7 @@ module's docstring. Safe there; never safe alongside PvRecorder.
 from __future__ import annotations
 
 import os
+import re
 import sys
 import threading
 
@@ -193,11 +201,38 @@ def _to_pcm16_bytes(wav_chunk) -> bytes:
     return (clipped * 32767).astype(np.int16).tobytes()
 
 
+def _frases(texto: str, limite: int) -> list[str]:
+    """Split a reply that reaches XTTS's character limit: whole sentences
+    joined up to the limit, longer ones cut at a clause in the second half
+    of it, then at a space. Shorter replies stay in one piece, which keeps
+    their cadence, as XTTS's own splitter would."""
+    texto = texto.strip()
+    if len(texto) < limite:
+        return [texto]
+
+    pedacos: list[str] = []
+    for frase in re.split(r"(?<=[.!?…])\s+", texto):
+        while len(frase) > limite:
+            # Comma plus space, so a decimal like 1234,56 is never cut.
+            corte = max(frase.rfind(sep, limite // 2, limite) for sep in (", ", "; ", ": "))
+            if corte < 0:
+                corte = frase.rfind(" ", 0, limite)
+            if corte <= 0:
+                corte = limite - 1
+            pedacos.append(frase[:corte + 1].strip())
+            frase = frase[corte + 1:].strip()
+        if pedacos and len(pedacos[-1]) + 1 + len(frase) <= limite:
+            pedacos[-1] += " " + frase
+        else:
+            pedacos.append(frase)
+    return pedacos
+
+
 def synthesize_stream(text: str):
     """Yield complete sentence waveforms as PCM16, without repeatedly
-    running the vocoder over the same growing prefix. Sentence splitting
-    also keeps long replies within XTTS's tokenizer limit. The native
-    player validates and buffers the reply before starting playback.
+    running the vocoder over the same growing prefix. _frases() keeps long
+    replies within XTTS's character limit. The native player validates and
+    buffers the reply before starting playback.
     """
     from config import TTS_XTTS_LANGUAGE
 
@@ -207,8 +242,11 @@ def synthesize_stream(text: str):
         raise RuntimeError("modelo XTTS ainda não carregado")
 
     gpt_cond_latent, speaker_embedding = _get_conditioning_latents()
-    for wav_chunk in model.synthesizer.tts_model.inference_stream(
-        text, TTS_XTTS_LANGUAGE, gpt_cond_latent, speaker_embedding,
-        stream_chunk_size=0, enable_text_splitting=True,
-    ):
-        yield _to_pcm16_bytes(wav_chunk)
+    tts_model = model.synthesizer.tts_model
+    limite = tts_model.tokenizer.char_limits.get(TTS_XTTS_LANGUAGE, 250)
+    for frase in _frases(text, limite):
+        for wav_chunk in tts_model.inference_stream(
+            frase, TTS_XTTS_LANGUAGE, gpt_cond_latent, speaker_embedding,
+            stream_chunk_size=0, enable_text_splitting=False,
+        ):
+            yield _to_pcm16_bytes(wav_chunk)
