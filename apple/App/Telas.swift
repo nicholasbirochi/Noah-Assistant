@@ -190,10 +190,16 @@ struct ListaTarefas: View {
             }
         }
         .overlay {
-            if modelo.itens.isEmpty && modelo.erro == nil && modelo.jobsVisiveis.isEmpty {
+            switch EstadoLista.de(atualizadoEm: modelo.atualizadoEm, erro: modelo.erro,
+                                  temItens: !modelo.itens.isEmpty || !modelo.jobsVisiveis.isEmpty) {
+            case .conectando:
+                ProgressView("Conectando…")
+            case .vazio:
                 ContentUnavailableView(
                     "Nada esperando você", systemImage: "checkmark.circle",
                     description: Text("Quando uma conversa terminar ou o Noah gerar uma tarefa, ela aparece aqui."))
+            case .erro, .itens:
+                EmptyView()
             }
         }
         .refreshable { await modelo.atualizar() }
