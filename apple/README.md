@@ -62,7 +62,9 @@ próxima atualização. A decisão está em [ADR-0003](../docs/ADR-0003-app-nati
   - **Voz do Jarvis:** a Central transmite a voz clonada já instalada no Mac. O app
     reúne o áudio antes de reproduzir, evitando cortes quando a geração local é mais
     lenta que a fala. O XTTS gera frases completas, sem recalcular o vocoder a cada
-    pequeno bloco. Isso prioriza fala contínua e ainda exige esperar a síntese. Ative o pré-carregamento
+    pequeno bloco. Isso prioriza fala contínua e ainda exige esperar a síntese: respostas
+    com 203 caracteres ou mais são divididas antes da síntese e demoram a começar (497
+    caracteres levaram cerca de 64s para ficar prontos no Mac). Ative o pré-carregamento
     com `NOAH_CENTRAL_VOZ=1`; `NOAH_VOICE_PYTHON` pode apontar para um runtime local
     separado. Os arquivos XTTS e a referência ficam fora do repositório. A inicialização
     exige os pesos já presentes e não inicia download. Se a voz não estiver pronta,
